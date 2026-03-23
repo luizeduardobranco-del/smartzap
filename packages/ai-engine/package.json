@@ -1,0 +1,26 @@
+{
+  "name": "@zapagent/ai-engine",
+  "version": "0.1.0",
+  "private": true,
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "type-check": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.27.0",
+    "@zapagent/database": "*",
+    "@zapagent/shared": "*",
+    "groq-sdk": "^0.7.0",
+    "openai": "^4.47.0",
+    "pdf-parse": "^1.1.1",
+    "tiktoken": "^1.0.15"
+  },
+  "devDependencies": {
+    "@types/node": "*",
+    "typescript": "*"
+  }
+}
