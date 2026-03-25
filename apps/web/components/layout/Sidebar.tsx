@@ -17,7 +17,6 @@ import {
   Send,
   Users,
 } from 'lucide-react'
-import { createSupabaseBrowserClient } from '@/lib/supabase/client'
 
 const navItems = [
   { href: '/agents', label: 'Agentes', icon: Bot },
@@ -40,8 +39,7 @@ export function Sidebar({ user }: SidebarProps) {
   const router = useRouter()
 
   async function handleLogout() {
-    const supabase = createSupabaseBrowserClient()
-    await supabase.auth.signOut()
+    await fetch('/api/auth/logout', { method: 'POST' })
     window.location.href = '/login'
   }
 
