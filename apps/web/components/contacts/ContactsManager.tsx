@@ -7,7 +7,8 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import {
   Users, Plus, Upload, Trash2, Loader2, X, Search,
   CheckCircle2, AlertCircle, Tag, Phone, List, Filter,
-  FolderOpen, ChevronDown,
+  FolderOpen, ChevronDown, ChevronRight, LayoutList, Table2,
+  Megaphone,
 } from 'lucide-react'
 import { trpc } from '@/lib/trpc/client'
 
@@ -78,6 +79,8 @@ const stageColor: Record<string, string> = {
 export function ContactsManager() {
   // View mode: 'all' = todos | 'list' = por lista | 'type' = por tipo
   const [viewMode, setViewMode] = useState<'all' | 'list' | 'type'>('all')
+  // Display mode: 'table' = tabela plana | 'grouped' = agrupado por lista
+  const [displayMode, setDisplayMode] = useState<'table' | 'grouped'>('table')
   const [activeListId, setActiveListId] = useState<string | null>(null)
   const [activeType, setActiveType] = useState<string>('')
   const [search, setSearch] = useState('')
@@ -181,6 +184,23 @@ export function ContactsManager() {
           </p>
         </div>
         <div className="flex items-center gap-2">
+          {/* Display mode toggle */}
+          <div className="flex items-center rounded-lg border bg-muted/30 p-0.5">
+            <button
+              onClick={() => setDisplayMode('table')}
+              title="Visualização em tabela"
+              className={`rounded p-1.5 transition-colors ${displayMode === 'table' ? 'bg-white shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
+            >
+              <Table2 className="h-4 w-4" />
+            </button>
+            <button
+              onClick={() => setDisplayMode('grouped')}
+              title="Agrupado por lista"
+              className={`rounded p-1.5 transition-colors ${displayMode === 'grouped' ? 'bg-white shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
+            >
+              <LayoutList className="h-4 w-4" />
+            </button>
+          </div>
           <button
             onClick={() => setShowImport(true)}
             className="flex items-center gap-2 rounded-lg border px-4 py-2 text-sm font-medium hover:bg-muted"
@@ -377,109 +397,121 @@ export function ContactsManager() {
         )}
       </div>
 
-      {/* Table */}
-      {isLoadingContacts ? (
-        <div className="flex h-40 items-center justify-center">
-          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-        </div>
-      ) : contacts.length === 0 ? (
-        <div className="flex flex-col items-center justify-center rounded-xl border-2 border-dashed bg-white py-16 text-center">
-          <Users className="mb-3 h-10 w-10 text-muted-foreground/40" />
-          <p className="font-medium">
-            Nenhum contato{activeList ? ` em "${activeList.name}"` : activeType ? ` do tipo "${activeType}"` : ''}
-            {tagFilter ? ` com a tag "${tagFilter}"` : ''}
-          </p>
-          <p className="mt-1 text-sm text-muted-foreground">
-            {activeList ? 'Importe ou adicione contatos a esta lista.' : 'Crie uma lista e importe contatos via CSV.'}
-          </p>
-          <div className="mt-4 flex gap-2">
-            <button
-              onClick={() => setShowImport(true)}
-              className="flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-sm hover:bg-muted"
-            >
-              <Upload className="h-3.5 w-3.5" /> Importar
-            </button>
-            <button
-              onClick={() => setShowAdd(true)}
-              className="flex items-center gap-1.5 rounded-lg bg-primary px-3 py-1.5 text-sm font-medium text-white hover:bg-primary/90"
-            >
-              <Plus className="h-3.5 w-3.5" /> Adicionar
-            </button>
-          </div>
-        </div>
+      {/* Grouped view */}
+      {displayMode === 'grouped' ? (
+        <GroupedListView
+          lists={typedLists}
+          search={search}
+          tagFilter={tagFilter}
+          onTagClick={(t) => setTagFilter(tagFilter === t ? '' : t)}
+          onNewList={() => setShowNewList(true)}
+          onImport={() => setShowImport(true)}
+        />
       ) : (
-        <div className="overflow-hidden rounded-xl border bg-white">
-          <table className="w-full text-sm">
-            <thead className="border-b bg-muted/30">
-              <tr>
-                <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wide">Nome</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wide">Telefone</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wide">Tags</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wide">CRM</th>
-                <th className="px-4 py-3" />
-              </tr>
-            </thead>
-            <tbody className="divide-y">
-              {contacts.map((c) => (
-                <tr key={c.id} className="hover:bg-muted/20">
-                  <td className="px-4 py-3 font-medium">{c.name}</td>
-                  <td className="px-4 py-3 text-muted-foreground">
-                    <span className="flex items-center gap-1">
-                      <Phone className="h-3 w-3" />
-                      {c.phone ?? c.external_id}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3">
-                    <div className="flex flex-wrap gap-1">
-                      {(c.tags ?? []).map((t) => (
-                        <button
-                          key={t}
-                          onClick={() => setTagFilter(tagFilter === t ? '' : t)}
-                          className={`flex items-center gap-0.5 rounded-full px-2 py-0.5 text-xs font-medium transition-colors ${
-                            tagFilter === t
-                              ? 'bg-primary text-white'
-                              : 'bg-primary/10 text-primary hover:bg-primary/20'
-                          }`}
-                        >
-                          <Tag className="h-2.5 w-2.5" />{t}
-                        </button>
-                      ))}
-                    </div>
-                  </td>
-                  <td className="px-4 py-3">
-                    <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${stageColor[c.kanban_stage ?? 'new'] ?? stageColor.new}`}>
-                      {stageLabel[c.kanban_stage ?? 'new'] ?? 'Novo'}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3 text-right">
-                    <div className="flex items-center justify-end gap-1">
-                      {activeListId && (
-                        <button
-                          onClick={() => removeFromList.mutate({ contactId: c.id, listId: activeListId })}
-                          title="Remover da lista"
-                          className="rounded p-1.5 text-muted-foreground hover:bg-yellow-50 hover:text-yellow-600"
-                        >
-                          <List className="h-4 w-4" />
-                        </button>
-                      )}
-                      <button
-                        onClick={() => setDeleteContactId(c.id)}
-                        className="rounded p-1.5 text-muted-foreground hover:bg-red-50 hover:text-red-500"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-          {total > 100 && (
-            <div className="border-t p-3 text-center text-xs text-muted-foreground">
-              Mostrando 100 de {total} contatos
+        /* Table view */
+        isLoadingContacts ? (
+          <div className="flex h-40 items-center justify-center">
+            <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+          </div>
+        ) : contacts.length === 0 ? (
+          <div className="flex flex-col items-center justify-center rounded-xl border-2 border-dashed bg-white py-16 text-center">
+            <Users className="mb-3 h-10 w-10 text-muted-foreground/40" />
+            <p className="font-medium">
+              Nenhum contato{activeList ? ` em "${activeList.name}"` : activeType ? ` do tipo "${activeType}"` : ''}
+              {tagFilter ? ` com a tag "${tagFilter}"` : ''}
+            </p>
+            <p className="mt-1 text-sm text-muted-foreground">
+              {activeList ? 'Importe ou adicione contatos a esta lista.' : 'Crie uma lista e importe contatos via CSV.'}
+            </p>
+            <div className="mt-4 flex gap-2">
+              <button
+                onClick={() => setShowImport(true)}
+                className="flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-sm hover:bg-muted"
+              >
+                <Upload className="h-3.5 w-3.5" /> Importar
+              </button>
+              <button
+                onClick={() => setShowAdd(true)}
+                className="flex items-center gap-1.5 rounded-lg bg-primary px-3 py-1.5 text-sm font-medium text-white hover:bg-primary/90"
+              >
+                <Plus className="h-3.5 w-3.5" /> Adicionar
+              </button>
             </div>
-          )}
-        </div>
+          </div>
+        ) : (
+          <div className="overflow-hidden rounded-xl border bg-white">
+            <table className="w-full text-sm">
+              <thead className="border-b bg-muted/30">
+                <tr>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wide">Nome</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wide">Telefone</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wide">Tags</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wide">CRM</th>
+                  <th className="px-4 py-3" />
+                </tr>
+              </thead>
+              <tbody className="divide-y">
+                {contacts.map((c) => (
+                  <tr key={c.id} className="hover:bg-muted/20">
+                    <td className="px-4 py-3 font-medium">{c.name}</td>
+                    <td className="px-4 py-3 text-muted-foreground">
+                      <span className="flex items-center gap-1">
+                        <Phone className="h-3 w-3" />
+                        {c.phone ?? c.external_id}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3">
+                      <div className="flex flex-wrap gap-1">
+                        {(c.tags ?? []).map((t) => (
+                          <button
+                            key={t}
+                            onClick={() => setTagFilter(tagFilter === t ? '' : t)}
+                            className={`flex items-center gap-0.5 rounded-full px-2 py-0.5 text-xs font-medium transition-colors ${
+                              tagFilter === t
+                                ? 'bg-primary text-white'
+                                : 'bg-primary/10 text-primary hover:bg-primary/20'
+                            }`}
+                          >
+                            <Tag className="h-2.5 w-2.5" />{t}
+                          </button>
+                        ))}
+                      </div>
+                    </td>
+                    <td className="px-4 py-3">
+                      <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${stageColor[c.kanban_stage ?? 'new'] ?? stageColor.new}`}>
+                        {stageLabel[c.kanban_stage ?? 'new'] ?? 'Novo'}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 text-right">
+                      <div className="flex items-center justify-end gap-1">
+                        {activeListId && (
+                          <button
+                            onClick={() => removeFromList.mutate({ contactId: c.id, listId: activeListId })}
+                            title="Remover da lista"
+                            className="rounded p-1.5 text-muted-foreground hover:bg-yellow-50 hover:text-yellow-600"
+                          >
+                            <List className="h-4 w-4" />
+                          </button>
+                        )}
+                        <button
+                          onClick={() => setDeleteContactId(c.id)}
+                          className="rounded p-1.5 text-muted-foreground hover:bg-red-50 hover:text-red-500"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            {total > 100 && (
+              <div className="border-t p-3 text-center text-xs text-muted-foreground">
+                Mostrando 100 de {total} contatos
+              </div>
+            )}
+          </div>
+        )
       )}
 
       {/* Modals */}
@@ -536,6 +568,209 @@ export function ContactsManager() {
             setShowImport(false)
           }}
         />
+      )}
+    </div>
+  )
+}
+
+// ─── Grouped List View ────────────────────────────────────────────────────────
+
+function GroupedListView({ lists, search, tagFilter, onTagClick, onNewList, onImport }: {
+  lists: ContactList[]
+  search: string
+  tagFilter: string
+  onTagClick: (tag: string) => void
+  onNewList: () => void
+  onImport: () => void
+}) {
+  const [expanded, setExpanded] = useState<Record<string, boolean>>({})
+
+  function toggle(id: string) {
+    setExpanded((prev) => ({ ...prev, [id]: !prev[id] }))
+  }
+
+  if (lists.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center rounded-xl border-2 border-dashed bg-white py-16 text-center">
+        <LayoutList className="mb-3 h-10 w-10 text-muted-foreground/40" />
+        <p className="font-medium">Nenhuma lista criada</p>
+        <p className="mt-1 text-sm text-muted-foreground">Crie uma lista e importe contatos via CSV.</p>
+        <div className="mt-4 flex gap-2">
+          <button onClick={onImport} className="flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-sm hover:bg-muted">
+            <Upload className="h-3.5 w-3.5" /> Importar
+          </button>
+          <button onClick={onNewList} className="flex items-center gap-1.5 rounded-lg bg-primary px-3 py-1.5 text-sm font-medium text-white hover:bg-primary/90">
+            <Plus className="h-3.5 w-3.5" /> Nova lista
+          </button>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="space-y-2">
+      {lists.map((list) => (
+        <ListAccordion
+          key={list.id}
+          list={list}
+          isOpen={!!expanded[list.id]}
+          onToggle={() => toggle(list.id)}
+          search={search}
+          tagFilter={tagFilter}
+          onTagClick={onTagClick}
+        />
+      ))}
+    </div>
+  )
+}
+
+function ListAccordion({ list, isOpen, onToggle, search, tagFilter, onTagClick }: {
+  list: ContactList
+  isOpen: boolean
+  onToggle: () => void
+  search: string
+  tagFilter: string
+  onTagClick: (tag: string) => void
+}) {
+  const { data, isLoading } = trpc.contacts.list.useQuery(
+    { search, tag: tagFilter || undefined, listId: list.id, limit: 100 },
+    { enabled: isOpen, refetchInterval: 0 }
+  )
+  const contacts = (data?.contacts ?? []) as Contact[]
+  const total = data?.total ?? list.member_count
+
+  // Collect unique tags from loaded contacts
+  const listTags = isOpen
+    ? [...new Set(contacts.flatMap((c) => c.tags ?? []))].sort()
+    : []
+
+  return (
+    <div className="overflow-hidden rounded-xl border bg-white">
+      {/* Accordion header */}
+      <button
+        onClick={onToggle}
+        className="flex w-full items-center gap-3 px-4 py-3 text-left hover:bg-muted/20 transition-colors"
+      >
+        <span
+          className="h-3 w-3 rounded-full shrink-0"
+          style={{ backgroundColor: list.color }}
+        />
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2">
+            <span className="font-medium text-sm">{list.name}</span>
+            {list.list_type && (
+              <span className="rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">
+                {list.list_type}
+              </span>
+            )}
+          </div>
+          {/* Tags preview when collapsed */}
+          {!isOpen && listTags.length === 0 && list.member_count > 0 && (
+            <p className="text-xs text-muted-foreground mt-0.5">Expandir para ver tags</p>
+          )}
+          {!isOpen && listTags.length > 0 && (
+            <div className="mt-1 flex flex-wrap gap-1">
+              {listTags.slice(0, 5).map((t) => (
+                <span key={t} className="rounded-full bg-primary/10 px-1.5 py-0.5 text-xs text-primary">
+                  {t}
+                </span>
+              ))}
+            </div>
+          )}
+        </div>
+        <div className="flex items-center gap-3 shrink-0">
+          <span className="rounded-full bg-muted px-2.5 py-0.5 text-xs font-medium text-muted-foreground">
+            {total} contato{total !== 1 ? 's' : ''}
+          </span>
+          {/* Campaign shortcut */}
+          <a
+            href={`/campaigns?listId=${list.id}`}
+            onClick={(e) => e.stopPropagation()}
+            title="Criar campanha para esta lista"
+            className="flex items-center gap-1 rounded-lg border px-2 py-1 text-xs text-muted-foreground hover:bg-primary/5 hover:text-primary hover:border-primary/30 transition-colors"
+          >
+            <Megaphone className="h-3 w-3" />
+            Campanha
+          </a>
+          {isOpen
+            ? <ChevronDown className="h-4 w-4 text-muted-foreground" />
+            : <ChevronRight className="h-4 w-4 text-muted-foreground" />
+          }
+        </div>
+      </button>
+
+      {/* Accordion body */}
+      {isOpen && (
+        <div className="border-t">
+          {/* Tags filter chips */}
+          {listTags.length > 0 && (
+            <div className="flex flex-wrap gap-1.5 border-b bg-muted/20 px-4 py-2">
+              <span className="flex items-center gap-1 text-xs text-muted-foreground">
+                <Tag className="h-3 w-3" /> Tags:
+              </span>
+              {listTags.map((t) => (
+                <button
+                  key={t}
+                  onClick={() => onTagClick(t)}
+                  className={`rounded-full px-2.5 py-0.5 text-xs font-medium transition-colors ${
+                    tagFilter === t
+                      ? 'bg-primary text-white'
+                      : 'bg-primary/10 text-primary hover:bg-primary/20'
+                  }`}
+                >
+                  {t}
+                </button>
+              ))}
+            </div>
+          )}
+
+          {isLoading ? (
+            <div className="flex items-center justify-center py-6">
+              <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+            </div>
+          ) : contacts.length === 0 ? (
+            <div className="py-6 text-center text-sm text-muted-foreground">
+              Nenhum contato{tagFilter ? ` com a tag "${tagFilter}"` : ''} nesta lista.
+            </div>
+          ) : (
+            <div className="divide-y">
+              {contacts.map((c) => (
+                <div key={c.id} className="flex items-center gap-3 px-4 py-2.5 hover:bg-muted/10">
+                  <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-bold text-primary">
+                    {c.name?.charAt(0)?.toUpperCase() ?? '?'}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium truncate">{c.name}</p>
+                    <p className="text-xs text-muted-foreground">{c.phone ?? c.external_id}</p>
+                  </div>
+                  <div className="flex flex-wrap gap-1 justify-end">
+                    {(c.tags ?? []).map((t) => (
+                      <button
+                        key={t}
+                        onClick={() => onTagClick(t)}
+                        className={`rounded-full px-2 py-0.5 text-xs font-medium transition-colors ${
+                          tagFilter === t
+                            ? 'bg-primary text-white'
+                            : 'bg-primary/10 text-primary hover:bg-primary/20'
+                        }`}
+                      >
+                        {t}
+                      </button>
+                    ))}
+                  </div>
+                  <span className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-medium ${stageColor[c.kanban_stage ?? 'new'] ?? stageColor.new}`}>
+                    {stageLabel[c.kanban_stage ?? 'new'] ?? 'Novo'}
+                  </span>
+                </div>
+              ))}
+              {total > 100 && (
+                <div className="px-4 py-2 text-center text-xs text-muted-foreground">
+                  Mostrando 100 de {total} contatos
+                </div>
+              )}
+            </div>
+          )}
+        </div>
       )}
     </div>
   )
@@ -682,7 +917,7 @@ function AddContactModal({ lists, defaultListId, onClose, onSaved }: {
           </button>
         </div>
         <form
-          onSubmit={handleSubmit((d) => create.mutate({ ...d, tags, listId: listId || undefined }))}
+          onSubmit={handleSubmit((d) => create.mutate({ name: d.name, phone: d.phone, tags, listId: listId || undefined }))}
           className="space-y-4 p-6"
         >
           <div>
