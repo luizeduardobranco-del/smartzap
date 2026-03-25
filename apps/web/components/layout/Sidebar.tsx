@@ -12,13 +12,19 @@ import {
   Coins,
   LogOut,
   ChevronDown,
+  Kanban,
+  Send,
+  Users,
 } from 'lucide-react'
 import { createSupabaseBrowserClient } from '@/lib/supabase/client'
 
 const navItems = [
   { href: '/agents', label: 'Agentes', icon: Bot },
   { href: '/conversations', label: 'Conversas', icon: MessageSquare },
+  { href: '/contacts', label: 'Contatos', icon: Users },
+  { href: '/crm', label: 'CRM', icon: Kanban },
   { href: '/automations', label: 'Automações', icon: Zap },
+  { href: '/campaigns', label: 'Disparos', icon: Send },
   { href: '/analytics', label: 'Analytics', icon: BarChart3 },
   { href: '/credits', label: 'Créditos', icon: Coins },
   { href: '/settings', label: 'Configurações', icon: Settings },
@@ -35,8 +41,7 @@ export function Sidebar({ user }: SidebarProps) {
   async function handleLogout() {
     const supabase = createSupabaseBrowserClient()
     await supabase.auth.signOut()
-    router.push('/login')
-    router.refresh()
+    window.location.href = '/login'
   }
 
   const displayName = user.user_metadata?.full_name ?? user.email?.split('@')[0] ?? 'Usuário'
@@ -55,7 +60,7 @@ export function Sidebar({ user }: SidebarProps) {
           <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary">
             <Zap className="h-4 w-4 text-white" />
           </div>
-          <span className="text-lg font-bold">ZapAgent</span>
+          <span className="text-lg font-bold">White Zap</span>
         </Link>
       </div>
 

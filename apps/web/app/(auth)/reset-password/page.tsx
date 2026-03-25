@@ -1,29 +1,40 @@
 'use client'
 
 import { useState } from 'react'
-import Link from 'next/link'
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 import { Zap } from 'lucide-react'
 import { createSupabaseBrowserClient } from '@/lib/supabase/client'
 
-export default function LoginPage() {
+export default function ResetPasswordPage() {
   const router = useRouter()
-  const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-  const [error, setError] = useState<string | null>(null)
+  const [confirm, setConfirm] = useState('')
   const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
-  async function handleLogin(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setError(null)
+
+    if (password.length < 6) {
+      setError('A senha deve ter pelo menos 6 caracteres.')
+      return
+    }
+
+    if (password !== confirm) {
+      setError('As senhas não conferem.')
+      return
+    }
+
     setLoading(true)
 
     try {
       const supabase = createSupabaseBrowserClient()
-      const { error } = await supabase.auth.signInWithPassword({ email, password })
+      const { error } = await supabase.auth.updateUser({ password })
 
       if (error) {
-        setError('Email ou senha inválidos. Tente novamente.')
+        setError('Não foi possível redefinir a senha. Tente solicitar um novo link.')
         return
       }
 
@@ -37,7 +48,6 @@ export default function LoginPage() {
   return (
     <div className="flex min-h-screen flex-col items-center justify-center bg-muted/30 px-4">
       <div className="w-full max-w-md">
-        {/* Logo */}
         <div className="mb-8 flex flex-col items-center">
           <Link href="/" className="mb-4 flex items-center gap-2">
             <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary">
@@ -45,42 +55,21 @@ export default function LoginPage() {
             </div>
             <span className="text-2xl font-bold">White Zap</span>
           </Link>
-          <h1 className="text-2xl font-bold">Bem-vindo de volta</h1>
-          <p className="mt-1 text-sm text-muted-foreground">Entre na sua conta para continuar</p>
+          <h1 className="text-2xl font-bold">Nova senha</h1>
+          <p className="mt-1 text-sm text-muted-foreground">Defina uma nova senha para sua conta</p>
         </div>
 
-        {/* Form */}
         <div className="rounded-xl border bg-white p-8 shadow-sm">
-          <form onSubmit={handleLogin} className="space-y-4">
+          <form onSubmit={handleSubmit} className="space-y-4">
             {error && (
               <div className="rounded-lg bg-destructive/10 p-3 text-sm text-destructive">
                 {error}
               </div>
             )}
             <div>
-              <label htmlFor="email" className="mb-1.5 block text-sm font-medium">
-                Email
+              <label htmlFor="password" className="mb-1.5 block text-sm font-medium">
+                Nova senha
               </label>
-              <input
-                id="email"
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="w-full rounded-lg border px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary"
-                placeholder="seu@email.com"
-                required
-                autoComplete="email"
-              />
-            </div>
-            <div>
-              <div className="mb-1.5 flex items-center justify-between">
-                <label htmlFor="password" className="text-sm font-medium">
-                  Senha
-                </label>
-                <Link href="/forgot-password" className="text-xs text-primary hover:underline">
-                  Esqueceu a senha?
-                </Link>
-              </div>
               <input
                 id="password"
                 type="password"
@@ -89,7 +78,22 @@ export default function LoginPage() {
                 className="w-full rounded-lg border px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary"
                 placeholder="••••••••"
                 required
-                autoComplete="current-password"
+                minLength={6}
+              />
+            </div>
+            <div>
+              <label htmlFor="confirm" className="mb-1.5 block text-sm font-medium">
+                Confirmar senha
+              </label>
+              <input
+                id="confirm"
+                type="password"
+                value={confirm}
+                onChange={(e) => setConfirm(e.target.value)}
+                className="w-full rounded-lg border px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary"
+                placeholder="••••••••"
+                required
+                minLength={6}
               />
             </div>
             <button
@@ -97,17 +101,10 @@ export default function LoginPage() {
               disabled={loading}
               className="w-full rounded-lg bg-primary py-2.5 text-sm font-semibold text-white hover:bg-primary/90 disabled:opacity-50"
             >
-              {loading ? 'Entrando...' : 'Entrar'}
+              {loading ? 'Salvando...' : 'Redefinir senha'}
             </button>
           </form>
         </div>
-
-        <p className="mt-6 text-center text-sm text-muted-foreground">
-          Não tem uma conta?{' '}
-          <Link href="/signup" className="font-medium text-primary hover:underline">
-            Criar conta grátis
-          </Link>
-        </p>
       </div>
     </div>
   )
