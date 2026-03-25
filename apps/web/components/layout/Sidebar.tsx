@@ -1,6 +1,7 @@
 'use client'
 
 import Link from 'next/link'
+import Image from 'next/image'
 import { usePathname, useRouter } from 'next/navigation'
 import type { User } from '@supabase/supabase-js'
 import {
@@ -56,11 +57,8 @@ export function Sidebar({ user }: SidebarProps) {
     <aside className="flex h-full w-60 flex-col border-r bg-white">
       {/* Logo */}
       <div className="flex h-16 items-center border-b px-4">
-        <Link href="/agents" className="flex items-center gap-2">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary">
-            <Zap className="h-4 w-4 text-white" />
-          </div>
-          <span className="text-lg font-bold">White Zap</span>
+        <Link href="/agents" className="flex items-center">
+          <Image src="/logo.png" alt="White Zap" width={140} height={48} className="object-contain" priority />
         </Link>
       </div>
 

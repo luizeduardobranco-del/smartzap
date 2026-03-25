@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { Zap } from 'lucide-react'
+import Image from 'next/image'
 import { createSupabaseBrowserClient } from '@/lib/supabase/client'
 
 export default function ForgotPasswordPage() {
@@ -37,11 +37,8 @@ export default function ForgotPasswordPage() {
     <div className="flex min-h-screen flex-col items-center justify-center bg-muted/30 px-4">
       <div className="w-full max-w-md">
         <div className="mb-8 flex flex-col items-center">
-          <Link href="/" className="mb-4 flex items-center gap-2">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary">
-              <Zap className="h-6 w-6 text-white" />
-            </div>
-            <span className="text-2xl font-bold">White Zap</span>
+          <Link href="/" className="mb-4">
+            <Image src="/logo.png" alt="White Zap" width={180} height={60} className="object-contain" priority />
           </Link>
           <h1 className="text-2xl font-bold">Recuperar senha</h1>
           <p className="mt-1 text-sm text-muted-foreground">

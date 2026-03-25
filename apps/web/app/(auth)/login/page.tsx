@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { Zap } from 'lucide-react'
+import Image from 'next/image'
 import { createSupabaseBrowserClient } from '@/lib/supabase/client'
 
 export default function LoginPage() {
@@ -39,11 +39,8 @@ export default function LoginPage() {
       <div className="w-full max-w-md">
         {/* Logo */}
         <div className="mb-8 flex flex-col items-center">
-          <Link href="/" className="mb-4 flex items-center gap-2">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary">
-              <Zap className="h-6 w-6 text-white" />
-            </div>
-            <span className="text-2xl font-bold">White Zap</span>
+          <Link href="/" className="mb-4">
+            <Image src="/logo.png" alt="White Zap" width={180} height={60} className="object-contain" priority />
           </Link>
           <h1 className="text-2xl font-bold">Bem-vindo de volta</h1>
           <p className="mt-1 text-sm text-muted-foreground">Entre na sua conta para continuar</p>
