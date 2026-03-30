@@ -22,7 +22,6 @@ import {
   ChevronRight,
   Cpu,
   Workflow,
-  Instagram,
   Phone,
   MapPin,
   Building2,
@@ -232,7 +231,7 @@ function HeroSection() {
         </h1>
 
         <p className="mx-auto mt-6 max-w-2xl text-lg text-slate-300/90 leading-relaxed animate-slide-up-d2">
-          Conecte GPT-4o ao seu WhatsApp e Instagram, extraia leads automaticamente e gerencie
+          Conecte GPT-4o ao seu WhatsApp, extraia leads automaticamente e gerencie
           todo o funil de vendas em um só lugar. Sem código. Resultado do primeiro dia.
         </p>
 
@@ -327,7 +326,7 @@ function HowItWorksSection() {
       number: '03',
       Icon: Phone,
       title: 'Conecte o canal',
-      description: 'Escaneie o QR code do WhatsApp ou conecte o Instagram com um clique.',
+      description: 'Escaneie o QR code do WhatsApp com um clique e comece a atender.',
       iconColor: 'text-violet-600',
       bg: 'bg-violet-50',
       border: 'border-violet-100',
@@ -425,9 +424,9 @@ function FeaturesSection() {
     },
     {
       Icon: MessageSquare,
-      title: 'WhatsApp & Instagram',
+      title: 'WhatsApp',
       description:
-        'Conecte seus canais com QR Code e comece a atender em minutos. Suporte a múltiplos números e perfis.',
+        'Conecte seus canais com QR Code e comece a atender em minutos. Suporte a múltiplos números.',
       badge: 'Canais',
       badgeColor: 'bg-sky-100 text-sky-700',
       iconColor: 'text-sky-600',
@@ -531,26 +530,6 @@ function ProspectingSection() {
       badgeColor: 'bg-blue-100 text-blue-700',
     },
     {
-      Icon: Instagram,
-      title: 'Instagram',
-      description: 'Importe seguidores dos concorrentes e transforme-os em leads qualificados.',
-      color: 'text-violet-600',
-      bg: 'bg-violet-50',
-      border: 'border-violet-100',
-      badge: 'Em breve',
-      badgeColor: 'bg-violet-100 text-violet-700',
-    },
-    {
-      Icon: Building2,
-      title: 'CNPJ / Receita Federal',
-      description: 'Filtre empresas por segmento, porte e data de abertura diretamente da Receita.',
-      color: 'text-sky-600',
-      bg: 'bg-sky-50',
-      border: 'border-sky-100',
-      badge: 'Em breve',
-      badgeColor: 'bg-sky-100 text-sky-700',
-    },
-    {
       Icon: MessageSquare,
       title: 'Grupos WhatsApp',
       description: 'Extraia contatos de grupos e inicie conversas automáticas com segmentação.',
@@ -584,7 +563,7 @@ function ProspectingSection() {
               <span className="gradient-text">eles estão</span>
             </h2>
             <p className="mx-auto mt-4 max-w-2xl text-lg text-slate-500">
-              Extraia leads com telefone diretamente do Google Maps, Instagram, CNPJ e grupos do
+              Extraia leads com telefone diretamente do Google Maps e grupos do
               WhatsApp. Tudo dentro da plataforma, sem ferramentas externas.
             </p>
           </div>
@@ -771,7 +750,7 @@ function PricingSection() {
         '3 agentes de IA',
         '3 canais conectados',
         '2.000 créditos/mês',
-        'WhatsApp + Instagram + Widget',
+        'WhatsApp + Widget',
         'CRM Kanban',
         'Automações',
         'Analytics',
@@ -1048,7 +1027,7 @@ function Footer() {
           <div className="md:col-span-2">
             <Image src="/logo.png" alt="White Zap" width={160} height={55} className="object-contain mb-4" />
             <p className="text-sm leading-relaxed text-slate-500 max-w-xs">
-              Plataforma de agentes de IA para WhatsApp, Instagram e sites. Automatize seu
+              Plataforma de agentes de IA para WhatsApp e sites. Automatize seu
               atendimento e prospecção em minutos.
             </p>
           </div>
