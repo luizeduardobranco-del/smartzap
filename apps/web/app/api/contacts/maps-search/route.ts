@@ -71,10 +71,14 @@ export async function POST(req: NextRequest) {
   try {
     const searchQuery = location ? `${query} em ${location}` : query
 
-    // Build request body — paging requests must only contain pageToken + textQuery
-    const body: Record<string, unknown> = pageToken
-      ? { pageToken, textQuery: searchQuery }
-      : { textQuery: searchQuery, languageCode: 'pt-BR', regionCode: 'BR', maxResultCount: 20 }
+    // Paging requests must include the same body as the initial request + pageToken
+    const body: Record<string, unknown> = {
+      textQuery: searchQuery,
+      languageCode: 'pt-BR',
+      regionCode: 'BR',
+      maxResultCount: 20,
+    }
+    if (pageToken) body.pageToken = pageToken
 
     const searchRes = await fetch('https://places.googleapis.com/v1/places:searchText', {
       method: 'POST',
