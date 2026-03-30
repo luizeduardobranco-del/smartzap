@@ -1823,24 +1823,18 @@ function MapsSearchModal({ lists, defaultListId, onClose, onSaved }: {
               <div className="flex-1">
                 <p className="text-xs font-medium text-slate-700">Quantidade de resultados</p>
                 <p className="text-xs text-muted-foreground mt-0.5">
-                  {maxPages * 20} leads · {maxPages * 25} créditos por busca
+                  até {maxPages * 20} leads · {maxPages * 25} créditos por busca
                 </p>
               </div>
-              <div className="flex items-center gap-1">
-                {[1, 2, 3, 4, 5].map((p) => (
-                  <button
-                    key={p}
-                    onClick={() => setMaxPages(p)}
-                    className={`h-8 w-8 rounded-lg text-xs font-semibold transition-colors ${
-                      maxPages === p
-                        ? 'bg-primary text-white'
-                        : 'border bg-white text-muted-foreground hover:bg-muted'
-                    }`}
-                  >
-                    {p * 20}
-                  </button>
+              <select
+                value={maxPages}
+                onChange={(e) => setMaxPages(Number(e.target.value))}
+                className="rounded-lg border bg-white px-3 py-2 text-sm font-medium outline-none focus:ring-2 focus:ring-primary/30"
+              >
+                {[1,2,3,4,5,6,7,8,9,10].map((p) => (
+                  <option key={p} value={p}>{p * 20} leads</option>
                 ))}
-              </div>
+              </select>
             </div>
 
             {loading && loadingPage > 0 && (
