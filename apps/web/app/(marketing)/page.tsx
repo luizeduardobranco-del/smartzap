@@ -568,11 +568,11 @@ function ProspectingSection() {
             </p>
           </div>
 
-          <div className="grid gap-6 sm:grid-cols-2 max-w-2xl mx-auto w-full">
+          <div className="flex flex-wrap justify-center gap-6">
             {extractionSources.map((s) => (
               <div
                 key={s.title}
-                className={`relative rounded-2xl border ${s.border} ${s.bg} p-6 hover:shadow-md transition-shadow`}
+                className={`relative w-full sm:w-80 rounded-2xl border ${s.border} ${s.bg} p-6 hover:shadow-md transition-shadow`}
               >
                 <div className="mb-4 flex items-start justify-between">
                   <div className={`inline-flex h-11 w-11 items-center justify-center rounded-xl bg-white shadow-sm border ${s.border}`}>
