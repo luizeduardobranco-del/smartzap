@@ -1611,10 +1611,12 @@ function MapsSearchModal({ lists, defaultListId, onClose, onSaved }: {
 }) {
   const [query, setQuery] = useState('')
   const [location, setLocation] = useState('')
+  const [maxPages, setMaxPages] = useState(1)
   const [results, setResults] = useState<MapsPlace[]>([])
   const [selected, setSelected] = useState<Set<string>>(new Set())
   const [loading, setLoading] = useState(false)
   const [loadingMore, setLoadingMore] = useState(false)
+  const [loadingPage, setLoadingPage] = useState(0)
   const [error, setError] = useState('')
   const [creditsInfo, setCreditsInfo] = useState<{ balance: number; cost: number } | null>(null)
   const [creditsRemaining, setCreditsRemaining] = useState<number | null>(null)
@@ -1642,9 +1644,31 @@ function MapsSearchModal({ lists, defaultListId, onClose, onSaved }: {
     setTagInput('')
   }
 
+  async function fetchOnePage(token?: string): Promise<{ results: MapsPlace[]; nextToken: string | null; remaining: number | null; ok: boolean; error?: string; creditsInfo?: { balance: number; cost: number } }> {
+    const res = await fetch('/api/contacts/maps-search', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        query: query.trim(),
+        location: location.trim() || undefined,
+        pageToken: token ?? undefined,
+      }),
+    })
+    const json = await res.json()
+    if (!res.ok) {
+      return {
+        results: [], nextToken: null, remaining: null, ok: false,
+        error: json.error ?? 'Erro na busca',
+        creditsInfo: json.code === 'INSUFFICIENT_CREDITS' ? { balance: json.balance, cost: json.cost } : undefined,
+      }
+    }
+    return { results: json.results ?? [], nextToken: json.nextPageToken ?? null, remaining: json.credits_remaining ?? null, ok: true }
+  }
+
   async function fetchPlaces(isLoadMore = false, token?: string) {
     const setter = isLoadMore ? setLoadingMore : setLoading
     setter(true)
+    setLoadingPage(1)
     setError('')
     if (!isLoadMore) {
       setCreditsInfo(null)
@@ -1653,40 +1677,38 @@ function MapsSearchModal({ lists, defaultListId, onClose, onSaved }: {
       setNextPageToken(null)
     }
     try {
-      const res = await fetch('/api/contacts/maps-search', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          query: query.trim(),
-          location: location.trim() || undefined,
-          pageToken: token ?? undefined,
-        }),
-      })
-      const json = await res.json()
-      if (!res.ok) {
-        if (json.code === 'INSUFFICIENT_CREDITS') {
-          setCreditsInfo({ balance: json.balance, cost: json.cost })
+      const pagesToFetch = isLoadMore ? 1 : maxPages
+      let currentToken = token
+      let allNew: MapsPlace[] = []
+
+      for (let page = 1; page <= pagesToFetch; page++) {
+        setLoadingPage(page)
+        const res = await fetchOnePage(currentToken)
+        if (!res.ok) {
+          if (res.creditsInfo) setCreditsInfo(res.creditsInfo)
+          setError(res.error ?? 'Erro na busca')
+          break
         }
-        setError(json.error ?? 'Erro na busca')
-        return
+        allNew = [...allNew, ...res.results]
+        setCreditsRemaining(res.remaining)
+        currentToken = res.nextToken ?? undefined
+        if (!currentToken) break
+        // Small delay between pages to avoid rate limits
+        if (page < pagesToFetch) await new Promise(r => setTimeout(r, 500))
       }
-      const newResults: MapsPlace[] = json.results ?? []
-      setResults((prev) => isLoadMore ? [...prev, ...newResults] : newResults)
-      setNextPageToken(json.nextPageToken ?? null)
-      setCreditsRemaining(json.credits_remaining ?? null)
-      if (!isLoadMore) {
-        setSelected(new Set(newResults.filter((p) => p.phone).map((p) => p.place_id)))
-      } else {
-        setSelected((prev) => {
-          const next = new Set(prev)
-          newResults.filter((p) => p.phone).forEach((p) => next.add(p.place_id))
-          return next
-        })
-      }
+
+      setNextPageToken(currentToken ?? null)
+      setResults((prev) => isLoadMore ? [...prev, ...allNew] : allNew)
+      setSelected((prev) => {
+        const next = isLoadMore ? new Set(prev) : new Set<string>()
+        allNew.filter((p) => p.phone).forEach((p) => next.add(p.place_id))
+        return next
+      })
     } catch (e: any) {
       setError(e.message)
     } finally {
       setter(false)
+      setLoadingPage(0)
     }
   }
 
@@ -1744,7 +1766,7 @@ function MapsSearchModal({ lists, defaultListId, onClose, onSaved }: {
               <MapPin className="h-5 w-5 text-primary" /> Buscar leads no Google Maps
             </h2>
             <p className="mt-0.5 text-xs text-muted-foreground">
-              Encontre empresas por segmento e importe como contatos · <span className="font-medium">10 créditos por busca</span>
+              Encontre empresas por segmento e importe como contatos · <span className="font-medium">25 créditos por página (até 100 resultados)</span>
               {creditsRemaining !== null && (
                 <span className="ml-1 text-green-600">· Saldo: {creditsRemaining} créditos</span>
               )}
@@ -1795,6 +1817,38 @@ function MapsSearchModal({ lists, defaultListId, onClose, onSaved }: {
                 Buscar
               </button>
             </div>
+
+            {/* Pages selector */}
+            <div className="flex items-center gap-3 rounded-xl border bg-muted/20 px-4 py-3">
+              <div className="flex-1">
+                <p className="text-xs font-medium text-slate-700">Quantidade de resultados</p>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  {maxPages * 20} leads · {maxPages * 25} créditos por busca
+                </p>
+              </div>
+              <div className="flex items-center gap-1">
+                {[1, 2, 3, 4, 5].map((p) => (
+                  <button
+                    key={p}
+                    onClick={() => setMaxPages(p)}
+                    className={`h-8 w-8 rounded-lg text-xs font-semibold transition-colors ${
+                      maxPages === p
+                        ? 'bg-primary text-white'
+                        : 'border bg-white text-muted-foreground hover:bg-muted'
+                    }`}
+                  >
+                    {p * 20}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {loading && loadingPage > 0 && (
+              <div className="flex items-center gap-2 rounded-lg bg-primary/5 px-4 py-2.5 text-sm text-primary">
+                <Loader2 className="h-4 w-4 animate-spin shrink-0" />
+                Buscando página {loadingPage} de {maxPages}...
+              </div>
+            )}
 
             {error && (
               <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700 space-y-1">
