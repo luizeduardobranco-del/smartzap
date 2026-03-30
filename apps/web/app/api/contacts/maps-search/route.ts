@@ -79,8 +79,7 @@ export async function POST(req: NextRequest) {
     }
     if (pageToken) {
       body.pageToken = pageToken
-      // textQuery is required even with pageToken
-      body.textQuery = query
+      body.textQuery = searchQuery
     } else {
       body.textQuery = searchQuery
     }
