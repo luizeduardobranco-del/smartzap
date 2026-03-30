@@ -762,7 +762,7 @@ function PricingSection() {
       description: 'Para times em crescimento acelerado',
       monthlyPrice: 297,
       featured: true,
-      cta: 'Testar grátis por 14 dias',
+      cta: 'Testar grátis por 7 dias',
       ctaHref: '/signup?plan=pro',
       features: [
         '10 agentes de IA',

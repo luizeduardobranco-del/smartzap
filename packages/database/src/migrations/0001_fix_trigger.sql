@@ -41,7 +41,7 @@ BEGIN
     v_org_slug,
     v_free_plan_id,
     100,
-    now() + INTERVAL '14 days'
+    now() + INTERVAL '7 days'
   )
   RETURNING id INTO v_org_id;
 

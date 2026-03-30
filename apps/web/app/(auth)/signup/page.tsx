@@ -104,7 +104,7 @@ export default function SignupPage() {
             <Image src="/logo.png" alt="White Zap" width={180} height={60} className="object-contain" priority />
           </Link>
           <h1 className="text-2xl font-bold">Crie sua conta grátis</h1>
-          <p className="mt-1 text-sm text-muted-foreground">14 dias grátis, sem cartão de crédito</p>
+          <p className="mt-1 text-sm text-muted-foreground">7 dias grátis, sem cartão de crédito</p>
         </div>
 
         <div className="rounded-xl border bg-white p-8 shadow-sm">

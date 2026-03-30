@@ -25,7 +25,7 @@ BEGIN
     org_slug,
     free_plan_id,
     100,
-    now() + INTERVAL '14 days'
+    now() + INTERVAL '7 days'
   )
   RETURNING id INTO org_id;
 
