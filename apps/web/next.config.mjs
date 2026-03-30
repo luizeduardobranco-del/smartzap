@@ -1,6 +1,5 @@
-import type { NextConfig } from 'next'
-
-const nextConfig: NextConfig = {
+/** @type {import('next').NextConfig} */
+const nextConfig = {
   transpilePackages: ['@zapagent/shared', '@zapagent/database', '@zapagent/ai-engine', '@zapagent/channel-adapters'],
   images: {
     remotePatterns: [

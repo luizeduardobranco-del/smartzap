@@ -15,8 +15,10 @@
     "@zapagent/database": "*",
     "@zapagent/shared": "*",
     "bullmq": "^5.8.0",
+    "drizzle-orm": "^0.30.0",
     "ioredis": "^5.3.2",
-    "pdf-parse": "^1.1.1"
+    "pdf-parse": "^1.1.1",
+    "postgres": "^3.4.3"
   },
   "devDependencies": {
     "@types/node": "*",

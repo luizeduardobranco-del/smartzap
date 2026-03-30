@@ -8,7 +8,7 @@ import {
   Users, Plus, Upload, Trash2, Loader2, X, Search,
   CheckCircle2, AlertCircle, Tag, Phone, List, Filter,
   FolderOpen, ChevronDown, ChevronRight, LayoutList, Table2,
-  Megaphone,
+  Megaphone, MapPin, Globe, Building2, Pencil, Check,
 } from 'lucide-react'
 import { trpc } from '@/lib/trpc/client'
 
@@ -62,6 +62,10 @@ type Contact = {
   external_id: string
   tags: string[]
   kanban_stage: string
+  company_name?: string | null
+  address?: string | null
+  website?: string | null
+  specialties?: string | null
 }
 
 const stageLabel: Record<string, string> = {
@@ -90,9 +94,17 @@ export function ContactsManager() {
   const [showNewList, setShowNewList] = useState(false)
   const [deleteContactId, setDeleteContactId] = useState<string | null>(null)
   const [deleteListId, setDeleteListId] = useState<string | null>(null)
+  const [editContact, setEditContact] = useState<Contact | null>(null)
+  const [showMapsSearch, setShowMapsSearch] = useState(false)
+  const [renamingListId, setRenamingListId] = useState<string | null>(null)
+  const [renameValue, setRenameValue] = useState('')
   const utils = trpc.useUtils()
 
   const { data: lists = [], isLoading: listsLoading } = trpc.contacts.getLists.useQuery()
+
+  const renameList = trpc.contacts.renameList.useMutation({
+    onSuccess: () => { utils.contacts.getLists.invalidate(); setRenamingListId(null) },
+  })
   const { data: allTagsData = [] } = trpc.contacts.getAllTags.useQuery()
 
   // Compute effective listId filter
@@ -202,6 +214,12 @@ export function ContactsManager() {
             </button>
           </div>
           <button
+            onClick={() => setShowMapsSearch(true)}
+            className="flex items-center gap-2 rounded-lg border px-4 py-2 text-sm font-medium hover:bg-muted"
+          >
+            <MapPin className="h-4 w-4" /> Buscar no Maps
+          </button>
+          <button
             onClick={() => setShowImport(true)}
             className="flex items-center gap-2 rounded-lg border px-4 py-2 text-sm font-medium hover:bg-muted"
           >
@@ -258,28 +276,61 @@ export function ContactsManager() {
 
           {typedLists.map((list) => (
             <div key={list.id} className="group relative flex shrink-0 items-center">
-              <button
-                onClick={() => setActiveListId(list.id)}
-                className={`flex items-center gap-2 rounded-lg border px-3 py-1.5 text-sm font-medium transition-colors ${
-                  activeListId === list.id ? 'text-white border-transparent' : 'bg-white hover:bg-muted'
-                }`}
-                style={activeListId === list.id ? { backgroundColor: list.color, borderColor: list.color } : {}}
-              >
-                <span className="h-2 w-2 rounded-full shrink-0" style={{ backgroundColor: list.color }} />
-                {list.name}
-                {list.list_type && (
-                  <span className={`text-xs opacity-70`}>· {list.list_type}</span>
-                )}
-                <span className={`rounded-full px-1.5 py-0.5 text-xs ${activeListId === list.id ? 'bg-white/20 text-white' : 'bg-muted text-muted-foreground'}`}>
-                  {list.member_count}
-                </span>
-              </button>
-              <button
-                onClick={() => setDeleteListId(list.id)}
-                className="absolute -right-1.5 -top-1.5 hidden h-4 w-4 items-center justify-center rounded-full bg-red-500 text-white group-hover:flex"
-              >
-                <X className="h-2.5 w-2.5" />
-              </button>
+              {renamingListId === list.id ? (
+                <div className="flex items-center gap-1 rounded-lg border bg-white px-2 py-1">
+                  <span className="h-2 w-2 rounded-full shrink-0" style={{ backgroundColor: list.color }} />
+                  <input
+                    value={renameValue}
+                    onChange={(e) => setRenameValue(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') renameList.mutate({ id: list.id, name: renameValue })
+                      if (e.key === 'Escape') setRenamingListId(null)
+                    }}
+                    className="w-28 text-sm outline-none"
+                    autoFocus
+                  />
+                  <button onClick={() => renameList.mutate({ id: list.id, name: renameValue })} className="text-primary">
+                    <Check className="h-3.5 w-3.5" />
+                  </button>
+                  <button onClick={() => setRenamingListId(null)} className="text-muted-foreground">
+                    <X className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+              ) : (
+                <button
+                  onClick={() => setActiveListId(list.id)}
+                  className={`flex items-center gap-2 rounded-lg border px-3 py-1.5 text-sm font-medium transition-colors ${
+                    activeListId === list.id ? 'text-white border-transparent' : 'bg-white hover:bg-muted'
+                  }`}
+                  style={activeListId === list.id ? { backgroundColor: list.color, borderColor: list.color } : {}}
+                >
+                  <span className="h-2 w-2 rounded-full shrink-0" style={{ backgroundColor: list.color }} />
+                  {list.name}
+                  {list.list_type && (
+                    <span className="text-xs opacity-70">· {list.list_type}</span>
+                  )}
+                  <span className={`rounded-full px-1.5 py-0.5 text-xs ${activeListId === list.id ? 'bg-white/20 text-white' : 'bg-muted text-muted-foreground'}`}>
+                    {list.member_count}
+                  </span>
+                </button>
+              )}
+              {renamingListId !== list.id && (
+                <button
+                  onClick={(e) => { e.stopPropagation(); setRenameValue(list.name); setRenamingListId(list.id) }}
+                  className="absolute -left-1.5 -top-1.5 hidden h-4 w-4 items-center justify-center rounded-full bg-blue-500 text-white group-hover:flex"
+                  title="Renomear"
+                >
+                  <Pencil className="h-2.5 w-2.5" />
+                </button>
+              )}
+              {renamingListId !== list.id && (
+                <button
+                  onClick={() => setDeleteListId(list.id)}
+                  className="absolute -right-1.5 -top-1.5 hidden h-4 w-4 items-center justify-center rounded-full bg-red-500 text-white group-hover:flex"
+                >
+                  <X className="h-2.5 w-2.5" />
+                </button>
+              )}
             </div>
           ))}
 
@@ -444,7 +495,9 @@ export function ContactsManager() {
               <thead className="border-b bg-muted/30">
                 <tr>
                   <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wide">Nome</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wide hidden md:table-cell">Empresa</th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wide">Telefone</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wide hidden lg:table-cell">Endereço</th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wide">Tags</th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wide">CRM</th>
                   <th className="px-4 py-3" />
@@ -453,12 +506,36 @@ export function ContactsManager() {
               <tbody className="divide-y">
                 {contacts.map((c) => (
                   <tr key={c.id} className="hover:bg-muted/20">
-                    <td className="px-4 py-3 font-medium">{c.name}</td>
+                    <td className="px-4 py-3">
+                      <div className="font-medium">{c.name}</div>
+                      {c.website && (
+                        <a href={c.website.startsWith('http') ? c.website : `https://${c.website}`} target="_blank" rel="noopener noreferrer"
+                          className="flex items-center gap-0.5 text-xs text-primary hover:underline mt-0.5">
+                          <Globe className="h-2.5 w-2.5" />{c.website.replace(/^https?:\/\//, '').split('/')[0]}
+                        </a>
+                      )}
+                    </td>
+                    <td className="px-4 py-3 text-sm text-muted-foreground hidden md:table-cell">
+                      {c.company_name && (
+                        <span className="flex items-center gap-1">
+                          <Building2 className="h-3 w-3 shrink-0" />
+                          {c.company_name}
+                        </span>
+                      )}
+                    </td>
                     <td className="px-4 py-3 text-muted-foreground">
                       <span className="flex items-center gap-1">
                         <Phone className="h-3 w-3" />
                         {c.phone ?? c.external_id}
                       </span>
+                    </td>
+                    <td className="px-4 py-3 text-xs text-muted-foreground hidden lg:table-cell max-w-[180px]">
+                      {c.address && (
+                        <span className="flex items-start gap-1">
+                          <MapPin className="h-3 w-3 shrink-0 mt-0.5" />
+                          <span className="truncate">{c.address}</span>
+                        </span>
+                      )}
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex flex-wrap gap-1">
@@ -494,6 +571,13 @@ export function ContactsManager() {
                           </button>
                         )}
                         <button
+                          onClick={() => setEditContact(c)}
+                          title="Editar contato"
+                          className="rounded p-1.5 text-muted-foreground hover:bg-blue-50 hover:text-blue-600"
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </button>
+                        <button
                           onClick={() => setDeleteContactId(c.id)}
                           className="rounded p-1.5 text-muted-foreground hover:bg-red-50 hover:text-red-500"
                         >
@@ -515,6 +599,13 @@ export function ContactsManager() {
       )}
 
       {/* Modals */}
+      {editContact && (
+        <EditContactModal
+          contact={editContact}
+          onClose={() => setEditContact(null)}
+          onSaved={() => { utils.contacts.list.invalidate(); setEditContact(null) }}
+        />
+      )}
       {deleteContactId && (
         <ConfirmModal
           title="Excluir contato?"
@@ -566,6 +657,19 @@ export function ContactsManager() {
             utils.contacts.getLists.invalidate()
             utils.contacts.getAllTags.invalidate()
             setShowImport(false)
+          }}
+        />
+      )}
+      {showMapsSearch && (
+        <MapsSearchModal
+          lists={typedLists}
+          defaultListId={activeListId}
+          onClose={() => setShowMapsSearch(false)}
+          onSaved={() => {
+            utils.contacts.list.invalidate()
+            utils.contacts.getLists.invalidate()
+            utils.contacts.getAllTags.invalidate()
+            setShowMapsSearch(false)
           }}
         />
       )}
@@ -874,6 +978,130 @@ function NewListModal({ onClose, onSaved }: { onClose: () => void; onSaved: (id:
   )
 }
 
+// ─── Edit Contact Modal ───────────────────────────────────────────────────────
+
+function EditContactModal({ contact, onClose, onSaved }: {
+  contact: Contact
+  onClose: () => void
+  onSaved: () => void
+}) {
+  const [tags, setTags] = useState<string[]>(contact.tags ?? [])
+  const [tagInput, setTagInput] = useState('')
+  const { register, handleSubmit, formState: { errors } } = useForm({
+    defaultValues: {
+      name: contact.name,
+      company_name: contact.company_name ?? '',
+      address: contact.address ?? '',
+      website: contact.website ?? '',
+      specialties: contact.specialties ?? '',
+    },
+  })
+  const update = trpc.contacts.update.useMutation({ onSuccess: onSaved })
+
+  function addTag() {
+    const t = tagInput.trim().toLowerCase().replace(/\s+/g, '-')
+    if (t && !tags.includes(t)) setTags([...tags, t])
+    setTagInput('')
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+      <div className="w-full max-w-md rounded-2xl bg-white shadow-2xl">
+        <div className="flex items-center justify-between border-b px-6 py-4">
+          <h2 className="font-semibold">Editar contato</h2>
+          <button onClick={onClose} className="rounded-lg p-1 hover:bg-muted">
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+        <form
+          onSubmit={handleSubmit((d) => update.mutate({ id: contact.id, ...d, tags }))}
+          className="space-y-4 p-6"
+        >
+          <div>
+            <label className="mb-1.5 block text-sm font-medium">Nome *</label>
+            <input
+              {...register('name', { required: 'Nome obrigatório' })}
+              className="w-full rounded-lg border px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-primary/30"
+            />
+            {errors.name && <p className="mt-1 text-xs text-red-500">{errors.name.message as string}</p>}
+          </div>
+          <div>
+            <label className="mb-1.5 block text-sm font-medium text-muted-foreground">Telefone (somente leitura)</label>
+            <input
+              value={contact.phone ?? contact.external_id}
+              readOnly
+              className="w-full rounded-lg border bg-muted/30 px-3 py-2.5 text-sm text-muted-foreground"
+            />
+          </div>
+          <div>
+            <label className="mb-1.5 block text-sm font-medium">Empresa</label>
+            <input
+              {...register('company_name')}
+              placeholder="Nome da empresa"
+              className="w-full rounded-lg border px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-primary/30"
+            />
+          </div>
+          <div>
+            <label className="mb-1.5 block text-sm font-medium">Endereço</label>
+            <input
+              {...register('address')}
+              placeholder="Rua, cidade..."
+              className="w-full rounded-lg border px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-primary/30"
+            />
+          </div>
+          <div>
+            <label className="mb-1.5 block text-sm font-medium">Site</label>
+            <input
+              {...register('website')}
+              placeholder="https://..."
+              className="w-full rounded-lg border px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-primary/30"
+            />
+          </div>
+          <div>
+            <label className="mb-1.5 block text-sm font-medium">Tags</label>
+            <div className="flex gap-2">
+              <input
+                value={tagInput}
+                onChange={(e) => setTagInput(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), addTag())}
+                placeholder="Pressione Enter para adicionar"
+                className="flex-1 rounded-lg border px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/30"
+              />
+              <button type="button" onClick={addTag} className="rounded-lg border px-3 py-2 text-sm hover:bg-muted">+</button>
+            </div>
+            {tags.length > 0 && (
+              <div className="mt-2 flex flex-wrap gap-1">
+                {tags.map((t) => (
+                  <span key={t} className="flex items-center gap-1 rounded-full bg-primary/10 px-2.5 py-1 text-xs font-medium text-primary">
+                    {t}
+                    <button type="button" onClick={() => setTags(tags.filter((x) => x !== t))} className="hover:text-red-500">×</button>
+                  </span>
+                ))}
+              </div>
+            )}
+          </div>
+          {update.error && (
+            <p className="text-xs text-red-500">{update.error.message}</p>
+          )}
+          <div className="flex justify-end gap-2 pt-1">
+            <button type="button" onClick={onClose} className="rounded-lg border px-4 py-2 text-sm hover:bg-muted">
+              Cancelar
+            </button>
+            <button
+              type="submit"
+              disabled={update.isPending}
+              className="flex items-center gap-1.5 rounded-lg bg-primary px-5 py-2 text-sm font-medium text-white hover:bg-primary/90 disabled:opacity-60"
+            >
+              {update.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
+              Salvar
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  )
+}
+
 // ─── Add Contact Modal ────────────────────────────────────────────────────────
 
 const addSchema = z.object({
@@ -1016,7 +1244,7 @@ function ImportModal({ lists, defaultListId, onClose, onSaved }: {
   const [csvText, setCsvText] = useState('')
   const [tags, setTags] = useState<string[]>([])
   const [tagInput, setTagInput] = useState('')
-  const [result, setResult] = useState<{ inserted: number; skipped: number } | null>(null)
+  const [result, setResult] = useState<{ inserted: number; skipped: number; fileDuplicates?: number; total: number } | null>(null)
   const [createdListId, setCreatedListId] = useState<string | null>(null)
   const [showTypeSuggestions, setShowTypeSuggestions] = useState(false)
   const fileRef = useRef<HTMLInputElement>(null)
@@ -1328,10 +1556,27 @@ function ImportModal({ lists, defaultListId, onClose, onSaved }: {
                 <div>
                   <p className="font-semibold text-green-800">Importação concluída!</p>
                   <p className="text-sm text-green-700">
-                    {result.inserted} inseridos · {result.skipped} ignorados (duplicados)
+                    {result.inserted} contatos importados com sucesso
                   </p>
                 </div>
               </div>
+
+              {((result.fileDuplicates ?? 0) > 0 || result.skipped > 0) && (
+                <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 space-y-1.5">
+                  <p className="text-sm font-semibold text-amber-800">Contatos não importados:</p>
+                  {(result.fileDuplicates ?? 0) > 0 && (
+                    <p className="text-sm text-amber-700">
+                      · <strong>{result.fileDuplicates}</strong> com número de telefone repetido no arquivo (formatos diferentes do mesmo número foram unificados)
+                    </p>
+                  )}
+                  {result.skipped > 0 && (
+                    <p className="text-sm text-amber-700">
+                      · <strong>{result.skipped}</strong> já existiam na sua base de contatos
+                    </p>
+                  )}
+                </div>
+              )}
+
               <div className="flex justify-end">
                 <button
                   onClick={onSaved}
@@ -1343,6 +1588,354 @@ function ImportModal({ lists, defaultListId, onClose, onSaved }: {
             </div>
           )}
         </div>
+      </div>
+    </div>
+  )
+}
+
+// ─── Google Maps Search Modal ─────────────────────────────────────────────────
+
+type MapsPlace = {
+  name: string
+  phone: string
+  address: string
+  website: string
+  place_id: string
+}
+
+function MapsSearchModal({ lists, defaultListId, onClose, onSaved }: {
+  lists: ContactList[]
+  defaultListId: string | null
+  onClose: () => void
+  onSaved: () => void
+}) {
+  const [query, setQuery] = useState('')
+  const [location, setLocation] = useState('')
+  const [results, setResults] = useState<MapsPlace[]>([])
+  const [selected, setSelected] = useState<Set<string>>(new Set())
+  const [loading, setLoading] = useState(false)
+  const [loadingMore, setLoadingMore] = useState(false)
+  const [error, setError] = useState('')
+  const [creditsInfo, setCreditsInfo] = useState<{ balance: number; cost: number } | null>(null)
+  const [creditsRemaining, setCreditsRemaining] = useState<number | null>(null)
+  const [nextPageToken, setNextPageToken] = useState<string | null>(null)
+  const [listId, setListId] = useState<string>(defaultListId ?? '')
+  const [tags, setTags] = useState<string[]>([])
+  const [tagInput, setTagInput] = useState('')
+  const [importing, setImporting] = useState(false)
+  const [done, setDone] = useState<{ inserted: number; skipped: number } | null>(null)
+  const importBulk = trpc.contacts.importBulk.useMutation({
+    onSuccess: (data) => { setDone(data); setImporting(false) },
+    onError: (e) => { setError(e.message); setImporting(false) },
+  })
+
+  const groupedLists = lists.reduce<Record<string, ContactList[]>>((acc, l) => {
+    const group = l.list_type || 'Sem tipo'
+    if (!acc[group]) acc[group] = []
+    acc[group].push(l)
+    return acc
+  }, {})
+
+  function addTag() {
+    const t = tagInput.trim().toLowerCase().replace(/\s+/g, '-')
+    if (t && !tags.includes(t)) setTags([...tags, t])
+    setTagInput('')
+  }
+
+  async function fetchPlaces(isLoadMore = false, token?: string) {
+    const setter = isLoadMore ? setLoadingMore : setLoading
+    setter(true)
+    setError('')
+    if (!isLoadMore) {
+      setCreditsInfo(null)
+      setResults([])
+      setSelected(new Set())
+      setNextPageToken(null)
+    }
+    try {
+      const res = await fetch('/api/contacts/maps-search', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          query: query.trim(),
+          location: location.trim() || undefined,
+          pageToken: token ?? undefined,
+        }),
+      })
+      const json = await res.json()
+      if (!res.ok) {
+        if (json.code === 'INSUFFICIENT_CREDITS') {
+          setCreditsInfo({ balance: json.balance, cost: json.cost })
+        }
+        setError(json.error ?? 'Erro na busca')
+        return
+      }
+      const newResults: MapsPlace[] = json.results ?? []
+      setResults((prev) => isLoadMore ? [...prev, ...newResults] : newResults)
+      setNextPageToken(json.nextPageToken ?? null)
+      setCreditsRemaining(json.credits_remaining ?? null)
+      if (!isLoadMore) {
+        setSelected(new Set(newResults.filter((p) => p.phone).map((p) => p.place_id)))
+      } else {
+        setSelected((prev) => {
+          const next = new Set(prev)
+          newResults.filter((p) => p.phone).forEach((p) => next.add(p.place_id))
+          return next
+        })
+      }
+    } catch (e: any) {
+      setError(e.message)
+    } finally {
+      setter(false)
+    }
+  }
+
+  function handleSearch() {
+    if (!query.trim()) return
+    fetchPlaces(false)
+  }
+
+  function handleLoadMore() {
+    if (!nextPageToken) return
+    fetchPlaces(true, nextPageToken)
+  }
+
+  function toggleAll() {
+    const withPhone = results.filter((r) => r.phone).map((r) => r.place_id)
+    if (selected.size === withPhone.length) {
+      setSelected(new Set())
+    } else {
+      setSelected(new Set(withPhone))
+    }
+  }
+
+  function toggle(id: string) {
+    setSelected((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
+
+  function handleImport() {
+    const toImport = results.filter((r) => selected.has(r.place_id) && r.phone)
+    if (toImport.length === 0) return
+    setImporting(true)
+    importBulk.mutate({
+      contacts: toImport.map((r) => ({
+        name: r.name,
+        phone: r.phone,
+        company_name: r.name,
+        address: r.address,
+        website: r.website,
+      })),
+      tags,
+      listId: listId || undefined,
+    })
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/40 py-8 px-4">
+      <div className="w-full max-w-2xl rounded-2xl bg-white shadow-2xl">
+        <div className="flex items-center justify-between border-b px-6 py-4">
+          <div>
+            <h2 className="font-semibold flex items-center gap-2">
+              <MapPin className="h-5 w-5 text-primary" /> Buscar leads no Google Maps
+            </h2>
+            <p className="mt-0.5 text-xs text-muted-foreground">
+              Encontre empresas por segmento e importe como contatos · <span className="font-medium">10 créditos por busca</span>
+              {creditsRemaining !== null && (
+                <span className="ml-1 text-green-600">· Saldo: {creditsRemaining} créditos</span>
+              )}
+            </p>
+          </div>
+          <button onClick={onClose} className="rounded-lg p-1 hover:bg-muted"><X className="h-5 w-5" /></button>
+        </div>
+
+        {done ? (
+          <div className="p-6 space-y-4">
+            <div className="flex items-center gap-3 rounded-xl border border-green-200 bg-green-50 p-4">
+              <CheckCircle2 className="h-6 w-6 text-green-500 shrink-0" />
+              <div>
+                <p className="font-semibold text-green-800">Importação concluída!</p>
+                <p className="text-sm text-green-700">{done.inserted} inseridos · {done.skipped} ignorados</p>
+              </div>
+            </div>
+            <div className="flex justify-end">
+              <button onClick={onSaved} className="rounded-lg bg-primary px-5 py-2 text-sm font-medium text-white hover:bg-primary/90">
+                Ver contatos
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div className="p-6 space-y-5">
+            {/* Search */}
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-[1fr_auto_auto]">
+              <input
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
+                placeholder="Ex: Tatuadores, Dentistas, Academias..."
+                className="rounded-lg border px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-primary/30"
+              />
+              <input
+                value={location}
+                onChange={(e) => setLocation(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
+                placeholder="Cidade (opcional)"
+                className="rounded-lg border px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-primary/30 w-full sm:w-44"
+              />
+              <button
+                onClick={handleSearch}
+                disabled={!query.trim() || loading}
+                className="flex items-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-medium text-white hover:bg-primary/90 disabled:opacity-60"
+              >
+                {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
+                Buscar
+              </button>
+            </div>
+
+            {error && (
+              <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700 space-y-1">
+                <div className="flex items-center gap-2">
+                  <AlertCircle className="h-4 w-4 shrink-0" />{error}
+                </div>
+                {creditsInfo && (
+                  <p className="pl-6 text-xs text-red-600">
+                    Saldo atual: <strong>{creditsInfo.balance} créditos</strong> · Custo: <strong>{creditsInfo.cost} créditos</strong>.
+                    Contate o suporte para recarregar.
+                  </p>
+                )}
+              </div>
+            )}
+
+            {/* Results */}
+            {results.length > 0 && (
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <p className="text-xs font-medium text-muted-foreground uppercase">
+                    {results.length} resultado{results.length !== 1 ? 's' : ''} · {selected.size} selecionado{selected.size !== 1 ? 's' : ''}
+                  </p>
+                  <button onClick={toggleAll} className="text-xs text-primary hover:underline">
+                    {selected.size === results.filter(r => r.phone).length ? 'Desmarcar todos' : 'Selecionar com telefone'}
+                  </button>
+                </div>
+                <div className="max-h-72 overflow-y-auto rounded-xl border divide-y">
+                  {results.map((place) => (
+                    <label
+                      key={place.place_id}
+                      className={`flex items-start gap-3 px-4 py-3 cursor-pointer hover:bg-muted/20 transition-colors ${!place.phone ? 'opacity-50' : ''}`}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={selected.has(place.place_id)}
+                        onChange={() => toggle(place.place_id)}
+                        disabled={!place.phone}
+                        className="mt-1 accent-primary"
+                      />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium truncate">{place.name}</p>
+                        <div className="flex flex-wrap gap-x-3 gap-y-0.5 mt-0.5">
+                          {place.phone && (
+                            <span className="flex items-center gap-1 text-xs text-muted-foreground">
+                              <Phone className="h-2.5 w-2.5" />{place.phone}
+                            </span>
+                          )}
+                          {!place.phone && (
+                            <span className="text-xs text-red-400">Sem telefone</span>
+                          )}
+                          {place.address && (
+                            <span className="flex items-center gap-1 text-xs text-muted-foreground truncate max-w-xs">
+                              <MapPin className="h-2.5 w-2.5 shrink-0" />{place.address}
+                            </span>
+                          )}
+                          {place.website && (
+                            <span className="flex items-center gap-1 text-xs text-primary">
+                              <Globe className="h-2.5 w-2.5" />{place.website.replace(/^https?:\/\//, '').split('/')[0]}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </label>
+                  ))}
+                </div>
+
+                {/* Load more */}
+                {nextPageToken && (
+                  <button
+                    onClick={handleLoadMore}
+                    disabled={loadingMore}
+                    className="flex w-full items-center justify-center gap-2 rounded-xl border border-dashed py-2.5 text-sm text-muted-foreground hover:bg-muted/30 hover:text-foreground disabled:opacity-60"
+                  >
+                    {loadingMore ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
+                    {loadingMore ? 'Buscando...' : 'Carregar mais 20 resultados (10 créditos)'}
+                  </button>
+                )}
+              </div>
+            )}
+
+            {results.length > 0 && selected.size > 0 && (
+              <div className="space-y-3 rounded-xl border bg-muted/20 p-4">
+                <p className="text-sm font-medium">Configurar importação</p>
+                <div>
+                  <label className="mb-1 block text-xs font-medium text-muted-foreground">Adicionar à lista</label>
+                  <select
+                    value={listId}
+                    onChange={(e) => setListId(e.target.value)}
+                    className="w-full rounded-lg border bg-white px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/30"
+                  >
+                    <option value="">Sem lista</option>
+                    {Object.entries(groupedLists).map(([group, groupLists]) => (
+                      <optgroup key={group} label={group}>
+                        {groupLists.map((l) => (
+                          <option key={l.id} value={l.id}>{l.name}</option>
+                        ))}
+                      </optgroup>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="mb-1 block text-xs font-medium text-muted-foreground">Tags</label>
+                  <div className="flex gap-2">
+                    <input
+                      value={tagInput}
+                      onChange={(e) => setTagInput(e.target.value)}
+                      onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), addTag())}
+                      placeholder="Pressione Enter para adicionar"
+                      className="flex-1 rounded-lg border bg-white px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/30"
+                    />
+                    <button type="button" onClick={addTag} className="rounded-lg border bg-white px-3 py-2 text-sm hover:bg-muted">+</button>
+                  </div>
+                  {tags.length > 0 && (
+                    <div className="mt-2 flex flex-wrap gap-1">
+                      {tags.map((t) => (
+                        <span key={t} className="flex items-center gap-1 rounded-full bg-primary/10 px-2.5 py-1 text-xs font-medium text-primary">
+                          {t}
+                          <button type="button" onClick={() => setTags(tags.filter((x) => x !== t))} className="hover:text-red-500">×</button>
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            <div className="flex justify-end gap-2">
+              <button onClick={onClose} className="rounded-lg border px-4 py-2 text-sm hover:bg-muted">Cancelar</button>
+              {selected.size > 0 && (
+                <button
+                  onClick={handleImport}
+                  disabled={importing}
+                  className="flex items-center gap-1.5 rounded-lg bg-primary px-5 py-2 text-sm font-medium text-white hover:bg-primary/90 disabled:opacity-60"
+                >
+                  {importing && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+                  Importar {selected.size} contato{selected.size !== 1 ? 's' : ''}
+                </button>
+              )}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   )

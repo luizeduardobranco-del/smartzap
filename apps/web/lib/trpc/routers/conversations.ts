@@ -1,6 +1,7 @@
 import { z } from 'zod'
 import { TRPCError } from '@trpc/server'
 import { router, protectedProcedure } from '../init'
+import { EvolutionWhatsAppAdapter } from '@zapagent/channel-adapters'
 
 export const conversationsRouter = router({
   list: protectedProcedure
@@ -120,6 +121,58 @@ export const conversationsRouter = router({
         .update({ status: 'resolved', resolved_at: new Date().toISOString() })
         .eq('id', input.id)
       if (error) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: error.message })
+      return { success: true }
+    }),
+
+  sendMessage: protectedProcedure
+    .input(z.object({ conversationId: z.string().uuid(), text: z.string().min(1) }))
+    .mutation(async ({ ctx, input }) => {
+      // Get conversation with channel and contact info
+      const { data: conv } = await ctx.supabase
+        .from('conversations')
+        .select('id, organization_id, mode, channels(credentials), contacts(external_id, phone)')
+        .eq('id', input.conversationId)
+        .single()
+
+      if (!conv) throw new TRPCError({ code: 'NOT_FOUND' })
+      if (conv.mode !== 'human') throw new TRPCError({ code: 'BAD_REQUEST', message: 'Conversa não está em modo humano' })
+
+      const instanceName = (conv.channels as any)?.credentials?.instanceName
+      const phone = (conv.contacts as any)?.external_id ?? (conv.contacts as any)?.phone
+
+      if (!instanceName || !phone) throw new TRPCError({ code: 'BAD_REQUEST', message: 'Canal ou contato inválido' })
+
+      // Save message to DB
+      const { error: msgErr } = await ctx.supabase.from('messages').insert({
+        conversation_id: input.conversationId,
+        organization_id: conv.organization_id,
+        role: 'assistant',
+        content: input.text,
+        content_type: 'text',
+        sender_type: 'human',
+      })
+      if (msgErr) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: msgErr.message })
+
+      // Update last_message_at
+      await ctx.supabase
+        .from('conversations')
+        .update({ last_message_at: new Date().toISOString() })
+        .eq('id', input.conversationId)
+
+      // Send via WhatsApp
+      const adapter = new EvolutionWhatsAppAdapter(
+        process.env.EVOLUTION_API_URL!,
+        process.env.EVOLUTION_API_KEY!,
+        instanceName
+      )
+      await adapter.sendMessage({
+        channelType: 'whatsapp',
+        channelIdentifier: instanceName,
+        recipientExternalId: phone,
+        contentType: 'text',
+        text: input.text,
+      })
+
       return { success: true }
     }),
 })

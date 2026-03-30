@@ -14,12 +14,15 @@
     "db:generate": "turbo db:generate",
     "db:migrate": "turbo db:migrate",
     "db:push": "turbo db:push",
-    "format": "prettier --write \"**/*.{ts,tsx,md,json}\""
+    "format": "prettier --write \"**/*.{ts,tsx,md,json}\"",
+    "seed:marketing-team": "tsx scripts/seed-marketing-team.ts"
   },
   "devDependencies": {
     "@types/node": "^20.11.0",
+    "dotenv": "^16.4.5",
     "prettier": "^3.2.4",
-    "turbo": "^2.0.0",
+    "tsx": "^4.7.0",
+    "turbo": "^2.8.20",
     "typescript": "^5.3.3"
   },
   "engines": {

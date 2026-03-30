@@ -5,10 +5,23 @@ import {
   text,
   timestamp,
   jsonb,
-  vector,
   index,
+  customType,
 } from 'drizzle-orm/pg-core'
 import { relations } from 'drizzle-orm'
+
+// pgvector custom type (drizzle-orm/pg-core doesn't export `vector` in v0.30)
+const vector = customType<{ data: number[]; config: { dimensions: number }; driverData: string }>({
+  dataType(config) {
+    return `vector(${config?.dimensions ?? 1536})`
+  },
+  toDriver(value: number[]): string {
+    return `[${value.join(',')}]`
+  },
+  fromDriver(value: string): number[] {
+    return value.slice(1, -1).split(',').map(Number)
+  },
+})
 import { organizations } from './tenants'
 
 export const agents = pgTable('agents', {
@@ -65,10 +78,6 @@ export const knowledgeChunks = pgTable(
     createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
   },
   (table) => ({
-    embeddingIdx: index('knowledge_chunks_embedding_idx').using(
-      'ivfflat',
-      table.embedding.op('vector_cosine_ops')
-    ),
     agentIdx: index('knowledge_chunks_agent_idx').on(table.agentId),
   })
 )

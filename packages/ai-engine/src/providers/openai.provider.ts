@@ -1,11 +1,10 @@
-import OpenAI from 'openai'
 import type { AIProvider, ChatMessage, CompletionOptions, CompletionResult } from './base.provider'
 
 export class OpenAIProvider implements AIProvider {
-  private client: OpenAI
+  private apiKey: string
 
   constructor(apiKey: string) {
-    this.client = new OpenAI({ apiKey })
+    this.apiKey = apiKey
   }
 
   async complete(
@@ -13,27 +12,56 @@ export class OpenAIProvider implements AIProvider {
     options: CompletionOptions = {}
   ): Promise<CompletionResult> {
     const model = options.model ?? 'gpt-4o-mini'
-    const response = await this.client.chat.completions.create({
-      model,
-      messages,
-      temperature: options.temperature ?? 0.7,
-      max_tokens: options.maxTokens ?? 1024,
+
+    const res = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${this.apiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model,
+        messages,
+        temperature: options.temperature ?? 0.7,
+        max_tokens: options.maxTokens ?? 1024,
+      }),
     })
 
-    const choice = response.choices[0]
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}))
+      throw new Error(
+        `OpenAI API error ${res.status}: ${err?.error?.message ?? JSON.stringify(err)}`
+      )
+    }
+
+    const data = await res.json()
+    const choice = data.choices[0]
     return {
       content: choice.message.content ?? '',
-      tokensInput: response.usage?.prompt_tokens ?? 0,
-      tokensOutput: response.usage?.completion_tokens ?? 0,
+      tokensInput: data.usage?.prompt_tokens ?? 0,
+      tokensOutput: data.usage?.completion_tokens ?? 0,
       model,
     }
   }
 
   async createEmbedding(text: string): Promise<number[]> {
-    const response = await this.client.embeddings.create({
-      model: 'text-embedding-3-small',
-      input: text,
+    const res = await fetch('https://api.openai.com/v1/embeddings', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${this.apiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ model: 'text-embedding-3-small', input: text }),
     })
-    return response.data[0].embedding
+
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}))
+      throw new Error(
+        `OpenAI embeddings error ${res.status}: ${err?.error?.message ?? JSON.stringify(err)}`
+      )
+    }
+
+    const data = await res.json()
+    return data.data[0].embedding
   }
 }

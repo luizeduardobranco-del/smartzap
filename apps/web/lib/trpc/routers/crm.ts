@@ -72,4 +72,28 @@ export const crmRouter = router({
       if (error) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: error.message })
       return { success: true }
     }),
+
+  updateContact: protectedProcedure
+    .input(z.object({
+      contactId: z.string().uuid(),
+      name: z.string().min(1).max(255).optional(),
+      phone: z.string().optional(),
+      company_name: z.string().optional(),
+      address: z.string().optional(),
+      website: z.string().optional(),
+      specialties: z.string().optional(),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const { contactId, ...fields } = input
+      const patch: Record<string, string> = {}
+      for (const [k, v] of Object.entries(fields)) {
+        if (v !== undefined) patch[k] = v
+      }
+      const { error } = await ctx.supabase
+        .from('contacts')
+        .update(patch)
+        .eq('id', contactId)
+      if (error) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: error.message })
+      return { success: true }
+    }),
 })

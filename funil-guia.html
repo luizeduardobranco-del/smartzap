@@ -1,0 +1,830 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Guia de Funis de Prospecção — White Zap</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: 'Segoe UI', Arial, sans-serif;
+      font-size: 14px;
+      color: #1e293b;
+      background: #f8fafc;
+      padding: 40px 20px;
+    }
+
+    .page {
+      max-width: 860px;
+      margin: 0 auto;
+      background: #fff;
+      border-radius: 12px;
+      box-shadow: 0 2px 20px rgba(0,0,0,0.08);
+      overflow: hidden;
+    }
+
+    /* CAPA */
+    .cover {
+      background: linear-gradient(135deg, #0c1a4e 0%, #1e3a8a 40%, #2563eb 100%);
+      color: #fff;
+      padding: 60px 48px 48px;
+    }
+    .cover .badge {
+      display: inline-block;
+      background: rgba(255,255,255,0.15);
+      border: 1px solid rgba(255,255,255,0.3);
+      color: #bfdbfe;
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      padding: 4px 12px;
+      border-radius: 20px;
+      margin-bottom: 20px;
+    }
+    .cover h1 {
+      font-size: 32px;
+      font-weight: 800;
+      line-height: 1.2;
+      margin-bottom: 12px;
+    }
+    .cover h1 span { color: #93c5fd; }
+    .cover p {
+      font-size: 15px;
+      color: #bfdbfe;
+      max-width: 500px;
+      line-height: 1.6;
+    }
+    .cover .meta {
+      margin-top: 32px;
+      font-size: 12px;
+      color: rgba(255,255,255,0.5);
+    }
+
+    /* CONTEÚDO */
+    .content { padding: 48px; }
+
+    h2 {
+      font-size: 20px;
+      font-weight: 700;
+      color: #0f172a;
+      margin: 40px 0 16px;
+      padding-bottom: 8px;
+      border-bottom: 2px solid #e2e8f0;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    h2:first-child { margin-top: 0; }
+    h2 .num {
+      background: #2563eb;
+      color: #fff;
+      font-size: 11px;
+      font-weight: 700;
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    h3 {
+      font-size: 15px;
+      font-weight: 700;
+      color: #1e3a8a;
+      margin: 24px 0 10px;
+    }
+
+    p {
+      color: #475569;
+      line-height: 1.7;
+      margin-bottom: 12px;
+    }
+
+    /* CALLOUT */
+    .callout {
+      background: #eff6ff;
+      border-left: 4px solid #2563eb;
+      border-radius: 0 8px 8px 0;
+      padding: 14px 18px;
+      margin: 16px 0;
+      color: #1e40af;
+      font-size: 13px;
+      line-height: 1.6;
+    }
+    .callout strong { color: #1e3a8a; }
+
+    .callout-warn {
+      background: #fefce8;
+      border-left-color: #ca8a04;
+      color: #854d0e;
+    }
+    .callout-warn strong { color: #713f12; }
+
+    .callout-green {
+      background: #f0fdf4;
+      border-left-color: #16a34a;
+      color: #166534;
+    }
+
+    /* STEPS */
+    .steps { counter-reset: step; margin: 16px 0; }
+    .step {
+      display: flex;
+      gap: 16px;
+      margin-bottom: 16px;
+      align-items: flex-start;
+    }
+    .step-num {
+      counter-increment: step;
+      background: #2563eb;
+      color: #fff;
+      font-weight: 700;
+      font-size: 12px;
+      min-width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .step-body { flex: 1; padding-top: 4px; }
+    .step-body strong { color: #0f172a; display: block; margin-bottom: 3px; }
+    .step-body span { color: #64748b; font-size: 13px; line-height: 1.5; }
+
+    /* KANBAN PREVIEW */
+    .kanban {
+      display: flex;
+      gap: 8px;
+      overflow-x: auto;
+      margin: 20px 0;
+      padding-bottom: 8px;
+    }
+    .kanban-col {
+      min-width: 130px;
+      border-radius: 8px;
+      overflow: hidden;
+      flex-shrink: 0;
+    }
+    .kanban-header {
+      padding: 8px 12px;
+      font-size: 11px;
+      font-weight: 700;
+      color: #fff;
+      text-align: center;
+    }
+    .kanban-body {
+      background: #f1f5f9;
+      padding: 8px;
+      min-height: 60px;
+    }
+    .kanban-card {
+      background: #fff;
+      border-radius: 6px;
+      padding: 6px 8px;
+      font-size: 11px;
+      color: #475569;
+      margin-bottom: 4px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+    }
+    .kanban-arrow {
+      display: flex;
+      align-items: center;
+      color: #94a3b8;
+      font-size: 18px;
+      padding-top: 24px;
+    }
+
+    /* TABELAS */
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 16px 0 24px;
+      font-size: 13px;
+    }
+    thead tr {
+      background: #1e3a8a;
+      color: #fff;
+    }
+    thead th {
+      padding: 10px 14px;
+      text-align: left;
+      font-weight: 600;
+      font-size: 12px;
+    }
+    tbody tr:nth-child(even) { background: #f8fafc; }
+    tbody tr:hover { background: #eff6ff; }
+    tbody td {
+      padding: 9px 14px;
+      border-bottom: 1px solid #e2e8f0;
+      color: #374151;
+      vertical-align: top;
+    }
+    .badge-tipo {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 10px;
+      font-size: 11px;
+      font-weight: 600;
+    }
+    .tipo-text { background: #dbeafe; color: #1d4ed8; }
+    .tipo-audio { background: #dcfce7; color: #166534; }
+    .tipo-image { background: #fce7f3; color: #9d174d; }
+
+    /* ETAPA CARD */
+    .etapa-card {
+      border: 1px solid #e2e8f0;
+      border-radius: 10px;
+      margin-bottom: 20px;
+      overflow: hidden;
+    }
+    .etapa-header {
+      padding: 12px 18px;
+      font-weight: 700;
+      font-size: 14px;
+      color: #fff;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .etapa-body { padding: 18px; }
+    .etapa-desc {
+      font-size: 13px;
+      color: #64748b;
+      margin-bottom: 14px;
+      font-style: italic;
+    }
+
+    /* COLOR DOT */
+    .dot {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      border: 2px solid rgba(255,255,255,0.5);
+      display: inline-block;
+    }
+
+    /* RULES */
+    .rules { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin: 16px 0; }
+    .rule-card {
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      padding: 14px 16px;
+    }
+    .rule-card .rule-icon { font-size: 20px; margin-bottom: 6px; }
+    .rule-card strong { display: block; font-size: 13px; color: #0f172a; margin-bottom: 4px; }
+    .rule-card span { font-size: 12px; color: #64748b; line-height: 1.5; }
+
+    /* FLOW */
+    .flow {
+      display: flex;
+      flex-direction: column;
+      gap: 0;
+      margin: 16px 0;
+    }
+    .flow-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 16px;
+    }
+    .flow-line {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    .flow-circle {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      background: #2563eb;
+      color: #fff;
+      font-weight: 700;
+      font-size: 13px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+    .flow-connector {
+      width: 2px;
+      height: 28px;
+      background: #bfdbfe;
+    }
+    .flow-body { flex: 1; padding-top: 6px; padding-bottom: 28px; }
+    .flow-body strong { display: block; font-size: 14px; color: #0f172a; margin-bottom: 3px; }
+    .flow-body span { font-size: 13px; color: #64748b; line-height: 1.5; }
+
+    /* PRINT */
+    @media print {
+      body { background: #fff; padding: 0; }
+      .page { box-shadow: none; border-radius: 0; }
+    }
+
+    @media (max-width: 600px) {
+      .content { padding: 24px; }
+      .cover { padding: 32px 24px; }
+      .rules { grid-template-columns: 1fr; }
+      .kanban { display: none; }
+    }
+  </style>
+</head>
+<body>
+<div class="page">
+
+  <!-- CAPA -->
+  <div class="cover">
+    <div class="badge">White Zap — Guia Interno</div>
+    <h1>Funis de <span>Prospecção</span><br/>Como usar e criar funis eficientes</h1>
+    <p>Guia completo para entender o módulo de funis, operar o sistema e montar sequências que convertem.</p>
+    <div class="meta">Versão 1.0 &nbsp;·&nbsp; Plataforma White Zap &nbsp;·&nbsp; atendente.whiteerp.com</div>
+  </div>
+
+  <div class="content">
+
+    <!-- SEÇÃO 1 -->
+    <h2><span class="num">1</span> O que é o módulo de Funis?</h2>
+    <p>
+      O módulo de Funis permite organizar seus leads em etapas de vendas (Kanban) e disparar
+      <strong>sequências automáticas de mensagens via WhatsApp</strong> conforme o lead avança no processo.
+      É como ter um vendedor trabalhando 24h — enviando mensagens nos momentos certos, sem precisar de intervenção manual a cada contato.
+    </p>
+
+    <div class="callout">
+      <strong>Diferencial:</strong> As mensagens saem automaticamente no tempo certo. Você só precisa mover o lead quando ele avançar de etapa — o resto o sistema faz sozinho.
+    </div>
+
+    <p>Exemplo visual de um funil com 5 etapas:</p>
+
+    <div class="kanban">
+      <div class="kanban-col">
+        <div class="kanban-header" style="background:#ef4444">Novo Lead</div>
+        <div class="kanban-body">
+          <div class="kanban-card">João Silva</div>
+          <div class="kanban-card">Maria Costa</div>
+        </div>
+      </div>
+      <div class="kanban-arrow">›</div>
+      <div class="kanban-col">
+        <div class="kanban-header" style="background:#f97316">1º Contato</div>
+        <div class="kanban-body">
+          <div class="kanban-card">Pedro Alves</div>
+        </div>
+      </div>
+      <div class="kanban-arrow">›</div>
+      <div class="kanban-col">
+        <div class="kanban-header" style="background:#eab308">Qualificado</div>
+        <div class="kanban-body">
+          <div class="kanban-card">Ana Lima</div>
+        </div>
+      </div>
+      <div class="kanban-arrow">›</div>
+      <div class="kanban-col">
+        <div class="kanban-header" style="background:#3b82f6">Proposta</div>
+        <div class="kanban-body">
+          <div class="kanban-card">Carlos Rocha</div>
+        </div>
+      </div>
+      <div class="kanban-arrow">›</div>
+      <div class="kanban-col">
+        <div class="kanban-header" style="background:#22c55e">Fechado</div>
+        <div class="kanban-body">
+          <div class="kanban-card">Fernanda Souza</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SEÇÃO 2 -->
+    <h2><span class="num">2</span> Como o sistema funciona</h2>
+    <p>O fluxo automático funciona assim quando você adiciona um lead a uma etapa:</p>
+
+    <div class="flow">
+      <div class="flow-item">
+        <div class="flow-line">
+          <div class="flow-circle">1</div>
+          <div class="flow-connector"></div>
+        </div>
+        <div class="flow-body">
+          <strong>Lead adicionado à etapa</strong>
+          <span>Você adiciona um contato a uma etapa do funil. O sistema registra que a primeira mensagem deve ser enviada imediatamente (delay = 0).</span>
+        </div>
+      </div>
+      <div class="flow-item">
+        <div class="flow-line">
+          <div class="flow-circle">2</div>
+          <div class="flow-connector"></div>
+        </div>
+        <div class="flow-body">
+          <strong>Cron verifica a cada minuto</strong>
+          <span>Um processo automático verifica a cada minuto quais leads têm mensagem vencida e disparadas pelo canal WhatsApp configurado no funil.</span>
+        </div>
+      </div>
+      <div class="flow-item">
+        <div class="flow-line">
+          <div class="flow-circle">3</div>
+          <div class="flow-connector"></div>
+        </div>
+        <div class="flow-body">
+          <strong>Mensagem enviada via WhatsApp</strong>
+          <span>A mensagem é enviada pelo número configurado. Pode ser texto, imagem ou áudio — conforme você configurou na sequência da etapa.</span>
+        </div>
+      </div>
+      <div class="flow-item">
+        <div class="flow-line">
+          <div class="flow-circle">4</div>
+          <div class="flow-connector"></div>
+        </div>
+        <div class="flow-body">
+          <strong>Próxima mensagem agendada</strong>
+          <span>O sistema registra quando a próxima mensagem deve sair (baseado no delay que você configurou) e repete o processo.</span>
+        </div>
+      </div>
+      <div class="flow-item">
+        <div class="flow-line">
+          <div class="flow-circle">5</div>
+          <div class="flow-connector"></div>
+        </div>
+        <div class="flow-body">
+          <strong>Sequência concluída → status "Aguardando"</strong>
+          <span>Quando todas as mensagens da etapa foram enviadas, o lead fica com o badge cinza "Aguardando". Esse é o sinal para você avaliar e mover para a próxima etapa.</span>
+        </div>
+      </div>
+      <div class="flow-item">
+        <div class="flow-line">
+          <div class="flow-circle">6</div>
+        </div>
+        <div class="flow-body">
+          <strong>Você move o lead → nova sequência inicia</strong>
+          <span>Ao mover o lead para outra etapa, a sequência daquela etapa começa do zero automaticamente.</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- SEÇÃO 3 -->
+    <h2><span class="num">3</span> Passo a passo: usando o sistema</h2>
+
+    <h3>3.1 Criando um funil</h3>
+    <div class="steps">
+      <div class="step">
+        <div class="step-num">1</div>
+        <div class="step-body">
+          <strong>Acesse o menu "Funis" na barra lateral</strong>
+          <span>Clique no ícone de ramificação (GitBranch) no menu esquerdo da plataforma.</span>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">2</div>
+        <div class="step-body">
+          <strong>Clique em "Novo funil"</strong>
+          <span>Digite o nome do funil (ex: "Prospecção B2B", "Clientes Tintas") e confirme.</span>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">3</div>
+        <div class="step-body">
+          <strong>O sistema cria 5 etapas padrão automaticamente</strong>
+          <span>Novo Lead → Primeiro Contato → Qualificado → Proposta → Fechado. Você pode renomear, recolorir e personalizar.</span>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">4</div>
+        <div class="step-body">
+          <strong>Clique em "Abrir funil" para entrar no Kanban</strong>
+          <span>Aqui você configura as etapas, cria as mensagens e adiciona leads.</span>
+        </div>
+      </div>
+    </div>
+
+    <h3>3.2 Configurando as mensagens de uma etapa</h3>
+    <div class="steps">
+      <div class="step">
+        <div class="step-num">1</div>
+        <div class="step-body">
+          <strong>Clique no ícone de lápis (✏) no cabeçalho da etapa</strong>
+          <span>Abre o editor da etapa com nome, cor e sequência de mensagens.</span>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">2</div>
+        <div class="step-body">
+          <strong>Clique em "+ Adicionar mensagem"</strong>
+          <span>Para cada mensagem, defina: Tipo (Texto / Imagem / Áudio), Delay em minutos e o Conteúdo.</span>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">3</div>
+        <div class="step-body">
+          <strong>A primeira mensagem deve ter delay = 0</strong>
+          <span>Isso garante envio imediato ao entrar na etapa. As próximas usam delay relativo à anterior.</span>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">4</div>
+        <div class="step-body">
+          <strong>Salve a etapa</strong>
+          <span>Clique em "Salvar". As mensagens passam a valer para todos os leads que entrarem nessa etapa.</span>
+        </div>
+      </div>
+    </div>
+
+    <h3>3.3 Adicionando leads ao funil</h3>
+    <div class="steps">
+      <div class="step">
+        <div class="step-num">1</div>
+        <div class="step-body">
+          <strong>Na coluna desejada, clique em "+ Adicionar lead"</strong>
+          <span>Abre um campo de busca para pesquisar entre seus contatos cadastrados.</span>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">2</div>
+        <div class="step-body">
+          <strong>Pesquise o contato pelo nome ou telefone</strong>
+          <span>O sistema busca na sua base de contatos em tempo real.</span>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">3</div>
+        <div class="step-body">
+          <strong>Clique no contato para adicionar</strong>
+          <span>O lead aparece na coluna e a sequência de mensagens começa automaticamente.</span>
+        </div>
+      </div>
+    </div>
+
+    <h3>3.4 Gerenciando leads no Kanban</h3>
+    <p>Cada card de lead tem as seguintes ações:</p>
+    <table>
+      <thead>
+        <tr>
+          <th>Ação</th>
+          <th>O que faz</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>Pausar / Retomar</strong></td>
+          <td>Para temporariamente os disparos para aquele lead. Útil quando ele pediu para não ser contactado por um período.</td>
+        </tr>
+        <tr>
+          <td><strong>Mover de etapa</strong></td>
+          <td>Transfere o lead para outra etapa do funil, reiniciando a sequência de mensagens daquela etapa.</td>
+        </tr>
+        <tr>
+          <td><strong>Remover</strong></td>
+          <td>Remove o lead do funil (não exclui o contato, apenas o tira do processo).</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="callout callout-warn">
+      <strong>Atenção:</strong> O badge <strong>"Aguardando"</strong> (cinza) significa que a sequência da etapa foi concluída. Esse é o momento ideal para entrar em contato pessoalmente e decidir se move o lead para a próxima etapa.
+    </div>
+
+    <!-- SEÇÃO 4 -->
+    <h2><span class="num">4</span> Estrutura de funil recomendada</h2>
+    <p>Abaixo está a estrutura ideal para um funil de prospecção com 5 etapas e o conteúdo sugerido para cada sequência:</p>
+
+    <!-- ETAPA 1 -->
+    <div class="etapa-card">
+      <div class="etapa-header" style="background:#ef4444">
+        <span class="dot" style="background:#fff"></span>
+        Etapa 1 — Novo Lead
+      </div>
+      <div class="etapa-body">
+        <p class="etapa-desc">Contatos recém-captados, ainda sem nenhum contato feito.</p>
+        <table>
+          <thead>
+            <tr><th>#</th><th>Tipo</th><th>Delay</th><th>Objetivo</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>1</td>
+              <td><span class="badge-tipo tipo-text">Texto</span></td>
+              <td>0 min</td>
+              <td>Apresentação curta + pergunta de qualificação (ex: "Você trabalha com [segmento]?")</td>
+            </tr>
+            <tr>
+              <td>2</td>
+              <td><span class="badge-tipo tipo-audio">Áudio</span></td>
+              <td>60 min</td>
+              <td>Reforço em áudio — mais pessoal, maior taxa de abertura</td>
+            </tr>
+            <tr>
+              <td>3</td>
+              <td><span class="badge-tipo tipo-text">Texto</span></td>
+              <td>1440 min (24h)</td>
+              <td>Follow-up: "Chegou a ver minha mensagem?"</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ETAPA 2 -->
+    <div class="etapa-card">
+      <div class="etapa-header" style="background:#f97316">
+        <span class="dot" style="background:#fff"></span>
+        Etapa 2 — Primeiro Contato
+      </div>
+      <div class="etapa-body">
+        <p class="etapa-desc">Lead respondeu, mas ainda não foi qualificado. Entender perfil e urgência.</p>
+        <table>
+          <thead>
+            <tr><th>#</th><th>Tipo</th><th>Delay</th><th>Objetivo</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>1</td>
+              <td><span class="badge-tipo tipo-text">Texto</span></td>
+              <td>0 min</td>
+              <td>Perguntas de qualificação: budget, urgência, quem decide</td>
+            </tr>
+            <tr>
+              <td>2</td>
+              <td><span class="badge-tipo tipo-image">Imagem</span></td>
+              <td>120 min (2h)</td>
+              <td>Material visual: portfólio, cases de sucesso ou tabela de preços</td>
+            </tr>
+            <tr>
+              <td>3</td>
+              <td><span class="badge-tipo tipo-text">Texto</span></td>
+              <td>2880 min (48h)</td>
+              <td>"Você conseguiu avaliar o que enviei?"</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ETAPA 3 -->
+    <div class="etapa-card">
+      <div class="etapa-header" style="background:#eab308">
+        <span class="dot" style="background:#fff"></span>
+        Etapa 3 — Qualificado
+      </div>
+      <div class="etapa-body">
+        <p class="etapa-desc">Lead tem interesse e perfil. Focar em agendar reunião ou demo.</p>
+        <table>
+          <thead>
+            <tr><th>#</th><th>Tipo</th><th>Delay</th><th>Objetivo</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>1</td>
+              <td><span class="badge-tipo tipo-text">Texto</span></td>
+              <td>0 min</td>
+              <td>Proposta de valor + convite para reunião ou demonstração</td>
+            </tr>
+            <tr>
+              <td>2</td>
+              <td><span class="badge-tipo tipo-audio">Áudio</span></td>
+              <td>240 min (4h)</td>
+              <td>Reforço pessoal do vendedor — humaniza o contato</td>
+            </tr>
+            <tr>
+              <td>3</td>
+              <td><span class="badge-tipo tipo-text">Texto</span></td>
+              <td>4320 min (72h)</td>
+              <td>Último follow-up antes de arquivar: "Ainda tem interesse?"</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ETAPA 4 -->
+    <div class="etapa-card">
+      <div class="etapa-header" style="background:#3b82f6">
+        <span class="dot" style="background:#fff"></span>
+        Etapa 4 — Proposta Enviada
+      </div>
+      <div class="etapa-body">
+        <p class="etapa-desc">Lead recebeu proposta formal. Foco em tirar dúvidas e acelerar decisão.</p>
+        <table>
+          <thead>
+            <tr><th>#</th><th>Tipo</th><th>Delay</th><th>Objetivo</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>1</td>
+              <td><span class="badge-tipo tipo-text">Texto</span></td>
+              <td>0 min</td>
+              <td>"Acabei de enviar a proposta. Tem alguma dúvida?"</td>
+            </tr>
+            <tr>
+              <td>2</td>
+              <td><span class="badge-tipo tipo-text">Texto</span></td>
+              <td>2880 min (48h)</td>
+              <td>Escassez suave: "Essa condição é válida até [data]"</td>
+            </tr>
+            <tr>
+              <td>3</td>
+              <td><span class="badge-tipo tipo-audio">Áudio</span></td>
+              <td>7200 min (5 dias)</td>
+              <td>Última chamada para decisão — tom pessoal e direto</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ETAPA 5 -->
+    <div class="etapa-card">
+      <div class="etapa-header" style="background:#22c55e">
+        <span class="dot" style="background:#fff"></span>
+        Etapa 5 — Fechado
+      </div>
+      <div class="etapa-body">
+        <p class="etapa-desc">Cliente convertido. Foco em onboarding e fidelização.</p>
+        <table>
+          <thead>
+            <tr><th>#</th><th>Tipo</th><th>Delay</th><th>Objetivo</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>1</td>
+              <td><span class="badge-tipo tipo-text">Texto</span></td>
+              <td>0 min</td>
+              <td>Boas-vindas + próximos passos do processo</td>
+            </tr>
+            <tr>
+              <td>2</td>
+              <td><span class="badge-tipo tipo-text">Texto</span></td>
+              <td>10080 min (7 dias)</td>
+              <td>Pesquisa de satisfação: "Como está sendo sua experiência?"</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- SEÇÃO 5 -->
+    <h2><span class="num">5</span> Regras de ouro para funis eficientes</h2>
+
+    <div class="rules">
+      <div class="rule-card">
+        <div class="rule-icon">⏱</div>
+        <strong>Delays ideais</strong>
+        <span>Msg 1: sempre 0 min (imediato). Entre mensagens de aquecimento: 1h a 4h. Follow-ups: 24h a 72h.</span>
+      </div>
+      <div class="rule-card">
+        <div class="rule-icon">🎙</div>
+        <strong>Áudio converte mais</strong>
+        <span>Leads que recebem áudio têm 2–3× mais chances de responder do que texto puro. Use ao menos 1 por etapa.</span>
+      </div>
+      <div class="rule-card">
+        <div class="rule-icon">✂</div>
+        <strong>Sequências curtas</strong>
+        <span>3 mensagens por etapa é o ideal. Mais de 5 mensagens vira spam e gera bloqueios no WhatsApp.</span>
+      </div>
+      <div class="rule-card">
+        <div class="rule-icon">⏳</div>
+        <strong>Espere o "Aguardando"</strong>
+        <span>Nunca mova um lead antes da sequência terminar. O badge cinza "Aguardando" é o sinal correto para agir.</span>
+      </div>
+      <div class="rule-card">
+        <div class="rule-icon">📱</div>
+        <strong>Configure o canal</strong>
+        <span>Cada funil precisa de um canal WhatsApp ativo configurado. Sem canal, nenhuma mensagem é disparada.</span>
+      </div>
+      <div class="rule-card">
+        <div class="rule-icon">🎯</div>
+        <strong>Um funil por segmento</strong>
+        <span>Crie funis separados para cada tipo de cliente (ex: B2B, B2C, reativação). Mensagens genéricas convertem menos.</span>
+      </div>
+    </div>
+
+    <div class="callout callout-green">
+      <strong>Dica de ouro:</strong> O melhor funil é o simples. Comece com 3 etapas (Novo Lead → Negociando → Fechado) e 2-3 mensagens por etapa. Melhore conforme você observar onde os leads travam.
+    </div>
+
+    <!-- SEÇÃO 6 -->
+    <h2><span class="num">6</span> Referência rápida de delays</h2>
+    <table>
+      <thead>
+        <tr><th>Minutos</th><th>Equivale a</th><th>Quando usar</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>0</td><td>Imediato</td><td>Sempre na 1ª mensagem de cada etapa</td></tr>
+        <tr><td>60</td><td>1 hora</td><td>Reforço rápido após apresentação</td></tr>
+        <tr><td>240</td><td>4 horas</td><td>Segundo toque no mesmo dia</td></tr>
+        <tr><td>1440</td><td>1 dia</td><td>Follow-up no dia seguinte</td></tr>
+        <tr><td>2880</td><td>2 dias</td><td>Follow-up após proposta</td></tr>
+        <tr><td>4320</td><td>3 dias</td><td>Último follow-up de qualificação</td></tr>
+        <tr><td>7200</td><td>5 dias</td><td>Pressão de decisão em propostas</td></tr>
+        <tr><td>10080</td><td>7 dias</td><td>Pesquisa de satisfação pós-venda</td></tr>
+      </tbody>
+    </table>
+
+    <div style="margin-top:40px; padding-top:24px; border-top:1px solid #e2e8f0; text-align:center; color:#94a3b8; font-size:12px;">
+      White Zap &nbsp;·&nbsp; atendente.whiteerp.com &nbsp;·&nbsp; Documento interno — não distribuir
+    </div>
+
+  </div>
+</div>
+</body>
+</html>

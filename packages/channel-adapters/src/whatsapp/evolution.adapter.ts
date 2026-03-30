@@ -1,4 +1,5 @@
 import axios from 'axios'
+import QRCode from 'qrcode'
 import type { ChannelAdapter, NormalizedMessage, OutboundMessage } from '../base.adapter'
 
 interface EvolutionWebhookPayload {
@@ -25,9 +26,13 @@ interface EvolutionWebhookPayload {
 export class EvolutionWhatsAppAdapter implements ChannelAdapter {
   constructor(
     private readonly apiUrl: string,
-    private readonly apiKey: string,
+    apiKey: string,
     private readonly instanceName: string
-  ) {}
+  ) {
+    this.apiKey = apiKey.trim()
+  }
+
+  private readonly apiKey: string
 
   parseWebhook(payload: unknown): NormalizedMessage | null {
     const p = payload as EvolutionWebhookPayload
@@ -123,18 +128,79 @@ export class EvolutionWhatsAppAdapter implements ChannelAdapter {
     return { externalId: response.data.key?.id ?? '' }
   }
 
-  async getQRCode(): Promise<{ base64: string }> {
-    const response = await axios.get(`${this.apiUrl}/instance/connect/${this.instanceName}`, {
+  async createInstance(webhookUrl: string): Promise<void> {
+    await axios.post(
+      `${this.apiUrl}/instance/create`,
+      {
+        instanceName: this.instanceName,
+        qrcode: true,
+        integration: 'WHATSAPP-BAILEYS',
+        webhook: {
+          enabled: true,
+          url: webhookUrl,
+          events: ['MESSAGES_UPSERT', 'CONNECTION_UPDATE', 'QRCODE_UPDATED'],
+        },
+      },
+      { headers: { apikey: this.apiKey, 'Content-Type': 'application/json' } }
+    )
+  }
+
+  async deleteInstance(): Promise<void> {
+    await axios.delete(`${this.apiUrl}/instance/delete/${this.instanceName}`, {
       headers: { apikey: this.apiKey },
-    })
-    return { base64: response.data.base64 }
+    }).catch(() => {}) // ignore if already deleted
+  }
+
+  async logout(): Promise<void> {
+    await axios.delete(`${this.apiUrl}/instance/logout/${this.instanceName}`, {
+      headers: { apikey: this.apiKey },
+    }).catch(() => {})
+  }
+
+  async getQRCode(): Promise<{ base64: string } | null> {
+    try {
+      const response = await axios.get(`${this.apiUrl}/instance/connect/${this.instanceName}`, {
+        headers: { apikey: this.apiKey },
+      })
+
+      // Evolution API may return base64 image directly or raw QR code string
+      if (response.data.base64) {
+        return { base64: response.data.base64 }
+      }
+
+      if (response.data.code) {
+        const dataUrl = await QRCode.toDataURL(response.data.code)
+        return { base64: dataUrl }
+      }
+
+      return null
+    } catch {
+      return null
+    }
   }
 
   async getConnectionState(): Promise<'open' | 'connecting' | 'close'> {
-    const response = await axios.get(
-      `${this.apiUrl}/instance/connectionState/${this.instanceName}`,
-      { headers: { apikey: this.apiKey } }
-    )
-    return response.data.instance?.state ?? 'close'
+    try {
+      const response = await axios.get(
+        `${this.apiUrl}/instance/connectionState/${this.instanceName}`,
+        { headers: { apikey: this.apiKey } }
+      )
+      return response.data.instance?.state ?? 'close'
+    } catch {
+      return 'close'
+    }
+  }
+
+  async getConnectedPhone(): Promise<string | null> {
+    try {
+      const response = await axios.get(
+        `${this.apiUrl}/instance/fetchInstances?instanceName=${this.instanceName}`,
+        { headers: { apikey: this.apiKey } }
+      )
+      const inst = Array.isArray(response.data) ? response.data[0] : response.data
+      return inst?.instance?.profileName ?? inst?.instance?.owner?.split(':')[0] ?? null
+    } catch {
+      return null
+    }
   }
 }

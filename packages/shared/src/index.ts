@@ -1,4 +1,5 @@
 export * from './constants/plans'
 export * from './constants/models'
+export * from './constants/marketing-team'
 export * from './types/agent.types'
 export * from './types/tenant.types'

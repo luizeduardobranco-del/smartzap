@@ -1,6 +1,8 @@
 import { redirect } from 'next/navigation'
 import { getUser } from '@/lib/supabase/server'
+import { isPlatformAdmin } from '@/lib/admin'
 import { Sidebar } from '@/components/layout/Sidebar'
+import { DashboardScroll } from '@/components/layout/DashboardScroll'
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
   const user = await getUser()
@@ -9,11 +11,13 @@ export default async function DashboardLayout({ children }: { children: React.Re
     redirect('/login')
   }
 
+  const isAdmin = await isPlatformAdmin(user.id)
+
   return (
-    <div className="flex h-screen overflow-hidden bg-muted/30">
-      <Sidebar user={user} />
-      <main className="flex-1 overflow-y-auto">
-        <div className="container max-w-7xl py-6">{children}</div>
+    <div className="flex h-[100dvh] overflow-hidden bg-muted/30">
+      <Sidebar user={user} isAdmin={isAdmin} />
+      <main className="flex-1 min-h-0 overflow-hidden flex flex-col">
+        <DashboardScroll>{children}</DashboardScroll>
       </main>
     </div>
   )

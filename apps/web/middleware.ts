@@ -3,6 +3,7 @@ import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 
 const PUBLIC_ROUTES = ['/', '/pricing', '/login', '/signup', '/forgot-password', '/auth']
+const ADMIN_ROUTES = ['/admin']
 
 export async function middleware(request: NextRequest) {
   let response = NextResponse.next({
@@ -41,6 +42,12 @@ export async function middleware(request: NextRequest) {
     pathname.startsWith('/settings') ||
     pathname.startsWith('/credits')
 
+  // Redirect unauthenticated from admin routes
+  const isAdminRoute = ADMIN_ROUTES.some((r) => pathname.startsWith(r))
+  if (!user && isAdminRoute) {
+    return NextResponse.redirect(new URL('/login', request.url))
+  }
+
   // Redirect unauthenticated users trying to access dashboard
   if (!user && isDashboardRoute) {
     const loginUrl = new URL('/login', request.url)
@@ -50,6 +57,15 @@ export async function middleware(request: NextRequest) {
 
   // Redirect authenticated users away from auth pages
   if (user && (pathname === '/login' || pathname === '/signup')) {
+    // Check if admin — redirect to /admin panel
+    try {
+      const { data: adminCheck } = await supabase
+        .from('platform_admins')
+        .select('id')
+        .eq('user_id', user.id)
+        .single()
+      if (adminCheck) return NextResponse.redirect(new URL('/admin', request.url))
+    } catch {}
     return NextResponse.redirect(new URL('/agents', request.url))
   }
 
@@ -65,7 +81,7 @@ export async function middleware(request: NextRequest) {
       if (member?.organization_id) {
         const { data: org } = await supabase
           .from('organizations')
-          .select('subscription_status, trial_ends_at')
+          .select('subscription_status, trial_ends_at, plan_id')
           .eq('id', member.organization_id)
           .single()
 
@@ -78,9 +94,22 @@ export async function middleware(request: NextRequest) {
           const trialStillActive = trialEndsAt ? new Date(trialEndsAt) > new Date() : false
 
           if (isBlockedStatus && !trialStillActive) {
-            const creditsUrl = new URL('/credits', request.url)
-            creditsUrl.searchParams.set('blocked', '1')
-            return NextResponse.redirect(creditsUrl)
+            // Check if plan has no_billing_block (e.g. barter/partner plans)
+            let noBillingBlock = false
+            if (org.plan_id) {
+              const { data: plan } = await supabase
+                .from('plans')
+                .select('limits')
+                .eq('id', org.plan_id)
+                .single()
+              noBillingBlock = !!(plan?.limits as any)?.no_billing_block
+            }
+
+            if (!noBillingBlock) {
+              const creditsUrl = new URL('/credits', request.url)
+              creditsUrl.searchParams.set('blocked', '1')
+              return NextResponse.redirect(creditsUrl)
+            }
           }
         }
       }

@@ -10,6 +10,9 @@ export interface AgentPersonality {
   companyContext: string // descrição da empresa
   restrictions: string[] // ex: ["Não mencione concorrentes", "Não faça promessas de preço"]
   greeting: string // mensagem inicial
+  farewell?: string // mensagem de despedida
+  instructions?: string // instruções complementares (editor form)
+  systemPrompt?: string // prompt completo — substitui tudo quando preenchido
   fallbackMessage: string // quando não souber responder
   humanHandoffTrigger?: string // frase para transferir para humano
 }

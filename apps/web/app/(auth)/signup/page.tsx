@@ -2,18 +2,18 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
 import Image from 'next/image'
 import { createSupabaseBrowserClient } from '@/lib/supabase/client'
+import { CheckCircle2, Mail } from 'lucide-react'
 
 export default function SignupPage() {
-  const router = useRouter()
   const [name, setName] = useState('')
   const [company, setCompany] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
+  const [confirmed, setConfirmed] = useState(false)
 
   async function handleSignup(e: React.FormEvent) {
     e.preventDefault()
@@ -22,7 +22,7 @@ export default function SignupPage() {
 
     try {
       const supabase = createSupabaseBrowserClient()
-      const { error } = await supabase.auth.signUp({
+      const { data, error } = await supabase.auth.signUp({
         email,
         password,
         options: {
@@ -32,15 +32,68 @@ export default function SignupPage() {
       })
 
       if (error) {
-        setError(error.message)
+        if (error.message.includes('already registered') || error.message.includes('already been registered')) {
+          setError('Este e-mail já está cadastrado. Faça login ou recupere sua senha.')
+        } else {
+          setError(error.message)
+        }
         return
       }
 
-      router.push('/agents')
-      router.refresh()
+      // Supabase requires email confirmation — session will be null
+      if (data.user && !data.session) {
+        setConfirmed(true)
+        return
+      }
+
+      // Email confirmation disabled — user is already logged in
+      window.location.href = '/agents'
     } finally {
       setLoading(false)
     }
+  }
+
+  if (confirmed) {
+    return (
+      <div className="flex min-h-screen flex-col items-center justify-center bg-muted/30 px-4">
+        <div className="w-full max-w-md">
+          <div className="mb-8 flex flex-col items-center">
+            <Link href="/" className="mb-4">
+              <Image src="/logo.png" alt="White Zap" width={180} height={60} className="object-contain" priority />
+            </Link>
+          </div>
+
+          <div className="rounded-xl border bg-white p-8 shadow-sm text-center space-y-4">
+            <div className="flex justify-center">
+              <div className="flex h-16 w-16 items-center justify-center rounded-full bg-indigo-100">
+                <Mail className="h-8 w-8 text-indigo-600" />
+              </div>
+            </div>
+            <div>
+              <h2 className="text-xl font-bold text-zinc-900">Confirme seu e-mail</h2>
+              <p className="mt-2 text-sm text-zinc-600">
+                Enviamos um link de confirmação para{' '}
+                <span className="font-semibold text-zinc-800">{email}</span>
+              </p>
+              <p className="mt-1 text-sm text-zinc-500">
+                Clique no link do e-mail para ativar sua conta e fazer login.
+              </p>
+            </div>
+            <div className="rounded-lg bg-amber-50 border border-amber-200 p-3 text-left">
+              <p className="text-xs text-amber-800">
+                <span className="font-semibold">Não recebeu?</span> Verifique sua pasta de spam. O e-mail vem de <span className="font-mono">noreply@mail.app.supabase.io</span>
+              </p>
+            </div>
+            <p className="text-sm text-zinc-500">
+              Já confirmou?{' '}
+              <Link href="/login" className="font-medium text-indigo-600 hover:underline">
+                Fazer login
+              </Link>
+            </p>
+          </div>
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -91,7 +144,7 @@ export default function SignupPage() {
             </div>
             <div>
               <label htmlFor="email" className="mb-1.5 block text-sm font-medium">
-                Email corporativo
+                Email
               </label>
               <input
                 id="email"

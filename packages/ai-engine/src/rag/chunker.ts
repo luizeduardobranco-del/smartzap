@@ -2,7 +2,7 @@ export interface TextChunk {
   content: string
   metadata: {
     chunkIndex: number
-    sourceType: string
+    sourceType?: string
     [key: string]: unknown
   }
 }

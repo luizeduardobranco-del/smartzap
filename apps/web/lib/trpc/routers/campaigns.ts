@@ -1,6 +1,14 @@
 import { z } from 'zod'
 import { TRPCError } from '@trpc/server'
 import { router, protectedProcedure } from '../init'
+import { createClient } from '@supabase/supabase-js'
+
+function getServiceClient() {
+  return createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+  )
+}
 
 async function getOrgId(ctx: { supabase: any; user: { id: string } }) {
   const { data: member } = await ctx.supabase
@@ -48,6 +56,8 @@ export const campaignsRouter = router({
       delaySeconds: z.number().min(3).max(30).default(5),
       businessHoursOnly: z.boolean().default(true),
       scheduledAt: z.string().optional(),
+      funnelId: z.string().uuid().optional(),
+      funnelStageId: z.string().uuid().optional(),
     }))
     .mutation(async ({ ctx, input }) => {
       const orgId = await getOrgId(ctx)
@@ -63,6 +73,8 @@ export const campaignsRouter = router({
           delay_seconds: input.delaySeconds,
           business_hours_only: input.businessHoursOnly,
           scheduled_at: input.scheduledAt ?? null,
+          funnel_id: input.funnelId ?? null,
+          funnel_stage_id: input.funnelStageId ?? null,
           status: 'draft',
         })
         .select()
@@ -88,6 +100,7 @@ export const campaignsRouter = router({
         throw new TRPCError({ code: 'BAD_REQUEST', message: 'Campanha não pode ser iniciada' })
       }
 
+
       // Build target contacts
       let query = ctx.supabase
         .from('contacts')
@@ -100,13 +113,7 @@ export const campaignsRouter = router({
       } else if (campaign.target_type === 'stage') {
         query = query.eq('kanban_stage', campaign.target_value)
       } else if (campaign.target_type === 'list') {
-        const { data: members } = await ctx.supabase
-          .from('contact_list_members')
-          .select('contact_id')
-          .eq('list_id', campaign.target_value)
-        const ids = (members ?? []).map((m: any) => m.contact_id)
-        if (ids.length === 0) throw new TRPCError({ code: 'BAD_REQUEST', message: 'Lista vazia ou não encontrada' })
-        query = query.in('id', ids)
+        query = query.contains('tags', [`_list:${campaign.target_value}`])
       } else if (campaign.target_type === 'with_conversation') {
         // Only contacts that have conversations
         const { data: convContacts } = await ctx.supabase
@@ -121,8 +128,10 @@ export const campaignsRouter = router({
       const { data: contacts } = await query.limit(200) // daily limit
       if (!contacts?.length) throw new TRPCError({ code: 'BAD_REQUEST', message: 'Nenhum contato encontrado para o alvo selecionado' })
 
+      const db = getServiceClient()
+
       // Delete previous pending messages if re-starting
-      await ctx.supabase.from('campaign_messages').delete().eq('campaign_id', input.id).eq('status', 'pending')
+      await db.from('campaign_messages').delete().eq('campaign_id', input.id).eq('status', 'pending')
 
       // Create campaign_messages
       const msgs = contacts.map((c: any) => ({
@@ -132,7 +141,8 @@ export const campaignsRouter = router({
         contact_name: c.name ?? '',
         status: 'pending',
       }))
-      await ctx.supabase.from('campaign_messages').insert(msgs)
+      const { error: insertErr } = await db.from('campaign_messages').insert(msgs)
+      if (insertErr) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: `campaign_messages insert: ${insertErr.message}` })
 
       // Update campaign status
       await ctx.supabase
@@ -146,7 +156,63 @@ export const campaignsRouter = router({
         })
         .eq('id', input.id)
 
+      // Enroll contacts into funnel stage if configured
+      if (campaign.funnel_id && campaign.funnel_stage_id) {
+        const contactIds = contacts.map((c: any) => c.id).filter(Boolean)
+        if (contactIds.length > 0) {
+          const funnelRows = contactIds.map((cid: string) => ({
+            funnel_id: campaign.funnel_id,
+            stage_id: campaign.funnel_stage_id,
+            contact_id: cid,
+            organization_id: orgId,
+            channel_id: campaign.channel_id ?? null,
+            status: 'active',
+            entered_stage_at: new Date().toISOString(),
+            next_message_index: 0,
+            next_message_at: null,
+          }))
+          await db
+            .from('funnel_contacts')
+            .upsert(funnelRows, { onConflict: 'funnel_id,contact_id', ignoreDuplicates: true })
+        }
+      }
+
       return { started: true, total: contacts.length }
+    }),
+
+  update: protectedProcedure
+    .input(z.object({
+      id: z.string().uuid(),
+      name: z.string().min(1),
+      message: z.string().min(5),
+      channelId: z.string().uuid(),
+      targetType: z.enum(['all', 'tag', 'stage', 'with_conversation', 'list']),
+      targetValue: z.string().optional(),
+      delaySeconds: z.number().min(3).max(30),
+      businessHoursOnly: z.boolean(),
+      funnelId: z.string().uuid().optional(),
+      funnelStageId: z.string().uuid().optional(),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const orgId = await getOrgId(ctx)
+      const { error } = await ctx.supabase
+        .from('campaigns')
+        .update({
+          name: input.name,
+          message: input.message,
+          channel_id: input.channelId,
+          target_type: input.targetType,
+          target_value: input.targetValue ?? null,
+          delay_seconds: input.delaySeconds,
+          business_hours_only: input.businessHoursOnly,
+          funnel_id: input.funnelId ?? null,
+          funnel_stage_id: input.funnelStageId ?? null,
+        })
+        .eq('id', input.id)
+        .eq('organization_id', orgId)
+        .in('status', ['draft', 'paused'])
+      if (error) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: error.message })
+      return { success: true }
     }),
 
   pause: protectedProcedure

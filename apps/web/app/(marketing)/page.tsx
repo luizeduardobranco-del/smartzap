@@ -1,6 +1,7 @@
 'use client'
 
 import Link from 'next/link'
+import Image from 'next/image'
 import { useEffect, useState } from 'react'
 import {
   ArrowRight,
@@ -22,10 +23,11 @@ import {
   Cpu,
   Workflow,
   Instagram,
-  Twitter,
-  Linkedin,
-  Github,
   Phone,
+  MapPin,
+  Building2,
+  Filter,
+  Layers,
 } from 'lucide-react'
 
 export default function LandingPage() {
@@ -37,6 +39,7 @@ export default function LandingPage() {
         <LogosSection />
         <HowItWorksSection />
         <FeaturesSection />
+        <ProspectingSection />
         <StatsSection />
         <PricingSection />
         <FinalCTASection />
@@ -59,8 +62,8 @@ function Header() {
   const navLinks = [
     { href: '#features', label: 'Recursos' },
     { href: '#how-it-works', label: 'Como funciona' },
+    { href: '#prospecting', label: 'Prospecção' },
     { href: '#pricing', label: 'Preços' },
-    { href: '#cases', label: 'Cases' },
   ]
 
   return (
@@ -73,17 +76,15 @@ function Header() {
     >
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="flex h-16 items-center justify-between">
-          <Link href="/" className="flex items-center gap-2 group">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-green-600 shadow-md group-hover:bg-green-700 transition-colors">
-              <Zap className="h-4 w-4 text-white" strokeWidth={2.5} />
-            </div>
-            <span
-              className={`text-lg font-bold transition-colors ${
-                scrolled ? 'text-slate-900' : 'text-white'
-              }`}
-            >
-              White Zap
-            </span>
+          <Link href="/" className="flex items-center">
+            <Image
+              src="/logo.png"
+              alt="White Zap"
+              width={150}
+              height={52}
+              className="object-contain"
+              priority
+            />
           </Link>
 
           <nav className="hidden items-center gap-8 md:flex">
@@ -91,7 +92,7 @@ function Header() {
               <Link
                 key={link.href}
                 href={link.href}
-                className={`text-sm font-medium transition-colors hover:text-green-500 ${
+                className={`text-sm font-medium transition-colors hover:text-blue-500 ${
                   scrolled ? 'text-slate-600' : 'text-white/85'
                 }`}
               >
@@ -113,7 +114,7 @@ function Header() {
             </Link>
             <Link
               href="/signup"
-              className="inline-flex items-center gap-1.5 rounded-lg bg-green-600 px-4 py-2 text-sm font-semibold text-white shadow-md hover:bg-green-700 transition-all hover:shadow-lg hover:-translate-y-px"
+              className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-md hover:bg-blue-700 transition-all hover:shadow-lg hover:-translate-y-px"
             >
               Começar grátis
               <ArrowRight className="h-4 w-4" />
@@ -140,9 +141,9 @@ function Header() {
                 key={link.href}
                 href={link.href}
                 onClick={() => setMobileOpen(false)}
-                className="flex items-center gap-2 rounded-lg px-3 py-2.5 text-sm font-medium text-slate-700 hover:bg-green-50 hover:text-green-700 transition-colors"
+                className="flex items-center gap-2 rounded-lg px-3 py-2.5 text-sm font-medium text-slate-700 hover:bg-blue-50 hover:text-blue-700 transition-colors"
               >
-                <ChevronRight className="h-4 w-4 text-green-500" />
+                <ChevronRight className="h-4 w-4 text-blue-500" />
                 {link.label}
               </Link>
             ))}
@@ -157,7 +158,7 @@ function Header() {
               <Link
                 href="/signup"
                 onClick={() => setMobileOpen(false)}
-                className="inline-flex items-center justify-center gap-2 rounded-lg bg-green-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-green-700 transition-colors"
+                className="inline-flex items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-blue-700 transition-colors"
               >
                 Começar grátis
                 <ArrowRight className="h-4 w-4" />
@@ -174,19 +175,19 @@ function HeroSection() {
   return (
     <section className="relative min-h-screen overflow-hidden gradient-hero flex items-center">
       <div className="absolute inset-0 pointer-events-none">
-        <div className="absolute top-1/4 -left-32 h-96 w-96 rounded-full bg-green-500/20 blur-3xl animate-pulse-slow" />
+        <div className="absolute top-1/4 -left-32 h-96 w-96 rounded-full bg-blue-500/20 blur-3xl animate-pulse-slow" />
         <div
-          className="absolute top-1/3 right-0 h-80 w-80 rounded-full bg-green-400/15 blur-3xl animate-pulse-slow"
+          className="absolute top-1/3 right-0 h-80 w-80 rounded-full bg-blue-400/15 blur-3xl animate-pulse-slow"
           style={{ animationDelay: '1.5s' }}
         />
         <div
-          className="absolute bottom-1/4 left-1/3 h-64 w-64 rounded-full bg-emerald-500/10 blur-2xl animate-pulse-slow"
+          className="absolute bottom-1/4 left-1/3 h-64 w-64 rounded-full bg-sky-500/10 blur-2xl animate-pulse-slow"
           style={{ animationDelay: '3s' }}
         />
-        <div className="absolute top-20 right-1/4 h-2 w-2 rounded-full bg-green-400/60 animate-float" />
-        <div className="absolute top-40 left-1/4 h-1.5 w-1.5 rounded-full bg-green-300/50 animate-float-delay" />
+        <div className="absolute top-20 right-1/4 h-2 w-2 rounded-full bg-blue-400/60 animate-float" />
+        <div className="absolute top-40 left-1/4 h-1.5 w-1.5 rounded-full bg-sky-300/50 animate-float-delay" />
         <div
-          className="absolute bottom-40 right-1/3 h-2 w-2 rounded-full bg-emerald-400/50 animate-float"
+          className="absolute bottom-40 right-1/3 h-2 w-2 rounded-full bg-blue-400/50 animate-float"
           style={{ animationDelay: '0.8s' }}
         />
         <div
@@ -204,10 +205,22 @@ function HeroSection() {
       </div>
 
       <div className="relative mx-auto max-w-7xl px-4 py-32 sm:px-6 lg:px-8 text-center">
+        {/* Logo hero */}
+        <div className="animate-slide-up flex justify-center mb-8">
+          <Image
+            src="/logo.png"
+            alt="White Zap"
+            width={220}
+            height={76}
+            className="object-contain opacity-95"
+            priority
+          />
+        </div>
+
         <div className="animate-slide-up">
-          <span className="inline-flex items-center gap-2 rounded-full border border-green-500/30 bg-green-500/10 px-4 py-1.5 text-xs font-semibold text-green-300 backdrop-blur-sm">
-            <span className="flex h-1.5 w-1.5 rounded-full bg-green-400 animate-pulse" />
-            Novo: Integração com WhatsApp não oficial + oficial
+          <span className="inline-flex items-center gap-2 rounded-full border border-blue-500/30 bg-blue-500/10 px-4 py-1.5 text-xs font-semibold text-blue-300 backdrop-blur-sm">
+            <span className="flex h-1.5 w-1.5 rounded-full bg-blue-400 animate-pulse" />
+            Novo: Extração de leads + Funil de prospecção
           </span>
         </div>
 
@@ -219,26 +232,26 @@ function HeroSection() {
         </h1>
 
         <p className="mx-auto mt-6 max-w-2xl text-lg text-slate-300/90 leading-relaxed animate-slide-up-d2">
-          Conecte GPT-4o, Claude e LLaMA ao seu WhatsApp e Instagram em minutos. Sem código. Sem
-          complicação. Resultado do primeiro dia.
+          Conecte GPT-4o ao seu WhatsApp e Instagram, extraia leads automaticamente e gerencie
+          todo o funil de vendas em um só lugar. Sem código. Resultado do primeiro dia.
         </p>
 
         <div className="mt-10 flex flex-col items-center justify-center gap-4 sm:flex-row animate-slide-up-d3">
           <Link
             href="/signup"
-            className="inline-flex items-center gap-2 rounded-xl bg-green-500 px-8 py-4 text-base font-bold text-white shadow-xl shadow-green-900/40 hover:bg-green-400 transition-all hover:-translate-y-1 hover:shadow-2xl"
+            className="inline-flex items-center gap-2 rounded-xl bg-blue-500 px-8 py-4 text-base font-bold text-white shadow-xl shadow-blue-900/40 hover:bg-blue-400 transition-all hover:-translate-y-1 hover:shadow-2xl"
           >
             Criar meu agente grátis
             <ArrowRight className="h-5 w-5" />
           </Link>
           <Link
-            href="#demo"
+            href="#how-it-works"
             className="inline-flex items-center gap-2 rounded-xl border border-white/20 bg-white/[0.08] px-8 py-4 text-base font-semibold text-white backdrop-blur-sm hover:bg-white/[0.15] transition-all hover:-translate-y-1"
           >
             <div className="flex h-6 w-6 items-center justify-center rounded-full border border-white/40 bg-white/10">
               <Play className="h-3 w-3 fill-white text-white ml-0.5" />
             </div>
-            Ver demonstração
+            Ver como funciona
           </Link>
         </div>
 
@@ -249,7 +262,7 @@ function HeroSection() {
             { Icon: Clock, label: '< 2s resposta' },
           ].map(({ Icon, label }) => (
             <div key={label} className="flex items-center gap-2 text-sm font-medium text-slate-300">
-              <Icon className="h-4 w-4 text-green-400" />
+              <Icon className="h-4 w-4 text-blue-400" />
               <span>{label}</span>
             </div>
           ))}
@@ -269,7 +282,7 @@ function LogosSection() {
   ]
 
   return (
-    <section className="border-b border-slate-100 bg-slate-50/60 py-12">
+    <section className="border-b border-blue-50 bg-blue-50/40 py-12">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <p className="mb-8 text-center text-xs font-semibold uppercase tracking-widest text-slate-400">
           Compatível com os melhores modelos de IA
@@ -297,18 +310,18 @@ function HowItWorksSection() {
       Icon: Bot,
       title: 'Crie seu agente',
       description: 'Dê um nome, escolha a personalidade e defina o objetivo do agente em segundos.',
-      iconColor: 'text-green-600',
-      bg: 'bg-green-50',
-      border: 'border-green-100',
+      iconColor: 'text-blue-600',
+      bg: 'bg-blue-50',
+      border: 'border-blue-100',
     },
     {
       number: '02',
       Icon: MessageSquare,
       title: 'Treine com seus dados',
-      description: 'Suba documentos, PDFs, links e FAQs. O agente aprende tudo sobre seu negócio.',
-      iconColor: 'text-blue-600',
-      bg: 'bg-blue-50',
-      border: 'border-blue-100',
+      description: 'Suba documentos, PDFs, links, FAQs e fotos de produtos. O agente aprende tudo.',
+      iconColor: 'text-sky-600',
+      bg: 'bg-sky-50',
+      border: 'border-sky-100',
     },
     {
       number: '03',
@@ -324,18 +337,18 @@ function HowItWorksSection() {
       Icon: Workflow,
       title: 'Configure automações',
       description: 'Defina gatilhos, horários de atendimento, handoff humano e muito mais.',
-      iconColor: 'text-orange-600',
-      bg: 'bg-orange-50',
-      border: 'border-orange-100',
+      iconColor: 'text-indigo-600',
+      bg: 'bg-indigo-50',
+      border: 'border-indigo-100',
     },
     {
       number: '05',
       Icon: Zap,
       title: 'Bot atende e vende',
       description: 'Seu agente começa a responder clientes 24h por dia, 7 dias por semana.',
-      iconColor: 'text-rose-600',
-      bg: 'bg-rose-50',
-      border: 'border-rose-100',
+      iconColor: 'text-blue-600',
+      bg: 'bg-blue-50',
+      border: 'border-blue-100',
     },
   ]
 
@@ -343,7 +356,7 @@ function HowItWorksSection() {
     <section id="how-it-works" className="py-24 bg-white">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="mb-16 text-center">
-          <span className="inline-block rounded-full bg-green-100 px-3 py-1 text-xs font-semibold uppercase tracking-wider text-green-700">
+          <span className="inline-block rounded-full bg-blue-100 px-3 py-1 text-xs font-semibold uppercase tracking-wider text-blue-700">
             Como funciona
           </span>
           <h2 className="mt-4 text-3xl font-extrabold text-slate-900 sm:text-4xl lg:text-5xl">
@@ -357,7 +370,7 @@ function HowItWorksSection() {
 
         <div className="relative">
           <div
-            className="absolute top-16 bottom-16 w-px bg-gradient-to-b from-green-200 via-green-400 to-green-200 hidden lg:block"
+            className="absolute top-16 bottom-16 w-px bg-gradient-to-b from-blue-200 via-blue-400 to-blue-200 hidden lg:block"
             style={{ left: 'calc(50% - 0.5px)' }}
           />
           <div className="space-y-10">
@@ -384,7 +397,7 @@ function HowItWorksSection() {
                   </div>
                 </div>
 
-                <div className="relative flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl bg-slate-900 text-white shadow-xl mx-auto lg:mx-0 z-10">
+                <div className="relative flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl bg-blue-700 text-white shadow-xl mx-auto lg:mx-0 z-10">
                   <span className="text-xl font-black">{step.number}</span>
                 </div>
 
@@ -406,9 +419,9 @@ function FeaturesSection() {
       description:
         'Configure personalidade, tom de voz, base de conhecimento e comportamentos sem escrever uma linha de código.',
       badge: 'Core',
-      badgeColor: 'bg-green-100 text-green-700',
-      iconColor: 'text-green-600',
-      iconBg: 'bg-green-50',
+      badgeColor: 'bg-blue-100 text-blue-700',
+      iconColor: 'text-blue-600',
+      iconBg: 'bg-blue-50',
     },
     {
       Icon: MessageSquare,
@@ -416,9 +429,9 @@ function FeaturesSection() {
       description:
         'Conecte seus canais com QR Code e comece a atender em minutos. Suporte a múltiplos números e perfis.',
       badge: 'Canais',
-      badgeColor: 'bg-blue-100 text-blue-700',
-      iconColor: 'text-blue-600',
-      iconBg: 'bg-blue-50',
+      badgeColor: 'bg-sky-100 text-sky-700',
+      iconColor: 'text-sky-600',
+      iconBg: 'bg-sky-50',
     },
     {
       Icon: BarChart3,
@@ -436,9 +449,9 @@ function FeaturesSection() {
       description:
         'Adicione um chat flutuante ao seu site com uma linha de código. Personalização total de cores e posição.',
       badge: 'Web',
-      badgeColor: 'bg-orange-100 text-orange-700',
-      iconColor: 'text-orange-600',
-      iconBg: 'bg-orange-50',
+      badgeColor: 'bg-indigo-100 text-indigo-700',
+      iconColor: 'text-indigo-600',
+      iconBg: 'bg-indigo-50',
     },
     {
       Icon: Workflow,
@@ -446,9 +459,9 @@ function FeaturesSection() {
       description:
         'Crie fluxos de atendimento com gatilhos, condições e ações. Agende mensagens e campanhas de disparo.',
       badge: 'Automação',
-      badgeColor: 'bg-rose-100 text-rose-700',
-      iconColor: 'text-rose-600',
-      iconBg: 'bg-rose-50',
+      badgeColor: 'bg-blue-100 text-blue-700',
+      iconColor: 'text-blue-600',
+      iconBg: 'bg-blue-50',
     },
     {
       Icon: Shield,
@@ -463,10 +476,10 @@ function FeaturesSection() {
   ]
 
   return (
-    <section id="features" className="py-24 bg-slate-50/70">
+    <section id="features" className="py-24 bg-blue-50/30">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="mb-16 text-center">
-          <span className="inline-block rounded-full bg-green-100 px-3 py-1 text-xs font-semibold uppercase tracking-wider text-green-700">
+          <span className="inline-block rounded-full bg-blue-100 px-3 py-1 text-xs font-semibold uppercase tracking-wider text-blue-700">
             Recursos
           </span>
           <h2 className="mt-4 text-3xl font-extrabold text-slate-900 sm:text-4xl lg:text-5xl">
@@ -484,7 +497,7 @@ function FeaturesSection() {
               key={f.title}
               className="group relative overflow-hidden rounded-2xl border border-slate-200 bg-white p-6 shadow-sm hover:shadow-xl hover:-translate-y-1.5 transition-all duration-300"
             >
-              <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-green-300/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+              <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-blue-300/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
 
               <div className="mb-4 flex items-start justify-between">
                 <div className={`inline-flex h-12 w-12 items-center justify-center rounded-xl ${f.iconBg}`}>
@@ -499,6 +512,194 @@ function FeaturesSection() {
               <p className="text-sm leading-relaxed text-slate-500">{f.description}</p>
             </div>
           ))}
+        </div>
+      </div>
+    </section>
+  )
+}
+
+function ProspectingSection() {
+  const extractionSources = [
+    {
+      Icon: MapPin,
+      title: 'Google Maps',
+      description: 'Extraia leads de qualquer segmento e região com nome, telefone e endereço.',
+      color: 'text-blue-600',
+      bg: 'bg-blue-50',
+      border: 'border-blue-100',
+      badge: 'Disponível',
+      badgeColor: 'bg-blue-100 text-blue-700',
+    },
+    {
+      Icon: Instagram,
+      title: 'Instagram',
+      description: 'Importe seguidores dos concorrentes e transforme-os em leads qualificados.',
+      color: 'text-violet-600',
+      bg: 'bg-violet-50',
+      border: 'border-violet-100',
+      badge: 'Em breve',
+      badgeColor: 'bg-violet-100 text-violet-700',
+    },
+    {
+      Icon: Building2,
+      title: 'CNPJ / Receita Federal',
+      description: 'Filtre empresas por segmento, porte e data de abertura diretamente da Receita.',
+      color: 'text-sky-600',
+      bg: 'bg-sky-50',
+      border: 'border-sky-100',
+      badge: 'Em breve',
+      badgeColor: 'bg-sky-100 text-sky-700',
+    },
+    {
+      Icon: MessageSquare,
+      title: 'Grupos WhatsApp',
+      description: 'Extraia contatos de grupos e inicie conversas automáticas com segmentação.',
+      color: 'text-indigo-600',
+      bg: 'bg-indigo-50',
+      border: 'border-indigo-100',
+      badge: 'Em breve',
+      badgeColor: 'bg-indigo-100 text-indigo-700',
+    },
+  ]
+
+  const funnelStages = [
+    { label: 'Novo Lead', count: 142, color: 'bg-blue-500' },
+    { label: 'Primeiro Contato', count: 87, color: 'bg-sky-500' },
+    { label: 'Qualificado', count: 54, color: 'bg-violet-500' },
+    { label: 'Proposta', count: 28, color: 'bg-indigo-500' },
+    { label: 'Fechado', count: 16, color: 'bg-blue-700' },
+  ]
+
+  return (
+    <section id="prospecting" className="py-24 bg-white">
+      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        {/* Extração de leads */}
+        <div className="mb-20">
+          <div className="mb-12 text-center">
+            <span className="inline-block rounded-full bg-blue-100 px-3 py-1 text-xs font-semibold uppercase tracking-wider text-blue-700">
+              Extração de Leads
+            </span>
+            <h2 className="mt-4 text-3xl font-extrabold text-slate-900 sm:text-4xl lg:text-5xl">
+              Encontre clientes onde{' '}
+              <span className="gradient-text">eles estão</span>
+            </h2>
+            <p className="mx-auto mt-4 max-w-2xl text-lg text-slate-500">
+              Extraia leads com telefone diretamente do Google Maps, Instagram, CNPJ e grupos do
+              WhatsApp. Tudo dentro da plataforma, sem ferramentas externas.
+            </p>
+          </div>
+
+          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+            {extractionSources.map((s) => (
+              <div
+                key={s.title}
+                className={`relative rounded-2xl border ${s.border} ${s.bg} p-6 hover:shadow-md transition-shadow`}
+              >
+                <div className="mb-4 flex items-start justify-between">
+                  <div className={`inline-flex h-11 w-11 items-center justify-center rounded-xl bg-white shadow-sm border ${s.border}`}>
+                    <s.Icon className={`h-5 w-5 ${s.color}`} />
+                  </div>
+                  <span className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${s.badgeColor}`}>
+                    {s.badge}
+                  </span>
+                </div>
+                <h3 className="mb-1.5 text-base font-bold text-slate-900">{s.title}</h3>
+                <p className="text-sm leading-relaxed text-slate-500">{s.description}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Funil de prospecção */}
+        <div className="rounded-3xl border border-blue-100 bg-gradient-to-br from-blue-50 to-sky-50/50 p-8 lg:p-12">
+          <div className="grid gap-12 lg:grid-cols-2 lg:items-center">
+            <div>
+              <span className="inline-block rounded-full bg-blue-100 px-3 py-1 text-xs font-semibold uppercase tracking-wider text-blue-700 mb-4">
+                Funil de Prospecção
+              </span>
+              <h2 className="text-3xl font-extrabold text-slate-900 sm:text-4xl">
+                Sequências automáticas{' '}
+                <span className="gradient-text">que vendem por você</span>
+              </h2>
+              <p className="mt-4 text-lg text-slate-500">
+                Crie etapas personalizadas no funil e configure sequências automáticas de mensagens
+                — texto, áudio, imagem ou PDF — com delays inteligentes. A IA qualifica e avança
+                o lead automaticamente.
+              </p>
+              <ul className="mt-6 space-y-3">
+                {[
+                  'Etapas personalizadas com nome e cor',
+                  'Sequências: texto, áudio, imagem e PDF',
+                  'Delays configuráveis entre mensagens',
+                  'IA avança o lead por resposta automática',
+                  'Métricas de conversão por etapa',
+                  'Kanban visual com drag-and-drop',
+                ].map((item) => (
+                  <li key={item} className="flex items-start gap-2.5">
+                    <Check className="mt-0.5 h-4 w-4 shrink-0 text-blue-600" />
+                    <span className="text-sm text-slate-600">{item}</span>
+                  </li>
+                ))}
+              </ul>
+              <div className="mt-8 flex items-center gap-3">
+                <Link
+                  href="/signup"
+                  className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-6 py-3 text-sm font-bold text-white shadow-lg hover:bg-blue-700 transition-all hover:-translate-y-px"
+                >
+                  Começar grátis
+                  <ArrowRight className="h-4 w-4" />
+                </Link>
+                <span className="text-xs text-slate-400">Em breve no plano Pro</span>
+              </div>
+            </div>
+
+            {/* Funil visual mockup */}
+            <div className="rounded-2xl border border-blue-200 bg-white p-6 shadow-lg">
+              <div className="mb-4 flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Layers className="h-4 w-4 text-blue-600" />
+                  <span className="text-sm font-semibold text-slate-800">Funil: Clientes Tinta</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <Filter className="h-3.5 w-3.5 text-slate-400" />
+                  <span className="text-xs text-slate-400">327 leads totais</span>
+                </div>
+              </div>
+
+              <div className="space-y-3">
+                {funnelStages.map((stage, i) => (
+                  <div key={stage.label} className="flex items-center gap-3">
+                    <div className="w-28 shrink-0">
+                      <span className="text-xs font-medium text-slate-600">{stage.label}</span>
+                    </div>
+                    <div className="flex-1 h-7 rounded-lg bg-slate-100 overflow-hidden relative">
+                      <div
+                        className={`h-full rounded-lg ${stage.color} flex items-center justify-end pr-2 transition-all`}
+                        style={{ width: `${(stage.count / 142) * 100}%` }}
+                      >
+                        <span className="text-xs font-bold text-white">{stage.count}</span>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <div className="mt-4 pt-4 border-t border-slate-100 grid grid-cols-3 gap-3 text-center">
+                <div>
+                  <div className="text-lg font-black text-blue-600">11%</div>
+                  <div className="text-xs text-slate-400">Conversão</div>
+                </div>
+                <div>
+                  <div className="text-lg font-black text-slate-800">2.4x</div>
+                  <div className="text-xs text-slate-400">ROI médio</div>
+                </div>
+                <div>
+                  <div className="text-lg font-black text-violet-600">3h</div>
+                  <div className="text-xs text-slate-400">Economia/dia</div>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </section>
@@ -526,8 +727,8 @@ function StatsSection() {
         <div className="grid grid-cols-2 gap-8 lg:grid-cols-4">
           {stats.map((stat) => (
             <div key={stat.label} className="flex flex-col items-center text-center">
-              <div className="mb-3 inline-flex h-12 w-12 items-center justify-center rounded-xl bg-green-500/15 border border-green-500/20">
-                <stat.Icon className="h-6 w-6 text-green-400" />
+              <div className="mb-3 inline-flex h-12 w-12 items-center justify-center rounded-xl bg-blue-500/15 border border-blue-500/20">
+                <stat.Icon className="h-6 w-6 text-blue-400" />
               </div>
               <div className="text-4xl font-black text-white lg:text-5xl">{stat.value}</div>
               <div className="mt-2 text-sm font-medium text-slate-400">{stat.label}</div>
@@ -544,6 +745,22 @@ function PricingSection() {
 
   const plans = [
     {
+      name: 'Free',
+      description: 'Para conhecer a plataforma',
+      monthlyPrice: 0,
+      featured: false,
+      cta: 'Criar conta grátis',
+      ctaHref: '/signup',
+      features: [
+        '1 agente de IA',
+        '1 canal conectado',
+        '100 créditos/mês',
+        'WhatsApp + Widget',
+        'Base de conhecimento',
+        'Suporte via chat',
+      ],
+    },
+    {
       name: 'Starter',
       description: 'Para quem quer começar a automatizar',
       monthlyPrice: 97,
@@ -554,9 +771,10 @@ function PricingSection() {
         '3 agentes de IA',
         '3 canais conectados',
         '2.000 créditos/mês',
-        'WhatsApp + Widget',
+        'WhatsApp + Instagram + Widget',
         'CRM Kanban',
-        'Automações básicas',
+        'Automações',
+        'Analytics',
         'Suporte via chat',
       ],
     },
@@ -572,8 +790,9 @@ function PricingSection() {
         '10 canais conectados',
         '10.000 créditos/mês',
         'Todos os canais',
+        'Extração de leads (Maps)',
+        'Funil de prospecção',
         'CRM + Analytics avançado',
-        'Automações ilimitadas',
         'API de integração',
         'Marca personalizada',
         'Suporte prioritário',
@@ -599,10 +818,10 @@ function PricingSection() {
   ]
 
   return (
-    <section id="pricing" className="py-24 bg-white">
+    <section id="pricing" className="py-24 bg-blue-50/30">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="mb-12 text-center">
-          <span className="inline-block rounded-full bg-green-100 px-3 py-1 text-xs font-semibold uppercase tracking-wider text-green-700">
+          <span className="inline-block rounded-full bg-blue-100 px-3 py-1 text-xs font-semibold uppercase tracking-wider text-blue-700">
             Preços
           </span>
           <h2 className="mt-4 text-3xl font-extrabold text-slate-900 sm:text-4xl lg:text-5xl">
@@ -633,18 +852,20 @@ function PricingSection() {
               }`}
             >
               Anual
-              <span className="rounded-full bg-green-100 px-2 py-0.5 text-xs font-bold text-green-700">
+              <span className="rounded-full bg-blue-100 px-2 py-0.5 text-xs font-bold text-blue-700">
                 -20%
               </span>
             </button>
           </div>
         </div>
 
-        <div className="grid gap-8 lg:grid-cols-3 lg:items-stretch">
+        <div className="grid gap-6 lg:grid-cols-4 lg:items-stretch">
           {plans.map((plan) => {
             const price =
               plan.monthlyPrice !== null
-                ? annual
+                ? plan.monthlyPrice === 0
+                  ? 0
+                  : annual
                   ? Math.round(plan.monthlyPrice * 0.8)
                   : plan.monthlyPrice
                 : null
@@ -652,15 +873,15 @@ function PricingSection() {
             return (
               <div
                 key={plan.name}
-                className={`relative flex flex-col rounded-2xl p-8 ${
+                className={`relative flex flex-col rounded-2xl p-7 ${
                   plan.featured
-                    ? 'border-2 border-green-500 bg-slate-900 shadow-2xl shadow-green-900/30 lg:scale-105'
+                    ? 'border-2 border-blue-500 bg-slate-900 shadow-2xl shadow-blue-900/30 lg:scale-105'
                     : 'border border-slate-200 bg-white shadow-sm hover:shadow-lg transition-shadow'
                 }`}
               >
                 {plan.featured && (
                   <div className="absolute -top-4 left-1/2 -translate-x-1/2">
-                    <span className="inline-flex items-center gap-1.5 rounded-full bg-green-500 px-4 py-1 text-xs font-bold text-white shadow-lg">
+                    <span className="inline-flex items-center gap-1.5 rounded-full bg-blue-500 px-4 py-1 text-xs font-bold text-white shadow-lg">
                       <Star className="h-3 w-3 fill-white" />
                       Mais popular
                     </span>
@@ -685,42 +906,32 @@ function PricingSection() {
 
                   <div className="mt-6 flex items-end gap-1">
                     {price !== null ? (
-                      <>
-                        <span
-                          className={`text-sm font-medium ${
-                            plan.featured ? 'text-slate-400' : 'text-slate-500'
-                          }`}
-                        >
-                          R$
+                      price === 0 ? (
+                        <span className={`text-3xl font-black ${plan.featured ? 'text-white' : 'text-slate-900'}`}>
+                          Grátis
                         </span>
-                        <span
-                          className={`text-5xl font-black leading-none ${
-                            plan.featured ? 'text-white' : 'text-slate-900'
-                          }`}
-                        >
-                          {price}
-                        </span>
-                        <span
-                          className={`mb-1 text-sm ${
-                            plan.featured ? 'text-slate-400' : 'text-slate-500'
-                          }`}
-                        >
-                          /mês
-                        </span>
-                      </>
+                      ) : (
+                        <>
+                          <span className={`text-sm font-medium ${plan.featured ? 'text-slate-400' : 'text-slate-500'}`}>
+                            R$
+                          </span>
+                          <span className={`text-5xl font-black leading-none ${plan.featured ? 'text-white' : 'text-slate-900'}`}>
+                            {price}
+                          </span>
+                          <span className={`mb-1 text-sm ${plan.featured ? 'text-slate-400' : 'text-slate-500'}`}>
+                            /mês
+                          </span>
+                        </>
+                      )
                     ) : (
-                      <span
-                        className={`text-3xl font-black ${
-                          plan.featured ? 'text-white' : 'text-slate-900'
-                        }`}
-                      >
+                      <span className={`text-3xl font-black ${plan.featured ? 'text-white' : 'text-slate-900'}`}>
                         Sob consulta
                       </span>
                     )}
                   </div>
 
-                  {annual && price !== null && plan.monthlyPrice !== null && (
-                    <p className="mt-1 text-xs text-green-400 font-medium">
+                  {annual && price !== null && plan.monthlyPrice !== null && plan.monthlyPrice > 0 && (
+                    <p className="mt-1 text-xs text-blue-400 font-medium">
                       Cobrado anualmente · Economize R$
                       {Math.round(plan.monthlyPrice * 12 * 0.2)}/ano
                     </p>
@@ -732,7 +943,7 @@ function PricingSection() {
                     <li key={f} className="flex items-start gap-2.5">
                       <Check
                         className={`mt-0.5 h-4 w-4 shrink-0 ${
-                          plan.featured ? 'text-green-400' : 'text-green-600'
+                          plan.featured ? 'text-blue-400' : 'text-blue-600'
                         }`}
                       />
                       <span
@@ -751,7 +962,7 @@ function PricingSection() {
                     href={plan.ctaHref}
                     className={`block w-full rounded-xl px-6 py-3.5 text-center text-sm font-bold transition-all hover:-translate-y-px ${
                       plan.featured
-                        ? 'bg-green-500 text-white hover:bg-green-400 shadow-lg shadow-green-900/40'
+                        ? 'bg-blue-500 text-white hover:bg-blue-400 shadow-lg shadow-blue-900/40'
                         : 'bg-slate-900 text-white hover:bg-slate-700'
                     }`}
                   >
@@ -771,11 +982,11 @@ function FinalCTASection() {
   return (
     <section
       className="relative overflow-hidden py-28"
-      style={{ background: 'linear-gradient(135deg, #052e16 0%, #14532d 40%, #15803d 100%)' }}
+      style={{ background: 'linear-gradient(135deg, #0c1a4e 0%, #1e3a8a 40%, #2563eb 100%)' }}
     >
       <div className="absolute inset-0 pointer-events-none">
-        <div className="absolute -top-24 -right-24 h-72 w-72 rounded-full bg-green-400/20 blur-3xl" />
-        <div className="absolute -bottom-24 -left-24 h-72 w-72 rounded-full bg-emerald-400/15 blur-3xl" />
+        <div className="absolute -top-24 -right-24 h-72 w-72 rounded-full bg-blue-400/20 blur-3xl" />
+        <div className="absolute -bottom-24 -left-24 h-72 w-72 rounded-full bg-sky-400/15 blur-3xl" />
         <div
           className="absolute inset-0 opacity-[0.04]"
           style={{
@@ -786,149 +997,105 @@ function FinalCTASection() {
       </div>
 
       <div className="relative mx-auto max-w-4xl px-4 text-center sm:px-6 lg:px-8">
-        <span className="inline-flex items-center gap-2 rounded-full border border-green-400/30 bg-green-400/10 px-4 py-1.5 text-xs font-semibold text-green-300 mb-6">
+        <div className="mb-6 flex justify-center">
+          <Image src="/logo.png" alt="White Zap" width={180} height={62} className="object-contain opacity-90" />
+        </div>
+
+        <span className="inline-flex items-center gap-2 rounded-full border border-blue-400/30 bg-blue-400/10 px-4 py-1.5 text-xs font-semibold text-blue-300 mb-6">
           <Zap className="h-3.5 w-3.5" />
           Comece hoje, sem riscos
         </span>
 
         <h2 className="text-3xl font-extrabold text-white sm:text-4xl lg:text-5xl text-balance">
-          Comece hoje. Seu primeiro agente
+          Seu primeiro agente pronto
           <br />
-          <span className="gradient-text-white">pronto em 5 minutos.</span>
+          <span className="gradient-text-white">em 5 minutos.</span>
         </h2>
 
-        <p className="mx-auto mt-6 max-w-xl text-lg text-green-100/80">
-          Mais de 500 empresas já automatizaram seu atendimento com White Zap. A sua pode ser a próxima.
+        <p className="mx-auto mt-6 max-w-xl text-lg text-blue-100/80">
+          Junte-se a centenas de empresas que já automatizaram seu atendimento e prospecção com White Zap.
         </p>
 
-        <div className="mt-10">
+        <div className="mt-10 flex flex-col items-center justify-center gap-4 sm:flex-row">
           <Link
             href="/signup"
-            className="inline-flex items-center gap-2 rounded-xl bg-white px-10 py-4 text-base font-bold text-green-700 shadow-2xl hover:bg-green-50 transition-all hover:-translate-y-1"
+            className="inline-flex items-center gap-2 rounded-xl bg-white px-8 py-4 text-base font-bold text-blue-700 shadow-2xl hover:bg-blue-50 transition-all hover:-translate-y-1"
           >
-            Criar minha conta grátis
+            Criar conta grátis
             <ArrowRight className="h-5 w-5" />
+          </Link>
+          <Link
+            href="/login"
+            className="inline-flex items-center gap-2 rounded-xl border border-white/25 bg-white/10 px-8 py-4 text-base font-semibold text-white backdrop-blur-sm hover:bg-white/20 transition-all hover:-translate-y-1"
+          >
+            Já tenho uma conta
           </Link>
         </div>
 
-        <div className="mt-8 flex flex-col items-center justify-center gap-4 sm:flex-row sm:gap-8">
-          {[
-            { Icon: Shield, label: 'Sem cartão de crédito' },
-            { Icon: Zap, label: 'Cancele quando quiser' },
-            { Icon: MessageSquare, label: 'Suporte em português' },
-          ].map(({ Icon, label }) => (
-            <div key={label} className="flex items-center gap-2 text-sm font-medium text-green-200/80">
-              <Icon className="h-4 w-4 text-green-400" />
-              {label}
-            </div>
-          ))}
-        </div>
+        <p className="mt-6 text-sm text-blue-200/60">
+          Sem cartão de crédito · Cancele quando quiser
+        </p>
       </div>
     </section>
   )
 }
 
 function Footer() {
-  const columns = [
-    {
-      title: 'Produto',
-      links: [
-        { label: 'Recursos', href: '#features' },
-        { label: 'Como funciona', href: '#how-it-works' },
-        { label: 'Preços', href: '#pricing' },
-        { label: 'Cases de sucesso', href: '#cases' },
-        { label: 'Changelog', href: '/changelog' },
-        { label: 'Roadmap', href: '/roadmap' },
-      ],
-    },
-    {
-      title: 'Empresa',
-      links: [
-        { label: 'Sobre nós', href: '/about' },
-        { label: 'Blog', href: '/blog' },
-        { label: 'Afiliados', href: '/affiliates' },
-        { label: 'Parcerias', href: '/partners' },
-        { label: 'Carreiras', href: '/careers' },
-        { label: 'Contato', href: '/contact' },
-      ],
-    },
-    {
-      title: 'Legal',
-      links: [
-        { label: 'Termos de uso', href: '/terms' },
-        { label: 'Privacidade', href: '/privacy' },
-        { label: 'Cookies', href: '/cookies' },
-        { label: 'LGPD', href: '/lgpd' },
-        { label: 'Status', href: 'https://status.whiteerp.com' },
-      ],
-    },
-  ]
-
-  const socials = [
-    { Icon: Instagram, href: 'https://instagram.com/whitezap', label: 'Instagram' },
-    { Icon: Twitter, href: 'https://twitter.com/whitezap', label: 'Twitter' },
-    { Icon: Linkedin, href: 'https://linkedin.com/company/whitezap', label: 'LinkedIn' },
-    { Icon: Github, href: 'https://github.com/whitezap', label: 'GitHub' },
-  ]
-
   return (
     <footer className="border-t border-slate-100 bg-slate-50">
-      <div className="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8">
-        <div className="grid gap-12 lg:grid-cols-4">
-          <div className="lg:col-span-1">
-            <Link href="/" className="flex items-center gap-2 group w-fit">
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-green-600 shadow-md group-hover:bg-green-700 transition-colors">
-                <Zap className="h-4 w-4 text-white" strokeWidth={2.5} />
-              </div>
-              <span className="text-lg font-bold text-slate-900">White Zap</span>
-            </Link>
-            <p className="mt-4 text-sm leading-relaxed text-slate-500 max-w-xs">
-              Agentes de IA para WhatsApp e Instagram. Automatize atendimento, vendas e suporte sem
-              programar.
+      <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
+        <div className="grid gap-8 md:grid-cols-4">
+          <div className="md:col-span-2">
+            <Image src="/logo.png" alt="White Zap" width={160} height={55} className="object-contain mb-4" />
+            <p className="text-sm leading-relaxed text-slate-500 max-w-xs">
+              Plataforma de agentes de IA para WhatsApp, Instagram e sites. Automatize seu
+              atendimento e prospecção em minutos.
             </p>
-            <div className="mt-6 flex items-center gap-3">
-              {socials.map((s) => (
-                <Link
-                  key={s.label}
-                  href={s.href}
-                  aria-label={s.label}
-                  className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-500 shadow-sm hover:border-green-300 hover:text-green-600 hover:shadow-md transition-all"
-                >
-                  <s.Icon className="h-4 w-4" />
-                </Link>
-              ))}
-            </div>
           </div>
 
-          {columns.map((col) => (
-            <div key={col.title}>
-              <h4 className="text-xs font-bold uppercase tracking-widest text-slate-400 mb-4">
-                {col.title}
-              </h4>
-              <ul className="space-y-3">
-                {col.links.map((link) => (
-                  <li key={link.label}>
-                    <Link
-                      href={link.href}
-                      className="text-sm text-slate-600 hover:text-green-600 transition-colors"
-                    >
-                      {link.label}
-                    </Link>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          ))}
+          <div>
+            <h4 className="mb-4 text-sm font-semibold text-slate-900">Produto</h4>
+            <ul className="space-y-2.5">
+              {[
+                { href: '#features', label: 'Recursos' },
+                { href: '#how-it-works', label: 'Como funciona' },
+                { href: '#prospecting', label: 'Prospecção' },
+                { href: '#pricing', label: 'Preços' },
+              ].map((link) => (
+                <li key={link.href}>
+                  <Link href={link.href} className="text-sm text-slate-500 hover:text-blue-600 transition-colors">
+                    {link.label}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          <div>
+            <h4 className="mb-4 text-sm font-semibold text-slate-900">Conta</h4>
+            <ul className="space-y-2.5">
+              {[
+                { href: '/signup', label: 'Criar conta' },
+                { href: '/login', label: 'Entrar' },
+                { href: '/forgot-password', label: 'Recuperar senha' },
+              ].map((link) => (
+                <li key={link.href}>
+                  <Link href={link.href} className="text-sm text-slate-500 hover:text-blue-600 transition-colors">
+                    {link.label}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </div>
         </div>
 
-        <div className="mt-12 flex flex-col items-center justify-between gap-4 border-t border-slate-200 pt-8 sm:flex-row">
+        <div className="mt-10 flex flex-col items-center justify-between gap-4 border-t border-slate-200 pt-8 sm:flex-row">
           <p className="text-xs text-slate-400">
-            © {new Date().getFullYear()} White Zap. Todos os direitos reservados. Feito com ♥ no Brasil.
+            © {new Date().getFullYear()} White Zap. Todos os direitos reservados.
           </p>
-          <div className="flex items-center gap-1.5">
-            <span className="flex h-2 w-2 rounded-full bg-green-500 animate-pulse" />
-            <span className="text-xs text-slate-400">Todos os sistemas operacionais</span>
-          </div>
+          <p className="text-xs text-slate-400">
+            Pagamentos processados com segurança via Asaas · PIX e Cartão
+          </p>
         </div>
       </div>
     </footer>

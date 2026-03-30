@@ -13,13 +13,20 @@ import {
   ShieldAlert,
   CheckCircle2,
   XCircle,
+  Plus,
+  Coins,
+  X,
+  ShieldCheck,
+  QrCode,
 } from 'lucide-react'
+import Link from 'next/link'
 import { trpc } from '@/lib/trpc/client'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 type Interval = 'monthly' | 'yearly'
 type PlanSlug = 'starter' | 'pro'
+type BillingType = 'CREDIT_CARD' | 'PIX'
 
 // ─── Plan definitions ─────────────────────────────────────────────────────────
 
@@ -94,6 +101,60 @@ function StatusBadge({ status }: { status: string }) {
   )
 }
 
+
+// ─── Cancel Confirmation Modal ────────────────────────────────────────────────
+
+function CancelModal({
+  onConfirm,
+  onClose,
+  loading,
+}: {
+  onConfirm: () => void
+  onClose: () => void
+  loading: boolean
+}) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+      <div className="relative mx-4 w-full max-w-sm rounded-2xl border border-zinc-200 bg-white p-6 shadow-xl">
+        <button
+          onClick={onClose}
+          className="absolute right-4 top-4 rounded p-1 hover:bg-zinc-100"
+        >
+          <X className="h-4 w-4 text-zinc-500" />
+        </button>
+        <div className="flex flex-col items-center gap-4 text-center">
+          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-red-100">
+            <XCircle className="h-6 w-6 text-red-600" />
+          </div>
+          <div>
+            <p className="text-base font-bold text-zinc-900">Cancelar assinatura?</p>
+            <p className="mt-1.5 text-sm text-zinc-600">
+              Sua assinatura será cancelada imediatamente. Você perderá acesso aos recursos do plano.
+            </p>
+          </div>
+          <div className="flex w-full gap-3">
+            <button
+              onClick={onClose}
+              disabled={loading}
+              className="flex-1 rounded-xl border border-zinc-200 px-4 py-2.5 text-sm font-medium text-zinc-700 hover:bg-zinc-50 disabled:opacity-60"
+            >
+              Manter plano
+            </button>
+            <button
+              onClick={onConfirm}
+              disabled={loading}
+              className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-red-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-red-700 disabled:opacity-60"
+            >
+              {loading && <Loader2 className="h-4 w-4 animate-spin" />}
+              Cancelar
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // ─── Plan Card ────────────────────────────────────────────────────────────────
 
 function PlanCard({
@@ -101,6 +162,8 @@ function PlanCard({
   interval,
   currentPlanSlug,
   subscriptionStatus,
+  hasAsaasSub,
+  hasStripeSub,
   onSubscribe,
   onManage,
   loadingSlug,
@@ -110,7 +173,9 @@ function PlanCard({
   interval: Interval
   currentPlanSlug: string | null
   subscriptionStatus: string
-  onSubscribe: (slug: PlanSlug, interval: Interval) => void
+  hasAsaasSub: boolean
+  hasStripeSub: boolean
+  onSubscribe: (slug: PlanSlug, interval: Interval, billingType: BillingType) => void
   onManage: () => void
   loadingSlug: string | null
   loadingPortal: boolean
@@ -127,6 +192,8 @@ function PlanCard({
     : interval === 'yearly'
     ? PLAN_PRICES[slug as 'starter' | 'pro'].yearly
     : monthlyPrice
+
+  const manageLabel = hasAsaasSub ? 'Cancelar assinatura' : 'Gerenciar assinatura'
 
   return (
     <div
@@ -154,7 +221,9 @@ function PlanCard({
           ) : (
             <CreditCard className="h-5 w-5 text-indigo-600" />
           )}
-          <h3 className="text-lg font-bold capitalize">{slug === 'starter' ? 'Starter' : slug === 'pro' ? 'Pro' : 'Enterprise'}</h3>
+          <h3 className="text-lg font-bold capitalize">
+            {slug === 'starter' ? 'Starter' : slug === 'pro' ? 'Pro' : 'Enterprise'}
+          </h3>
           {isCurrent && hasActiveSub && (
             <span className="ml-auto rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-700">
               Plano atual
@@ -199,24 +268,44 @@ function PlanCard({
         <button
           onClick={onManage}
           disabled={loadingPortal}
-          className="flex w-full items-center justify-center gap-2 rounded-xl border border-zinc-300 bg-white px-4 py-2.5 text-sm font-semibold text-zinc-800 transition hover:bg-zinc-50 disabled:opacity-60"
-        >
-          {loadingPortal && <Loader2 className="h-4 w-4 animate-spin" />}
-          Gerenciar assinatura
-        </button>
-      ) : (
-        <button
-          onClick={() => onSubscribe(slug as PlanSlug, interval)}
-          disabled={loadingSlug !== null || loadingPortal}
-          className={`flex w-full items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold text-white transition disabled:opacity-60 ${
-            isPro
-              ? 'bg-indigo-600 hover:bg-indigo-700'
-              : 'bg-zinc-800 hover:bg-zinc-900'
+          className={`flex w-full items-center justify-center gap-2 rounded-xl border px-4 py-2.5 text-sm font-semibold transition disabled:opacity-60 ${
+            hasAsaasSub
+              ? 'border-red-200 bg-white text-red-600 hover:bg-red-50'
+              : 'border-zinc-300 bg-white text-zinc-800 hover:bg-zinc-50'
           }`}
         >
-          {loadingSlug === slug && <Loader2 className="h-4 w-4 animate-spin" />}
-          Assinar
+          {loadingPortal && <Loader2 className="h-4 w-4 animate-spin" />}
+          {manageLabel}
         </button>
+      ) : (
+        <div className="flex flex-col gap-2">
+          <button
+            onClick={() => onSubscribe(slug as PlanSlug, interval, 'CREDIT_CARD')}
+            disabled={loadingSlug !== null || loadingPortal}
+            className={`flex w-full items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold text-white transition disabled:opacity-60 ${
+              isPro ? 'bg-indigo-600 hover:bg-indigo-700' : 'bg-zinc-800 hover:bg-zinc-900'
+            }`}
+          >
+            {loadingSlug === `${slug}:CREDIT_CARD` ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <CreditCard className="h-4 w-4" />
+            )}
+            Cartão de crédito
+          </button>
+          <button
+            onClick={() => onSubscribe(slug as PlanSlug, interval, 'PIX')}
+            disabled={loadingSlug !== null || loadingPortal}
+            className="flex w-full items-center justify-center gap-2 rounded-xl border border-emerald-500 bg-white px-4 py-2.5 text-sm font-semibold text-emerald-700 transition hover:bg-emerald-50 disabled:opacity-60"
+          >
+            {loadingSlug === `${slug}:PIX` ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <QrCode className="h-4 w-4" />
+            )}
+            PIX
+          </button>
+        </div>
       )}
     </div>
   )
@@ -228,45 +317,79 @@ export function PlansManager({ blocked }: { blocked?: boolean }) {
   const [interval, setInterval] = useState<Interval>('monthly')
   const [loadingSlug, setLoadingSlug] = useState<string | null>(null)
   const [loadingPortal, setLoadingPortal] = useState(false)
+  const [loadingPackageId, setLoadingPackageId] = useState<string | null>(null)
+  const [showCancelModal, setShowCancelModal] = useState(false)
+  const [cancelSuccess, setCancelSuccess] = useState(false)
+  const [showCpfRequired, setShowCpfRequired] = useState(false)
 
-  const { data: subscription, isLoading } = trpc.billing.getSubscription.useQuery()
+  const { data: subscription, isLoading, refetch } = trpc.billing.getSubscription.useQuery()
+  const { data: creditPackages = [] } = trpc.billing.getCreditPackages.useQuery()
 
-  const createCheckout = trpc.billing.createCheckoutSession.useMutation({
+  // ── Asaas (primary) ────────────────────────────────────────────────────────
+  const createAsaasCheckout = trpc.billing.createAsaasCheckout.useMutation({
     onSuccess: ({ url }) => {
-      window.location.href = url
-    },
-    onError: (err) => {
-      alert(err.message)
       setLoadingSlug(null)
-    },
-  })
-
-  const createPortal = trpc.billing.createBillingPortal.useMutation({
-    onSuccess: ({ url }) => {
-      window.location.href = url
+      window.open(url, '_blank', 'noopener,noreferrer')
     },
     onError: (err) => {
-      alert(err.message)
-      setLoadingPortal(false)
+      setLoadingSlug(null)
+      if (err.message === 'CPF_REQUIRED') { setShowCpfRequired(true) } else { alert(`Erro: ${err.message}`) }
     },
   })
 
-  function handleSubscribe(planSlug: PlanSlug, planInterval: Interval) {
-    setLoadingSlug(planSlug)
-    createCheckout.mutate({ planSlug, interval: planInterval })
+  const createAsaasCreditCheckout = trpc.billing.createAsaasCreditCheckout.useMutation({
+    onSuccess: ({ url }) => {
+      setLoadingPackageId(null)
+      window.open(url, '_blank', 'noopener,noreferrer')
+    },
+    onError: (err) => {
+      setLoadingPackageId(null)
+      if (err.message === 'CPF_REQUIRED') { setShowCpfRequired(true) } else { alert(err.message) }
+    },
+  })
+
+  const cancelAsaasSub = trpc.billing.cancelAsaasSubscription.useMutation({
+    onSuccess: () => { setShowCancelModal(false); setLoadingPortal(false); setCancelSuccess(true); refetch() },
+    onError: (err) => { alert(err.message); setLoadingPortal(false) },
+  })
+
+  const createStripPortal = trpc.billing.createBillingPortal.useMutation({
+    onSuccess: ({ url }) => { window.location.href = url },
+    onError: (err) => { alert(err.message); setLoadingPortal(false) },
+  })
+
+  function handleSubscribe(planSlug: PlanSlug, planInterval: Interval, billingType: BillingType) {
+    setShowCpfRequired(false)
+    setLoadingSlug(`${planSlug}:${billingType}`)
+    createAsaasCheckout.mutate({ planSlug, interval: planInterval, billingType })
   }
 
   function handleManage() {
-    setLoadingPortal(true)
-    createPortal.mutate()
+    if (subscription?.asaas_subscription_id) { setShowCancelModal(true); return }
+    if (subscription?.stripe_subscription_id) { setLoadingPortal(true); createStripPortal.mutate() }
   }
 
+  function handleConfirmCancel() {
+    setLoadingPortal(true)
+    cancelAsaasSub.mutate()
+  }
+
+  function handleBuyCredits(packageId: string, billingType: BillingType) {
+    setShowCpfRequired(false)
+    setLoadingPackageId(`${packageId}:${billingType}`)
+    createAsaasCreditCheckout.mutate({ packageId, billingType })
+  }
+
+  // ── Derived state ──────────────────────────────────────────────────────────
   const currentPlanSlug = subscription?.plan?.slug ?? 'free'
   const subscriptionStatus = subscription?.subscription_status ?? 'free'
   const trialDaysLeft = getTrialDaysLeft(subscription?.trial_ends_at ?? null)
   const isPastDue = subscriptionStatus === 'past_due'
   const isCanceled = subscriptionStatus === 'canceled'
   const isTrialing = subscriptionStatus === 'trialing' && trialDaysLeft !== null && trialDaysLeft > 0
+  const hasAsaasSub = !!subscription?.asaas_subscription_id
+  const hasStripeSub = !!subscription?.stripe_subscription_id
+  const hasAnySub = hasAsaasSub || hasStripeSub
 
   if (isLoading) {
     return (
@@ -278,6 +401,35 @@ export function PlansManager({ blocked }: { blocked?: boolean }) {
 
   return (
     <div className="space-y-6">
+      {/* CPF required banner */}
+      {showCpfRequired && (
+        <div className="flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50 p-4">
+          <ShieldCheck className="mt-0.5 h-5 w-5 shrink-0 text-amber-600" />
+          <div className="flex-1">
+            <p className="font-semibold text-amber-900">CPF ou CNPJ necessário</p>
+            <p className="mt-0.5 text-sm text-amber-800">
+              Cadastre seu CPF ou CNPJ antes de continuar. Acesse{' '}
+              <Link href="/settings" className="font-semibold underline underline-offset-2 hover:opacity-80">
+                Configurações → Organização
+              </Link>{' '}
+              e preencha os dados fiscais. Após salvar, volte aqui e tente novamente.
+            </p>
+          </div>
+          <button onClick={() => setShowCpfRequired(false)} className="rounded p-1 hover:bg-amber-100">
+            <X className="h-4 w-4 text-amber-600" />
+          </button>
+        </div>
+      )}
+
+      {/* Cancel modal */}
+      {showCancelModal && (
+        <CancelModal
+          onConfirm={handleConfirmCancel}
+          onClose={() => setShowCancelModal(false)}
+          loading={loadingPortal}
+        />
+      )}
+
       {/* Blocked access banner */}
       {blocked && (
         <div className="flex items-start gap-3 rounded-xl border border-red-200 bg-red-50 p-4">
@@ -297,16 +449,10 @@ export function PlansManager({ blocked }: { blocked?: boolean }) {
           <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-red-600" />
           <div className="flex-1">
             <p className="font-semibold text-red-800">Pagamento pendente</p>
-            <p className="mt-0.5 text-sm text-red-700">Atualize seu método de pagamento para evitar a suspensão do acesso.</p>
+            <p className="mt-0.5 text-sm text-red-700">
+              Seu pagamento está em atraso. Acesse o link de pagamento enviado por e-mail para regularizar sua situação.
+            </p>
           </div>
-          <button
-            onClick={handleManage}
-            disabled={loadingPortal}
-            className="flex shrink-0 items-center gap-1.5 rounded-lg bg-red-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-red-700 disabled:opacity-60"
-          >
-            {loadingPortal && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
-            Atualizar pagamento
-          </button>
         </div>
       )}
 
@@ -324,7 +470,7 @@ export function PlansManager({ blocked }: { blocked?: boolean }) {
         </div>
       )}
 
-      {/* Success banner */}
+      {/* Subscription success banner */}
       {typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('success') === '1' && (
         <div className="flex items-center gap-3 rounded-xl border border-emerald-200 bg-emerald-50 p-4">
           <CheckCircle2 className="h-5 w-5 shrink-0 text-emerald-600" />
@@ -334,8 +480,16 @@ export function PlansManager({ blocked }: { blocked?: boolean }) {
         </div>
       )}
 
+      {/* Cancel success banner */}
+      {cancelSuccess && (
+        <div className="flex items-center gap-3 rounded-xl border border-zinc-200 bg-zinc-50 p-4">
+          <CheckCircle2 className="h-5 w-5 shrink-0 text-zinc-500" />
+          <p className="text-sm font-medium text-zinc-700">Assinatura cancelada com sucesso.</p>
+        </div>
+      )}
+
       {/* Canceled info */}
-      {isCanceled && (
+      {isCanceled && !cancelSuccess && (
         <div className="flex items-center gap-3 rounded-xl border border-zinc-200 bg-zinc-50 p-4">
           <XCircle className="h-5 w-5 shrink-0 text-zinc-500" />
           <p className="text-sm text-zinc-700">
@@ -350,7 +504,9 @@ export function PlansManager({ blocked }: { blocked?: boolean }) {
         <div className="flex flex-wrap items-center gap-4">
           <div>
             <p className="text-sm text-zinc-500">Plano</p>
-            <p className="mt-0.5 text-xl font-bold capitalize text-zinc-900">{subscription?.plan?.name ?? 'Free'}</p>
+            <p className="mt-0.5 text-xl font-bold capitalize text-zinc-900">
+              {subscription?.plan?.name ?? 'Free'}
+            </p>
           </div>
           <div>
             <p className="text-sm text-zinc-500">Status</p>
@@ -372,15 +528,19 @@ export function PlansManager({ blocked }: { blocked?: boolean }) {
               </p>
             </div>
           )}
-          {subscription?.stripe_subscription_id && (
+          {hasAnySub && (
             <div className="ml-auto">
               <button
                 onClick={handleManage}
                 disabled={loadingPortal}
-                className="flex items-center gap-1.5 rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-50 disabled:opacity-60"
+                className={`flex items-center gap-1.5 rounded-lg border px-3 py-2 text-sm font-medium transition disabled:opacity-60 ${
+                  hasAsaasSub
+                    ? 'border-red-200 bg-white text-red-600 hover:bg-red-50'
+                    : 'border-zinc-300 bg-white text-zinc-700 hover:bg-zinc-50'
+                }`}
               >
                 {loadingPortal && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
-                Gerenciar assinatura
+                {hasAsaasSub ? 'Cancelar assinatura' : 'Gerenciar assinatura'}
               </button>
             </div>
           )}
@@ -422,6 +582,8 @@ export function PlansManager({ blocked }: { blocked?: boolean }) {
             interval={interval}
             currentPlanSlug={currentPlanSlug}
             subscriptionStatus={subscriptionStatus}
+            hasAsaasSub={hasAsaasSub}
+            hasStripeSub={hasStripeSub}
             onSubscribe={handleSubscribe}
             onManage={handleManage}
             loadingSlug={loadingSlug}
@@ -431,9 +593,97 @@ export function PlansManager({ blocked }: { blocked?: boolean }) {
       </div>
 
       <p className="text-center text-xs text-zinc-400">
-        Todos os planos incluem 7 dias de trial gratuito. Cancele a qualquer momento sem multa.
-        Preços em BRL.
+        Aceita PIX e cartão de crédito. Cancele a qualquer momento sem multa. Preços em BRL.
       </p>
+
+      {/* Credit packages */}
+      {creditPackages.length > 0 && (
+        <div className="rounded-2xl border border-zinc-200 bg-white p-6 space-y-4">
+          <div className="flex items-center gap-2">
+            <Coins className="h-5 w-5 text-indigo-600" />
+            <div>
+              <h2 className="text-lg font-bold text-zinc-900">Comprar créditos adicionais</h2>
+              <p className="text-sm text-zinc-500">
+                Adquira créditos extras via PIX ou cartão de crédito. Sem renovação automática.
+              </p>
+            </div>
+          </div>
+
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            {creditPackages.map((pkg) => {
+              const total = pkg.credits + (pkg.bonus_credits ?? 0)
+              const priceReais = (pkg.price / 100).toLocaleString('pt-BR', {
+                style: 'currency',
+                currency: 'BRL',
+                minimumFractionDigits: 0,
+              })
+              const isLoadingCard = loadingPackageId === `${pkg.id}:CREDIT_CARD`
+              const isLoadingPix = loadingPackageId === `${pkg.id}:PIX`
+              const anyLoading = loadingPackageId !== null
+
+              return (
+                <div
+                  key={pkg.id}
+                  className="flex flex-col rounded-xl border border-zinc-200 p-4 hover:border-indigo-300 hover:shadow-sm transition-all"
+                >
+                  <p className="text-sm font-semibold text-zinc-800">{pkg.name}</p>
+                  <p className="mt-1 text-2xl font-bold text-zinc-900">
+                    {pkg.credits.toLocaleString('pt-BR')}
+                    <span className="text-sm font-normal text-zinc-500"> créditos</span>
+                  </p>
+                  {(pkg.bonus_credits ?? 0) > 0 && (
+                    <p className="mt-0.5 text-xs font-medium text-emerald-600">
+                      + {pkg.bonus_credits.toLocaleString('pt-BR')} bônus = {total.toLocaleString('pt-BR')} total
+                    </p>
+                  )}
+                  <p className="mt-3 text-lg font-bold text-indigo-600">{priceReais}</p>
+                  <div className="mt-3 flex flex-col gap-2">
+                    <button
+                      onClick={() => handleBuyCredits(pkg.id, 'CREDIT_CARD')}
+                      disabled={anyLoading}
+                      className="flex w-full items-center justify-center gap-1.5 rounded-lg bg-indigo-600 px-3 py-2 text-sm font-semibold text-white hover:bg-indigo-700 disabled:opacity-60 transition-colors"
+                    >
+                      {isLoadingCard ? (
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      ) : (
+                        <CreditCard className="h-3.5 w-3.5" />
+                      )}
+                      Cartão
+                    </button>
+                    <button
+                      onClick={() => handleBuyCredits(pkg.id, 'PIX')}
+                      disabled={anyLoading}
+                      className="flex w-full items-center justify-center gap-1.5 rounded-lg border border-emerald-500 bg-white px-3 py-2 text-sm font-semibold text-emerald-700 hover:bg-emerald-50 disabled:opacity-60 transition-colors"
+                    >
+                      {isLoadingPix ? (
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      ) : (
+                        <QrCode className="h-3.5 w-3.5" />
+                      )}
+                      PIX
+                    </button>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+
+          <p className="text-xs text-zinc-400">
+            Créditos adicionados automaticamente após confirmação do pagamento.
+          </p>
+        </div>
+      )}
+
+      {/* Credits purchased success banner */}
+      {typeof window !== 'undefined' &&
+        new URLSearchParams(window.location.search).get('credits_success') === '1' && (
+          <div className="flex items-center gap-3 rounded-xl border border-emerald-200 bg-emerald-50 p-4">
+            <CheckCircle2 className="h-5 w-5 shrink-0 text-emerald-600" />
+            <p className="text-sm font-medium text-emerald-800">
+              Créditos adicionados com sucesso! O saldo será atualizado em instantes.
+            </p>
+          </div>
+        )}
     </div>
   )
 }

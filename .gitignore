@@ -44,3 +44,15 @@ coverage
 # Misc
 *.pem
 .vercel
+
+.vercel
+
+# Migration scripts with credentials
+run-migration*.mjs
+verify-db.mjs
+test-auth.mjs
+supabase_*.sql
+.env.local
+apps/web/.env.local
+apps/worker/.env.local
+apps/worker/.env

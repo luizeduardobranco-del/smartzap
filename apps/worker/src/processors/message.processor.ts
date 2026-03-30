@@ -62,6 +62,20 @@ export async function processMessage(job: Job<MessageJobData>, db: Database): Pr
   // 5. RAG: retrieve relevant knowledge chunks
   const retrievedContext = await retrieveContext(db, agentId, userMessageContent)
 
+  // 5b. Funnel context: check if contact is in an active funnel stage
+  const [conv] = await db
+    .select({ contactId: conversations.contactId })
+    .from(conversations)
+    .where(eq(conversations.id, conversationId))
+    .limit(1)
+
+  const funnelContext = conv?.contactId
+    ? await retrieveFunnelContext(db, conv.contactId)
+    : undefined
+
+  // Combine funnel context with RAG context
+  const combinedContext = [funnelContext, retrievedContext].filter(Boolean).join('\n\n---\n\n') || undefined
+
   // 6. Run AI agent
   const aiConfig = agent.aiConfig as Parameters<typeof runAgent>[0]['aiConfig']
   const personality = agent.personality as Parameters<typeof runAgent>[0]['personality']
@@ -73,7 +87,7 @@ export async function processMessage(job: Job<MessageJobData>, db: Database): Pr
     behaviorConfig,
     conversationHistory,
     userMessage: userMessageContent,
-    retrievedContext,
+    retrievedContext: combinedContext,
     env: {
       openaiApiKey: process.env.OPENAI_API_KEY,
       anthropicApiKey: process.env.ANTHROPIC_API_KEY,
@@ -142,6 +156,63 @@ export async function processMessage(job: Job<MessageJobData>, db: Database): Pr
       .update(conversations)
       .set({ mode: 'human' })
       .where(eq(conversations.id, conversationId))
+  }
+}
+
+async function retrieveFunnelContext(
+  db: Database,
+  contactId: string
+): Promise<string | undefined> {
+  try {
+    const result = await db.execute(
+      sql`
+        SELECT
+          f.name        AS funnel_name,
+          fs.name       AS stage_name,
+          fs.messages   AS stage_messages,
+          fc.next_message_index,
+          fc.status
+        FROM funnel_contacts fc
+        JOIN funnels f  ON f.id  = fc.funnel_id
+        JOIN funnel_stages fs ON fs.id = fc.stage_id
+        WHERE fc.contact_id = ${contactId}
+          AND fc.status IN ('active', 'waiting')
+        ORDER BY fc.entered_stage_at DESC
+        LIMIT 1
+      `
+    )
+
+    if (!result.rows.length) return undefined
+
+    const row = result.rows[0] as any
+    const stageMessages: any[] = row.stage_messages ?? []
+    const sentCount: number = row.next_message_index ?? 0
+    const sentMessages = stageMessages.slice(0, sentCount)
+
+    let context = `## Contexto do Funil de Prospecção\n`
+    context += `Este lead está sendo trabalhado no funil **"${row.funnel_name}"**.\n`
+    context += `Etapa atual: **${row.stage_name}**\n`
+
+    if (sentMessages.length > 0) {
+      context += `\nMensagens já enviadas automaticamente pelo funil para este contato:\n`
+      sentMessages.forEach((m: any, i: number) => {
+        if (m.type === 'text') {
+          context += `${i + 1}. "${m.content}"\n`
+        } else {
+          context += `${i + 1}. [${m.type === 'image' ? 'Imagem' : 'Áudio'} enviado]\n`
+        }
+      })
+    }
+
+    context += `\nIMPORTANTE: Você já iniciou contato com este lead via sequência automática do funil. `
+    context += `Continue a conversa de forma coerente com o que foi enviado. `
+    context += `Não repita as mesmas abordagens iniciais. `
+    context += `Seu objetivo nesta etapa é: ${row.stage_name === 'Novo Lead' ? 'qualificar o interesse' : row.stage_name === 'Primeiro Contato' ? 'entender a necessidade e apresentar a solução' : row.stage_name === 'Qualificado' ? 'agendar reunião ou demonstração' : row.stage_name === 'Proposta' ? 'tirar dúvidas e fechar o negócio' : 'dar suporte e fidelizar o cliente'}.`
+
+    return context
+  } catch (err) {
+    console.error('[message.processor] retrieveFunnelContext failed:', err)
+    return undefined
   }
 }
 

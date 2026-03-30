@@ -43,6 +43,40 @@ export async function POST(request: NextRequest) {
           break
         }
 
+        // ── Credit package purchase (one-time payment) ──
+        if (session.mode === 'payment' && session.metadata?.type === 'credit_purchase') {
+          const credits = parseInt(session.metadata.credits ?? '0')
+          const bonusCredits = parseInt(session.metadata.bonus_credits ?? '0')
+          const totalCredits = credits + bonusCredits
+
+          const { data: org } = await supabase
+            .from('organizations')
+            .select('credits_balance')
+            .eq('id', orgId)
+            .single()
+
+          const newBalance = ((org?.credits_balance as number) ?? 0) + totalCredits
+
+          await supabase
+            .from('organizations')
+            .update({ credits_balance: newBalance })
+            .eq('id', orgId)
+
+          await supabase.from('credit_transactions').insert({
+            organization_id: orgId,
+            type: 'purchase',
+            amount: totalCredits,
+            balance_after: newBalance,
+            description: `Compra de ${totalCredits.toLocaleString('pt-BR')} créditos`,
+            reference_id: session.id,
+            reference_type: 'stripe_checkout',
+          })
+
+          console.log('[webhook/stripe] credit_purchase: added', totalCredits, 'credits to org', orgId)
+          break
+        }
+
+        // ── Subscription checkout ──
         const subscriptionId = session.subscription as string
         const customerId = session.customer as string
 
