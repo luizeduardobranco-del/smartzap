@@ -568,7 +568,7 @@ function ProspectingSection() {
             </p>
           </div>
 
-          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="grid gap-6 sm:grid-cols-2 max-w-2xl mx-auto w-full">
             {extractionSources.map((s) => (
               <div
                 key={s.title}
