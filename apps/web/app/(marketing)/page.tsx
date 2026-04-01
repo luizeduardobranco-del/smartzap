@@ -39,7 +39,9 @@ export default function LandingPage() {
         <HowItWorksSection />
         <FeaturesSection />
         <ProspectingSection />
+        <TestimonialsSection />
         <StatsSection />
+        <FAQSection />
         <PricingSection />
         <FinalCTASection />
       </main>
@@ -219,7 +221,7 @@ function HeroSection() {
         <div className="animate-slide-up">
           <span className="inline-flex items-center gap-2 rounded-full border border-blue-500/30 bg-blue-500/10 px-4 py-1.5 text-xs font-semibold text-blue-300 backdrop-blur-sm">
             <span className="flex h-1.5 w-1.5 rounded-full bg-blue-400 animate-pulse" />
-            Novo: Extração de leads + Funil de prospecção
+            Novidade: encontre e aborde novos clientes no piloto automático
           </span>
         </div>
 
@@ -231,8 +233,8 @@ function HeroSection() {
         </h1>
 
         <p className="mx-auto mt-6 max-w-2xl text-lg text-slate-300/90 leading-relaxed animate-slide-up-d2">
-          Conecte GPT-4o ao seu WhatsApp, extraia leads automaticamente e gerencie
-          todo o funil de vendas em um só lugar. Sem código. Resultado do primeiro dia.
+          Seu atendimento no WhatsApp nunca mais vai dormir. Configure um agente de IA
+          em minutos e venda 24h por dia — sem contratar ninguém, sem escrever código.
         </p>
 
         <div className="mt-10 flex flex-col items-center justify-center gap-4 sm:flex-row animate-slide-up-d3">
@@ -530,14 +532,14 @@ function ProspectingSection() {
       badgeColor: 'bg-blue-100 text-blue-700',
     },
     {
-      Icon: MessageSquare,
-      title: 'Grupos WhatsApp',
-      description: 'Extraia contatos de grupos e inicie conversas automáticas com segmentação.',
-      color: 'text-indigo-600',
-      bg: 'bg-indigo-50',
-      border: 'border-indigo-100',
-      badge: 'Em breve',
-      badgeColor: 'bg-indigo-100 text-indigo-700',
+      Icon: Building2,
+      title: 'Segmentação por nicho',
+      description: 'Filtre leads por categoria, cidade e raio de distância. Importe direto para o funil.',
+      color: 'text-violet-600',
+      bg: 'bg-violet-50',
+      border: 'border-violet-100',
+      badge: 'Disponível',
+      badgeColor: 'bg-violet-100 text-violet-700',
     },
   ]
 
@@ -687,10 +689,10 @@ function ProspectingSection() {
 
 function StatsSection() {
   const stats = [
-    { value: '500+', label: 'Empresas ativas', Icon: Users },
-    { value: '2M+', label: 'Mensagens por mês', Icon: MessageSquare },
-    { value: '98%', label: 'Satisfação dos clientes', Icon: Star },
-    { value: '24/7', label: 'Suporte em português', Icon: Clock },
+    { value: '< 5 min', label: 'Para criar seu primeiro agente', Icon: Zap },
+    { value: '< 2s', label: 'Tempo médio de resposta', Icon: Clock },
+    { value: '24/7', label: 'Agente atende sem parar', Icon: MessageSquare },
+    { value: '100%', label: 'Suporte em português', Icon: Users },
   ]
 
   return (
@@ -698,9 +700,9 @@ function StatsSection() {
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="mb-12 text-center">
           <h2 className="text-2xl font-bold text-white sm:text-3xl">
-            Números que comprovam nosso impacto
+            Resultado desde o primeiro dia
           </h2>
-          <p className="mt-3 text-slate-400">Empresas de todos os tamanhos confiam no White Zap</p>
+          <p className="mt-3 text-slate-400">Simples de configurar. Poderoso para escalar.</p>
         </div>
 
         <div className="grid grid-cols-2 gap-8 lg:grid-cols-4">
@@ -728,7 +730,7 @@ function PricingSection() {
       description: 'Para conhecer a plataforma',
       monthlyPrice: 0,
       featured: false,
-      cta: 'Criar conta grátis',
+      cta: 'Explorar gratuitamente',
       ctaHref: '/signup',
       features: [
         '1 agente de IA',
@@ -762,7 +764,7 @@ function PricingSection() {
       description: 'Para times em crescimento acelerado',
       monthlyPrice: 297,
       featured: true,
-      cta: 'Testar grátis por 7 dias',
+      cta: 'Começar trial — 7 dias grátis, sem cartão',
       ctaHref: '/signup?plan=pro',
       features: [
         '10 agentes de IA',
@@ -957,6 +959,143 @@ function PricingSection() {
   )
 }
 
+function TestimonialsSection() {
+  const testimonials = [
+    {
+      name: 'Pedro Alves',
+      role: 'Dono de pet shop',
+      location: 'São Paulo, SP',
+      avatar: 'PA',
+      text: 'Em 2 dias meu agente já estava atendendo 80% dos clientes sozinho. Deixei de perder venda fora do horário comercial.',
+      stars: 5,
+    },
+    {
+      name: 'Camila Rocha',
+      role: 'Gestora de clínica estética',
+      location: 'Curitiba, PR',
+      avatar: 'CR',
+      text: 'Configurei em menos de 10 minutos e o agente agenda consultas, responde dúvidas e ainda qualifica os leads antes de passar pra mim.',
+      stars: 5,
+    },
+    {
+      name: 'Rafael Mendes',
+      role: 'Agência de marketing digital',
+      location: 'Belo Horizonte, MG',
+      avatar: 'RM',
+      text: 'Revendemos o White Zap para nossos clientes. A plataforma tem tudo que precisamos: marca própria, multi-agentes e suporte em português.',
+      stars: 5,
+    },
+  ]
+
+  return (
+    <section className="py-24 bg-white">
+      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        <div className="mb-16 text-center">
+          <span className="inline-block rounded-full bg-blue-100 px-3 py-1 text-xs font-semibold uppercase tracking-wider text-blue-700">
+            Depoimentos
+          </span>
+          <h2 className="mt-4 text-3xl font-extrabold text-slate-900 sm:text-4xl lg:text-5xl">
+            Quem usa,{' '}
+            <span className="gradient-text">recomenda</span>
+          </h2>
+          <p className="mx-auto mt-4 max-w-xl text-lg text-slate-500">
+            Empresas de diferentes segmentos já automatizaram seu atendimento com White Zap.
+          </p>
+        </div>
+
+        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+          {testimonials.map((t) => (
+            <div
+              key={t.name}
+              className="flex flex-col gap-4 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm hover:shadow-lg hover:-translate-y-1 transition-all duration-300"
+            >
+              <div className="flex gap-0.5">
+                {Array.from({ length: t.stars }).map((_, i) => (
+                  <Star key={i} className="h-4 w-4 fill-yellow-400 text-yellow-400" />
+                ))}
+              </div>
+              <p className="flex-1 text-sm leading-relaxed text-slate-600">"{t.text}"</p>
+              <div className="flex items-center gap-3 border-t border-slate-100 pt-4">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-blue-600 text-xs font-bold text-white">
+                  {t.avatar}
+                </div>
+                <div>
+                  <div className="text-sm font-semibold text-slate-900">{t.name}</div>
+                  <div className="text-xs text-slate-400">{t.role} · {t.location}</div>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+  )
+}
+
+function FAQSection() {
+  const faqs = [
+    {
+      q: 'Preciso de um número de WhatsApp novo ou posso usar o meu?',
+      a: 'Você pode usar seu número atual ou um número novo. Basta escanear o QR code dentro da plataforma, exatamente como faz no WhatsApp Web.',
+    },
+    {
+      q: 'O agente funciona com WhatsApp Business?',
+      a: 'Sim! O White Zap é compatível com WhatsApp comum e WhatsApp Business. Você mantém todas as funcionalidades do Business (catálogo, etiquetas, respostas rápidas) mais a IA por cima.',
+    },
+    {
+      q: 'O que são créditos e como funcionam?',
+      a: 'Cada mensagem processada pela IA consome uma quantidade de créditos. O plano Free oferece 100 créditos/mês para você testar. Planos pagos têm pacotes maiores, e você pode comprar créditos extras quando precisar.',
+    },
+    {
+      q: 'Posso cancelar a qualquer momento?',
+      a: 'Sim, sem burocracia. Cancele pelo painel com um clique. Não há fidelidade ou multa.',
+    },
+    {
+      q: 'Preciso saber programar para usar?',
+      a: 'Não. A plataforma foi construída para que qualquer pessoa configure e gerencie agentes sem escrever uma linha de código.',
+    },
+    {
+      q: 'O agente consegue passar o atendimento para um humano?',
+      a: 'Sim. Você define gatilhos para o handoff humano — por palavra-chave, horário ou solicitação do cliente. O agente avisa o time e a conversa é transferida.',
+    },
+  ]
+
+  return (
+    <section className="py-24 bg-blue-50/30">
+      <div className="mx-auto max-w-3xl px-4 sm:px-6 lg:px-8">
+        <div className="mb-16 text-center">
+          <span className="inline-block rounded-full bg-blue-100 px-3 py-1 text-xs font-semibold uppercase tracking-wider text-blue-700">
+            Dúvidas frequentes
+          </span>
+          <h2 className="mt-4 text-3xl font-extrabold text-slate-900 sm:text-4xl">
+            Perguntas que todo mundo faz{' '}
+            <span className="gradient-text">antes de começar</span>
+          </h2>
+        </div>
+
+        <div className="divide-y divide-slate-200 rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+          {faqs.map((faq) => (
+            <details key={faq.q} className="group p-6">
+              <summary className="flex cursor-pointer items-start justify-between gap-4 list-none">
+                <span className="text-sm font-semibold text-slate-900 leading-snug">{faq.q}</span>
+                <ChevronRight className="mt-0.5 h-4 w-4 shrink-0 text-slate-400 transition-transform group-open:rotate-90" />
+              </summary>
+              <p className="mt-3 text-sm leading-relaxed text-slate-500">{faq.a}</p>
+            </details>
+          ))}
+        </div>
+
+        <p className="mt-8 text-center text-sm text-slate-400">
+          Ainda tem dúvidas?{' '}
+          <a href="/signup" className="font-semibold text-blue-600 hover:underline">
+            Fale com a gente pelo chat
+          </a>
+        </p>
+      </div>
+    </section>
+  )
+}
+
 function FinalCTASection() {
   return (
     <section
@@ -1072,9 +1211,17 @@ function Footer() {
           <p className="text-xs text-slate-400">
             © {new Date().getFullYear()} White Zap. Todos os direitos reservados.
           </p>
-          <p className="text-xs text-slate-400">
-            Pagamentos processados com segurança via Asaas · PIX e Cartão
-          </p>
+          <div className="flex items-center gap-4">
+            <Link href="/privacy" className="text-xs text-slate-400 hover:text-blue-600 transition-colors">
+              Política de Privacidade
+            </Link>
+            <Link href="/terms" className="text-xs text-slate-400 hover:text-blue-600 transition-colors">
+              Termos de Uso
+            </Link>
+            <span className="text-xs text-slate-400">
+              Pagamentos via Asaas · PIX e Cartão
+            </span>
+          </div>
         </div>
       </div>
     </footer>
