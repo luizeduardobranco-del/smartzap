@@ -131,10 +131,18 @@ export const couponsRouter = router({
     .input(z.object({ id: z.string().uuid() }))
     .mutation(async ({ ctx, input }) => {
       const db = getServiceClient()
-      const { error } = await db.rpc('increment_coupon_uses', { coupon_id: input.id }).throwOnError()
+      const { error } = await db.rpc('increment_coupon_uses', { coupon_id: input.id })
       if (error) {
-        // Fallback: manual increment
-        await db.from('coupons').update({ uses_count: db.from('coupons').select('uses_count') }).eq('id', input.id)
+        // Fallback: read current count and increment manually
+        const { data: coupon } = await db
+          .from('coupons')
+          .select('uses_count')
+          .eq('id', input.id)
+          .single()
+        await db
+          .from('coupons')
+          .update({ uses_count: (coupon?.uses_count ?? 0) + 1 })
+          .eq('id', input.id)
       }
       return { success: true }
     }),

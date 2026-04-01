@@ -18,6 +18,8 @@ import {
   X,
   ShieldCheck,
   QrCode,
+  Tag,
+  ChevronDown,
 } from 'lucide-react'
 import Link from 'next/link'
 import { trpc } from '@/lib/trpc/client'
@@ -168,6 +170,7 @@ function PlanCard({
   onManage,
   loadingSlug,
   loadingPortal,
+  appliedCoupon,
 }: {
   slug: 'starter' | 'pro' | 'enterprise'
   interval: Interval
@@ -179,6 +182,7 @@ function PlanCard({
   onManage: () => void
   loadingSlug: string | null
   loadingPortal: boolean
+  appliedCoupon: AppliedCoupon | null
 }) {
   const isEnterprise = slug === 'enterprise'
   const isPro = slug === 'pro'
@@ -235,10 +239,22 @@ function PlanCard({
           {isEnterprise ? (
             <p className="text-2xl font-bold text-zinc-800">Personalizado</p>
           ) : (
-            <div className="flex items-end gap-1">
-              <span className="text-3xl font-bold text-zinc-900">{formatCurrency(displayPrice!)}</span>
-              <span className="mb-1 text-sm text-zinc-500">/mês</span>
-            </div>
+            <>
+              {appliedCoupon ? (
+                <div className="flex items-end gap-2">
+                  <span className="text-3xl font-bold text-indigo-600">
+                    {formatCurrency(calcDiscount(displayPrice!, appliedCoupon))}
+                  </span>
+                  <span className="mb-1 text-sm text-zinc-400 line-through">{formatCurrency(displayPrice!)}</span>
+                  <span className="mb-1 text-sm text-zinc-500">/mês</span>
+                </div>
+              ) : (
+                <div className="flex items-end gap-1">
+                  <span className="text-3xl font-bold text-zinc-900">{formatCurrency(displayPrice!)}</span>
+                  <span className="mb-1 text-sm text-zinc-500">/mês</span>
+                </div>
+              )}
+            </>
           )}
           {!isEnterprise && interval === 'yearly' && (
             <p className="mt-0.5 text-xs text-emerald-600 font-medium">
@@ -313,6 +329,13 @@ function PlanCard({
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 
+type AppliedCoupon = { id: string; code: string; type: 'percentage' | 'fixed'; value: number; description?: string }
+
+function calcDiscount(price: number, coupon: AppliedCoupon): number {
+  if (coupon.type === 'percentage') return Math.max(0, price * (1 - coupon.value / 100))
+  return Math.max(0, price - coupon.value)
+}
+
 export function PlansManager({ blocked }: { blocked?: boolean }) {
   const [interval, setInterval] = useState<Interval>('monthly')
   const [loadingSlug, setLoadingSlug] = useState<string | null>(null)
@@ -322,8 +345,16 @@ export function PlansManager({ blocked }: { blocked?: boolean }) {
   const [cancelSuccess, setCancelSuccess] = useState(false)
   const [showCpfRequired, setShowCpfRequired] = useState(false)
 
+  // Coupon state
+  const [showCouponInput, setShowCouponInput] = useState(false)
+  const [couponInput, setCouponInput] = useState('')
+  const [appliedCoupon, setAppliedCoupon] = useState<AppliedCoupon | null>(null)
+  const [couponLoading, setCouponLoading] = useState(false)
+  const [couponError, setCouponError] = useState<string | null>(null)
+
   const { data: subscription, isLoading, refetch } = trpc.billing.getSubscription.useQuery()
   const { data: creditPackages = [] } = trpc.billing.getCreditPackages.useQuery()
+  const utils = trpc.useUtils()
 
   // ── Asaas (primary) ────────────────────────────────────────────────────────
   const createAsaasCheckout = trpc.billing.createAsaasCheckout.useMutation({
@@ -358,10 +389,39 @@ export function PlansManager({ blocked }: { blocked?: boolean }) {
     onError: (err) => { alert(err.message); setLoadingPortal(false) },
   })
 
+  async function handleApplyCoupon() {
+    const code = couponInput.trim()
+    if (!code) return
+    setCouponLoading(true)
+    setCouponError(null)
+    try {
+      const result = await utils.coupons.validate.fetch({ code, applicableTo: 'all' })
+      if (result.valid && result.coupon) {
+        setAppliedCoupon(result.coupon as AppliedCoupon)
+        setCouponError(null)
+      } else {
+        setAppliedCoupon(null)
+        setCouponError((result as any).reason ?? 'Cupom inválido')
+      }
+    } catch {
+      setAppliedCoupon(null)
+      setCouponError('Erro ao validar cupom. Tente novamente.')
+    } finally {
+      setCouponLoading(false)
+    }
+  }
+
+  function handleRemoveCoupon() {
+    setAppliedCoupon(null)
+    setCouponInput('')
+    setCouponError(null)
+    setShowCouponInput(false)
+  }
+
   function handleSubscribe(planSlug: PlanSlug, planInterval: Interval, billingType: BillingType) {
     setShowCpfRequired(false)
     setLoadingSlug(`${planSlug}:${billingType}`)
-    createAsaasCheckout.mutate({ planSlug, interval: planInterval, billingType })
+    createAsaasCheckout.mutate({ planSlug, interval: planInterval, billingType, couponCode: appliedCoupon?.code })
   }
 
   function handleManage() {
@@ -377,7 +437,7 @@ export function PlansManager({ blocked }: { blocked?: boolean }) {
   function handleBuyCredits(packageId: string, billingType: BillingType) {
     setShowCpfRequired(false)
     setLoadingPackageId(`${packageId}:${billingType}`)
-    createAsaasCreditCheckout.mutate({ packageId, billingType })
+    createAsaasCreditCheckout.mutate({ packageId, billingType, couponCode: appliedCoupon?.code })
   }
 
   // ── Derived state ──────────────────────────────────────────────────────────
@@ -573,6 +633,54 @@ export function PlansManager({ blocked }: { blocked?: boolean }) {
         </div>
       </div>
 
+      {/* Coupon input */}
+      <div className="flex flex-col items-center gap-2">
+        {appliedCoupon ? (
+          <div className="flex items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-2.5 text-sm">
+            <Tag className="h-4 w-4 text-emerald-600" />
+            <span className="font-semibold text-emerald-800">{appliedCoupon.code}</span>
+            <span className="text-emerald-700">
+              — {appliedCoupon.type === 'percentage' ? `${appliedCoupon.value}% de desconto` : `R$ ${appliedCoupon.value} de desconto`}
+            </span>
+            <button onClick={handleRemoveCoupon} className="ml-1 rounded p-0.5 hover:bg-emerald-100">
+              <X className="h-3.5 w-3.5 text-emerald-600" />
+            </button>
+          </div>
+        ) : showCouponInput ? (
+          <div className="flex w-full max-w-sm flex-col gap-1.5">
+            <div className="flex gap-2">
+              <input
+                value={couponInput}
+                onChange={(e) => { setCouponInput(e.target.value.toUpperCase()); setCouponError(null) }}
+                onKeyDown={(e) => e.key === 'Enter' && handleApplyCoupon()}
+                placeholder="CÓDIGO DO CUPOM"
+                className="flex-1 rounded-xl border px-3 py-2 text-sm font-mono uppercase tracking-wider outline-none focus:ring-2 focus:ring-indigo-300"
+              />
+              <button
+                onClick={handleApplyCoupon}
+                disabled={couponLoading || !couponInput.trim()}
+                className="flex items-center gap-1.5 rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700 disabled:opacity-60"
+              >
+                {couponLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : 'Aplicar'}
+              </button>
+              <button onClick={() => { setShowCouponInput(false); setCouponError(null) }} className="rounded-xl border px-3 py-2 text-sm hover:bg-zinc-50">
+                <X className="h-4 w-4 text-zinc-500" />
+              </button>
+            </div>
+            {couponError && <p className="text-xs text-red-600">{couponError}</p>}
+          </div>
+        ) : (
+          <button
+            onClick={() => setShowCouponInput(true)}
+            className="flex items-center gap-1.5 text-xs text-zinc-400 hover:text-indigo-600 transition-colors"
+          >
+            <Tag className="h-3.5 w-3.5" />
+            Tem um cupom de desconto?
+            <ChevronDown className="h-3 w-3" />
+          </button>
+        )}
+      </div>
+
       {/* Plan cards */}
       <div className="grid gap-6 md:grid-cols-3">
         {(['starter', 'pro', 'enterprise'] as const).map((slug) => (
@@ -588,6 +696,7 @@ export function PlansManager({ blocked }: { blocked?: boolean }) {
             onManage={handleManage}
             loadingSlug={loadingSlug}
             loadingPortal={loadingPortal}
+            appliedCoupon={appliedCoupon}
           />
         ))}
       </div>

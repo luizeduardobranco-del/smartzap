@@ -151,6 +151,7 @@ export const billingRouter = router({
       planSlug: z.enum(['starter', 'pro']),
       interval: z.enum(['monthly', 'yearly']),
       billingType: z.enum(['CREDIT_CARD', 'PIX']).default('CREDIT_CARD'),
+      couponCode: z.string().optional(),
     }))
     .mutation(async ({ ctx, input }) => {
       const orgId = await getOrgId(ctx)
@@ -168,9 +169,32 @@ export const billingRouter = router({
       const customerId = await getOrCreateAsaasCustomer(orgId, orgName, userEmail)
 
       const priceKey = `${input.planSlug}:${input.interval}`
-      const value = ASAAS_PLAN_PRICES[priceKey]
+      let value = ASAAS_PLAN_PRICES[priceKey]
       if (!value) {
         throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Plano inválido.' })
+      }
+
+      // Apply coupon discount
+      let appliedCouponId: string | null = null
+      if (input.couponCode) {
+        const { data: coupon } = await supabase
+          .from('coupons')
+          .select('id, type, value, applicable_to, active, valid_until, max_uses, uses_count')
+          .eq('code', input.couponCode.toUpperCase())
+          .eq('active', true)
+          .single()
+        if (
+          coupon &&
+          (!coupon.valid_until || new Date(coupon.valid_until) >= new Date()) &&
+          (coupon.max_uses === null || coupon.uses_count < coupon.max_uses) &&
+          (coupon.applicable_to === 'all' || coupon.applicable_to === 'plan')
+        ) {
+          value = coupon.type === 'percentage'
+            ? Math.max(0.01, value * (1 - coupon.value / 100))
+            : Math.max(0.01, value - coupon.value)
+          value = Math.round(value * 100) / 100
+          appliedCouponId = coupon.id
+        }
       }
 
       const cycle = input.interval === 'monthly' ? 'MONTHLY' : 'ANNUAL'
@@ -212,6 +236,15 @@ export const billingRouter = router({
         })
       }
 
+      // Increment coupon uses_count
+      if (appliedCouponId) {
+        const { error: rpcErr } = await supabase.rpc('increment_coupon_uses', { coupon_id: appliedCouponId })
+        if (rpcErr) {
+          const { data: c } = await supabase.from('coupons').select('uses_count').eq('id', appliedCouponId).single()
+          await supabase.from('coupons').update({ uses_count: (c?.uses_count ?? 0) + 1 }).eq('id', appliedCouponId)
+        }
+      }
+
       return { url: invoiceUrl }
     }),
 
@@ -220,6 +253,7 @@ export const billingRouter = router({
     .input(z.object({
       packageId: z.string().uuid(),
       billingType: z.enum(['CREDIT_CARD', 'PIX']).default('CREDIT_CARD'),
+      couponCode: z.string().optional(),
     }))
     .mutation(async ({ ctx, input }) => {
       const orgId = await getOrgId(ctx)
@@ -252,9 +286,32 @@ export const billingRouter = router({
       }
 
       const totalCredits = (pkg.credits as number) + ((pkg.bonus_credits as number) ?? 0)
-      const value = (pkg.price as number) / 100 // centavos → reais
+      let value = (pkg.price as number) / 100 // centavos → reais
       const today = new Date().toISOString().split('T')[0]
       const externalRef = `credit:${orgId}:${input.packageId}:${pkg.credits}:${pkg.bonus_credits ?? 0}`
+
+      // Apply coupon discount
+      let appliedCouponId: string | null = null
+      if (input.couponCode) {
+        const { data: coupon } = await supabase
+          .from('coupons')
+          .select('id, type, value, applicable_to, active, valid_until, max_uses, uses_count')
+          .eq('code', input.couponCode.toUpperCase())
+          .eq('active', true)
+          .single()
+        if (
+          coupon &&
+          (!coupon.valid_until || new Date(coupon.valid_until) >= new Date()) &&
+          (coupon.max_uses === null || coupon.uses_count < coupon.max_uses) &&
+          (coupon.applicable_to === 'all' || coupon.applicable_to === 'credits')
+        ) {
+          value = coupon.type === 'percentage'
+            ? Math.max(0.01, value * (1 - coupon.value / 100))
+            : Math.max(0.01, value - coupon.value)
+          value = Math.round(value * 100) / 100
+          appliedCouponId = coupon.id
+        }
+      }
 
       console.log('[billing] creating Asaas payment | customer:', customerId, '| value:', value, '| pkg:', pkg.name)
 
@@ -284,6 +341,15 @@ export const billingRouter = router({
           code: 'INTERNAL_SERVER_ERROR',
           message: 'URL de pagamento não gerada. Tente novamente.',
         })
+      }
+
+      // Increment coupon uses_count
+      if (appliedCouponId) {
+        const { error: rpcErr } = await supabase.rpc('increment_coupon_uses', { coupon_id: appliedCouponId })
+        if (rpcErr) {
+          const { data: c } = await supabase.from('coupons').select('uses_count').eq('id', appliedCouponId).single()
+          await supabase.from('coupons').update({ uses_count: (c?.uses_count ?? 0) + 1 }).eq('id', appliedCouponId)
+        }
       }
 
       return { url: payment.invoiceUrl }
