@@ -11,7 +11,7 @@ export function ReferralProgram() {
   const getCode = trpc.referrals.getMyCode.useQuery()
 
   const referralLink = getCode.data
-    ? `${process.env.NEXT_PUBLIC_APP_URL ?? 'https://atendente.whiteerp.com'}/signup?ref=${getCode.data.code}`
+    ? `${(process.env.NEXT_PUBLIC_APP_URL ?? 'https://atendente.whiteerp.com').trim()}/signup?ref=${getCode.data.code}`
     : ''
 
   function copyLink() {
