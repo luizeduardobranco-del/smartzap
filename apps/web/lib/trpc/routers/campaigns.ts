@@ -25,7 +25,7 @@ export const campaignsRouter = router({
     const orgId = await getOrgId(ctx)
     const { data, error } = await ctx.supabase
       .from('campaigns')
-      .select('*, channels(credentials)')
+      .select('*, channels(id, credentials, agents(id, name))')
       .eq('organization_id', orgId)
       .order('created_at', { ascending: false })
     if (error) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: error.message })
@@ -38,7 +38,7 @@ export const campaignsRouter = router({
       const orgId = await getOrgId(ctx)
       const { data, error } = await ctx.supabase
         .from('campaigns')
-        .select('*, channels(id, credentials), campaign_messages(id, status)')
+        .select('*, channels(id, credentials, agents(id, name)), campaign_messages(id, status)')
         .eq('id', input.id)
         .eq('organization_id', orgId)
         .single()
@@ -55,6 +55,7 @@ export const campaignsRouter = router({
       targetValue: z.string().optional(),
       delaySeconds: z.number().min(3).max(30).default(5),
       businessHoursOnly: z.boolean().default(true),
+      dailyLimit: z.number().min(1).max(500).optional(),
       scheduledAt: z.string().optional(),
       funnelId: z.string().uuid().optional(),
       funnelStageId: z.string().uuid().optional(),
@@ -72,6 +73,7 @@ export const campaignsRouter = router({
           target_value: input.targetValue ?? null,
           delay_seconds: input.delaySeconds,
           business_hours_only: input.businessHoursOnly,
+          daily_limit: input.dailyLimit ?? null,
           scheduled_at: input.scheduledAt ?? null,
           funnel_id: input.funnelId ?? null,
           funnel_stage_id: input.funnelStageId ?? null,
@@ -190,6 +192,7 @@ export const campaignsRouter = router({
       targetValue: z.string().optional(),
       delaySeconds: z.number().min(3).max(30),
       businessHoursOnly: z.boolean(),
+      dailyLimit: z.number().min(1).max(500).optional(),
       funnelId: z.string().uuid().optional(),
       funnelStageId: z.string().uuid().optional(),
     }))
@@ -205,6 +208,7 @@ export const campaignsRouter = router({
           target_value: input.targetValue ?? null,
           delay_seconds: input.delaySeconds,
           business_hours_only: input.businessHoursOnly,
+          daily_limit: input.dailyLimit ?? null,
           funnel_id: input.funnelId ?? null,
           funnel_stage_id: input.funnelStageId ?? null,
         })

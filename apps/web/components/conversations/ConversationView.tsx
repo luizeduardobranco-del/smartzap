@@ -18,7 +18,7 @@ function dateDivider(date: string) {
   })
 }
 
-export function ConversationView({ contactId }: { contactId: string }) {
+export function ConversationView({ contactId, onClose }: { contactId: string; onClose?: () => void }) {
   const bottomRef = useRef<HTMLDivElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const [text, setText] = useState('')
@@ -112,9 +112,15 @@ export function ConversationView({ contactId }: { contactId: string }) {
 
       {/* ── Header ── */}
       <div className="flex items-center gap-3 flex-shrink-0">
-        <Link href="/conversations" className="rounded-lg p-1.5 hover:bg-muted">
-          <ArrowLeft className="h-4 w-4" />
-        </Link>
+        {onClose ? (
+          <button onClick={onClose} className="rounded-lg p-1.5 hover:bg-muted">
+            <ArrowLeft className="h-4 w-4" />
+          </button>
+        ) : (
+          <Link href="/conversations" className="rounded-lg p-1.5 hover:bg-muted">
+            <ArrowLeft className="h-4 w-4" />
+          </Link>
+        )}
         <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/10 text-sm font-bold text-primary">
           {(contact as any).name?.charAt(0)?.toUpperCase() ?? '?'}
         </div>

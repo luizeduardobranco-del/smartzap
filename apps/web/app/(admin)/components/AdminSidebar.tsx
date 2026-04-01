@@ -11,6 +11,7 @@ import {
   Settings,
   LogOut,
   ExternalLink,
+  Tag,
 } from 'lucide-react'
 
 const navItems = [
@@ -18,6 +19,7 @@ const navItems = [
   { href: '/admin/organizations', label: 'Organizações', icon: Building2 },
   { href: '/admin/users', label: 'Usuários', icon: Users },
   { href: '/admin/plans', label: 'Planos', icon: CreditCard },
+  { href: '/admin/coupons', label: 'Cupons', icon: Tag },
   { href: '/admin/reports', label: 'Relatórios', icon: BarChart3 },
   { href: '/admin/settings', label: 'Configurações', icon: Settings },
 ]

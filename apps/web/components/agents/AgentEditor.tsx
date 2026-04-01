@@ -1,14 +1,17 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { Bot, Brain, Zap, Radio, BookOpen, ArrowLeft, Loader2, Save, Play, Pause } from 'lucide-react'
+import { Bot, Brain, Zap, Radio, BookOpen, ArrowLeft, Loader2, Save, Play, Pause, MessageSquare } from 'lucide-react'
 import Link from 'next/link'
+import { useSearchParams } from 'next/navigation'
 import { trpc } from '@/lib/trpc/client'
 import { KnowledgeBase } from './KnowledgeBase'
 import { WhatsAppConnect } from './WhatsAppConnect'
+import { InstagramConnect } from './InstagramConnect'
+import { TestAgentChat } from './TestAgentChat'
 
 const MODELS = [
   { value: 'gpt-4o-mini', label: 'GPT-4o Mini', provider: 'openai' },
@@ -64,7 +67,13 @@ const statusConfig = {
 export function AgentEditor({ agentId }: { agentId: string }) {
   const [activeTab, setActiveTab] = useState('identity')
   const [saved, setSaved] = useState(false)
+  const [showTest, setShowTest] = useState(false)
+  const searchParams = useSearchParams()
   const utils = trpc.useUtils()
+
+  useEffect(() => {
+    if (searchParams.get('test') === '1') setShowTest(true)
+  }, [searchParams])
 
   const { data: agent, isLoading } = trpc.agents.get.useQuery({ id: agentId })
 
@@ -174,6 +183,14 @@ export function AgentEditor({ agentId }: { agentId: string }) {
           </div>
         </div>
         <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setShowTest(true)}
+            className="flex items-center gap-1.5 rounded-lg border border-[#075E54] px-3 py-1.5 text-sm font-medium text-[#075E54] hover:bg-[#075E54]/5"
+          >
+            <MessageSquare className="h-3.5 w-3.5" />
+            Testar
+          </button>
           <button
             type="button"
             onClick={() => toggleStatus.mutate({
@@ -424,28 +441,40 @@ export function AgentEditor({ agentId }: { agentId: string }) {
                 <WhatsAppConnect agentId={agentId} />
               </div>
 
-              {/* Instagram — em breve */}
-              {[
-                { icon: '📸', label: 'Instagram', desc: 'Direct Messages' },
-                { icon: '💬', label: 'Chat no site', desc: 'Widget embarcado' },
-              ].map((ch) => (
-                <div key={ch.label} className="flex items-center justify-between rounded-xl border p-4">
-                  <div className="flex items-center gap-3">
-                    <span className="text-xl">{ch.icon}</span>
-                    <div>
-                      <p className="font-medium">{ch.label}</p>
-                      <p className="text-xs text-muted-foreground">{ch.desc}</p>
-                    </div>
-                  </div>
-                  <span className="rounded-full bg-muted px-3 py-1 text-xs text-muted-foreground">
-                    Em breve
-                  </span>
+              {/* Instagram */}
+              <div className="rounded-xl border p-5">
+                <div className="mb-4 flex items-center gap-2">
+                  <span className="text-xl">📸</span>
+                  <p className="font-medium">Instagram</p>
                 </div>
-              ))}
+                <InstagramConnect agentId={agentId} />
+              </div>
+
+              {/* Chat no site — em breve */}
+              <div className="flex items-center justify-between rounded-xl border p-4">
+                <div className="flex items-center gap-3">
+                  <span className="text-xl">💬</span>
+                  <div>
+                    <p className="font-medium">Chat no site</p>
+                    <p className="text-xs text-muted-foreground">Widget embarcado</p>
+                  </div>
+                </div>
+                <span className="rounded-full bg-muted px-3 py-1 text-xs text-muted-foreground">
+                  Em breve
+                </span>
+              </div>
             </div>
           )}
         </div>
       </div>
+
+      {showTest && (
+        <TestAgentChat
+          agentId={agentId}
+          agentName={agent.name}
+          onClose={() => setShowTest(false)}
+        />
+      )}
     </div>
   )
 }

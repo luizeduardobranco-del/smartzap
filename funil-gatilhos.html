@@ -1,0 +1,563 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>WHITE ZAP — Gatilhos do Módulo de Funil</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      background: #f8fafc;
+      color: #0f172a;
+      min-height: 100vh;
+      padding: 48px 20px;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    .container {
+      max-width: 980px;
+      margin: 0 auto;
+    }
+
+    /* HEADER */
+    header {
+      text-align: center;
+      margin-bottom: 52px;
+    }
+
+    .logo {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 24px;
+    }
+
+    .logo-icon {
+      width: 38px;
+      height: 38px;
+      background: linear-gradient(135deg, #1d4ed8 0%, #2563eb 50%, #3b82f6 100%);
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+      box-shadow: 0 4px 14px rgba(37, 99, 235, 0.3);
+    }
+
+    .logo-name {
+      font-size: 1.1rem;
+      font-weight: 700;
+      color: #0f172a;
+      letter-spacing: -0.3px;
+    }
+
+    .logo-name span {
+      color: #2563eb;
+    }
+
+    .badge {
+      display: inline-block;
+      background: #eff6ff;
+      border: 1px solid #bfdbfe;
+      color: #1d4ed8;
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      padding: 4px 14px;
+      border-radius: 999px;
+      margin-bottom: 16px;
+    }
+
+    h1 {
+      font-size: 2.1rem;
+      font-weight: 700;
+      color: #0f172a;
+      margin-bottom: 12px;
+      letter-spacing: -0.5px;
+    }
+
+    h1 span {
+      background: linear-gradient(135deg, #2563eb, #3b82f6);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .subtitle {
+      color: #64748b;
+      font-size: 0.97rem;
+      max-width: 540px;
+      margin: 0 auto;
+      line-height: 1.6;
+    }
+
+    /* DIVIDER */
+    .divider {
+      width: 48px;
+      height: 3px;
+      background: linear-gradient(90deg, #2563eb, #3b82f6);
+      border-radius: 999px;
+      margin: 20px auto 0;
+    }
+
+    /* SECTION TITLE */
+    .section-title {
+      font-size: 0.68rem;
+      font-weight: 700;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: #94a3b8;
+      margin: 44px 0 16px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .section-title::before {
+      content: '';
+      display: block;
+      width: 16px;
+      height: 2px;
+      background: #2563eb;
+      border-radius: 999px;
+      flex-shrink: 0;
+    }
+
+    /* GRID */
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(285px, 1fr));
+      gap: 14px;
+    }
+
+    /* CARD */
+    .card {
+      background: #ffffff;
+      border: 1px solid #e2e8f0;
+      border-radius: 12px;
+      padding: 22px;
+      transition: border-color 0.2s, box-shadow 0.2s, transform 0.2s;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .card:hover {
+      border-color: #93c5fd;
+      box-shadow: 0 4px 20px rgba(37, 99, 235, 0.08);
+      transform: translateY(-2px);
+    }
+
+    .card-top {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      margin-bottom: 10px;
+    }
+
+    .card-icon {
+      width: 40px;
+      height: 40px;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.2rem;
+      flex-shrink: 0;
+    }
+
+    .icon-event    { background: #eff6ff; }
+    .icon-time     { background: #fefce8; }
+    .icon-behavior { background: #f0fdf4; }
+    .icon-external { background: #faf5ff; }
+    .icon-manual   { background: #fff1f2; }
+
+    .tag {
+      display: inline-block;
+      font-size: 0.62rem;
+      font-weight: 700;
+      padding: 3px 9px;
+      border-radius: 999px;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+    }
+
+    .tag-event    { background: #eff6ff; color: #1d4ed8; border: 1px solid #bfdbfe; }
+    .tag-time     { background: #fefce8; color: #854d0e; border: 1px solid #fde68a; }
+    .tag-behavior { background: #f0fdf4; color: #166534; border: 1px solid #bbf7d0; }
+    .tag-external { background: #faf5ff; color: #6b21a8; border: 1px solid #e9d5ff; }
+    .tag-manual   { background: #fff1f2; color: #9f1239; border: 1px solid #fecdd3; }
+
+    .card-title {
+      font-size: 0.93rem;
+      font-weight: 600;
+      color: #0f172a;
+      margin-bottom: 6px;
+    }
+
+    .card-desc {
+      font-size: 0.81rem;
+      color: #64748b;
+      line-height: 1.65;
+      margin-bottom: 14px;
+    }
+
+    .card-example {
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      padding: 9px 12px;
+      font-size: 0.77rem;
+      color: #475569;
+      line-height: 1.5;
+    }
+
+    .card-example strong {
+      color: #2563eb;
+      display: block;
+      margin-bottom: 2px;
+      font-size: 0.67rem;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    /* STATS BAR */
+    .stats {
+      display: flex;
+      gap: 12px;
+      margin-bottom: 40px;
+      flex-wrap: wrap;
+    }
+
+    .stat {
+      flex: 1;
+      min-width: 130px;
+      background: #ffffff;
+      border: 1px solid #e2e8f0;
+      border-radius: 10px;
+      padding: 16px 18px;
+      text-align: center;
+    }
+
+    .stat-number {
+      font-size: 1.6rem;
+      font-weight: 700;
+      color: #2563eb;
+      line-height: 1;
+      margin-bottom: 4px;
+    }
+
+    .stat-label {
+      font-size: 0.74rem;
+      color: #94a3b8;
+      font-weight: 500;
+    }
+
+    /* TIP BOX */
+    .tip-box {
+      background: #eff6ff;
+      border: 1px solid #bfdbfe;
+      border-left: 4px solid #2563eb;
+      border-radius: 10px;
+      padding: 20px 22px;
+      margin-top: 44px;
+    }
+
+    .tip-box strong {
+      color: #1d4ed8;
+      display: block;
+      margin-bottom: 10px;
+      font-size: 0.9rem;
+    }
+
+    .tip-box ul {
+      padding-left: 18px;
+      color: #1e40af;
+    }
+
+    .tip-box ul li {
+      font-size: 0.83rem;
+      margin-bottom: 5px;
+      line-height: 1.6;
+      color: #334155;
+    }
+
+    .tip-box ul li strong {
+      color: #1d4ed8;
+      display: inline;
+      margin-bottom: 0;
+    }
+
+    /* FOOTER */
+    footer {
+      text-align: center;
+      margin-top: 56px;
+      padding-top: 20px;
+      border-top: 1px solid #e2e8f0;
+      color: #cbd5e1;
+      font-size: 0.76rem;
+    }
+
+    footer span { color: #2563eb; font-weight: 600; }
+  </style>
+</head>
+<body>
+  <div class="container">
+
+    <!-- HEADER -->
+    <header>
+      <div class="logo">
+        <div class="logo-icon">⚡</div>
+        <div class="logo-name">WHITE <span>ZAP</span></div>
+      </div>
+      <div class="badge">Módulo de Funil</div>
+      <h1>Gatilhos <span>Disponíveis</span></h1>
+      <p class="subtitle">Todos os gatilhos que podem ser configurados para automatizar etapas, mover leads e disparar ações dentro do funil de vendas.</p>
+      <div class="divider"></div>
+    </header>
+
+    <!-- STATS -->
+    <div class="stats">
+      <div class="stat">
+        <div class="stat-number">6</div>
+        <div class="stat-label">Gatilhos de Evento</div>
+      </div>
+      <div class="stat">
+        <div class="stat-number">3</div>
+        <div class="stat-label">Gatilhos de Tempo</div>
+      </div>
+      <div class="stat">
+        <div class="stat-number">3</div>
+        <div class="stat-label">Gatilhos de Comportamento</div>
+      </div>
+      <div class="stat">
+        <div class="stat-number">3</div>
+        <div class="stat-label">Gatilhos Externos</div>
+      </div>
+      <div class="stat">
+        <div class="stat-number">2</div>
+        <div class="stat-label">Gatilhos Manuais</div>
+      </div>
+    </div>
+
+    <!-- GATILHOS DE EVENTO -->
+    <div class="section-title">Gatilhos de Evento</div>
+    <div class="grid">
+
+      <div class="card">
+        <div class="card-top">
+          <div class="card-icon icon-event">💬</div>
+          <span class="tag tag-event">Evento</span>
+        </div>
+        <div class="card-title">Primeiro contato</div>
+        <div class="card-desc">Disparado quando o lead envia a primeira mensagem ao agente — ideal para abertura do funil e qualificação inicial.</div>
+        <div class="card-example"><strong>Exemplo de uso</strong>Mover automaticamente para etapa "Novo Lead" e iniciar sequência de boas-vindas.</div>
+      </div>
+
+      <div class="card">
+        <div class="card-top">
+          <div class="card-icon icon-event">🔑</div>
+          <span class="tag tag-event">Evento</span>
+        </div>
+        <div class="card-title">Palavra-chave detectada</div>
+        <div class="card-desc">Ativa quando o lead digita uma palavra ou frase específica como "preço", "quero comprar" ou "desconto".</div>
+        <div class="card-example"><strong>Exemplo de uso</strong>Lead digita "quero assinar" → mover para etapa "Interesse Confirmado".</div>
+      </div>
+
+      <div class="card">
+        <div class="card-top">
+          <div class="card-icon icon-event">🔘</div>
+          <span class="tag tag-event">Evento</span>
+        </div>
+        <div class="card-title">Botão / Quick Reply clicado</div>
+        <div class="card-desc">Ativa quando o lead clica em um botão de resposta rápida ou lista interativa enviada pelo agente.</div>
+        <div class="card-example"><strong>Exemplo de uso</strong>Clicou em "Sim, tenho interesse" → avançar para etapa "Negociação".</div>
+      </div>
+
+      <div class="card">
+        <div class="card-top">
+          <div class="card-icon icon-event">📋</div>
+          <span class="tag tag-event">Evento</span>
+        </div>
+        <div class="card-title">Formulário preenchido</div>
+        <div class="card-desc">Ativa quando o lead completa um formulário de qualificação enviado pelo agente no chat.</div>
+        <div class="card-example"><strong>Exemplo de uso</strong>Formulário de orçamento enviado → mover para "Proposta Pendente".</div>
+      </div>
+
+      <div class="card">
+        <div class="card-top">
+          <div class="card-icon icon-event">🏷️</div>
+          <span class="tag tag-event">Evento</span>
+        </div>
+        <div class="card-title">Tag aplicada ao lead</div>
+        <div class="card-desc">Ativa quando uma tag específica é atribuída ao lead — manualmente ou por outro gatilho automático.</div>
+        <div class="card-example"><strong>Exemplo de uso</strong>Tag "VIP" adicionada → mover para funil exclusivo com atendimento prioritário.</div>
+      </div>
+
+      <div class="card">
+        <div class="card-top">
+          <div class="card-icon icon-event">✅</div>
+          <span class="tag tag-event">Evento</span>
+        </div>
+        <div class="card-title">Sequência concluída</div>
+        <div class="card-desc">Ativa quando o lead finaliza todos os passos de uma sequência de mensagens automáticas.</div>
+        <div class="card-example"><strong>Exemplo de uso</strong>Sequência de nutrição de 3 dias concluída → mover para "Pronto para Venda".</div>
+      </div>
+
+    </div>
+
+    <!-- GATILHOS DE TEMPO -->
+    <div class="section-title">Gatilhos de Tempo</div>
+    <div class="grid">
+
+      <div class="card">
+        <div class="card-top">
+          <div class="card-icon icon-time">⏱️</div>
+          <span class="tag tag-time">Tempo</span>
+        </div>
+        <div class="card-title">Sem resposta após X tempo</div>
+        <div class="card-desc">Ativa quando o lead fica inativo por um período definido sem responder ao agente.</div>
+        <div class="card-example"><strong>Exemplo de uso</strong>Sem resposta em 2h → enviar follow-up; sem resposta em 24h → mover para "Frio".</div>
+      </div>
+
+      <div class="card">
+        <div class="card-top">
+          <div class="card-icon icon-time">📅</div>
+          <span class="tag tag-time">Tempo</span>
+        </div>
+        <div class="card-title">X dias na etapa</div>
+        <div class="card-desc">Ativa quando o lead permanece em uma etapa do funil por mais dias do que o esperado sem avançar.</div>
+        <div class="card-example"><strong>Exemplo de uso</strong>3 dias em "Proposta Enviada" → alertar o vendedor responsável.</div>
+      </div>
+
+      <div class="card">
+        <div class="card-top">
+          <div class="card-icon icon-time">🕐</div>
+          <span class="tag tag-time">Tempo</span>
+        </div>
+        <div class="card-title">Agendamento (data/hora)</div>
+        <div class="card-desc">Ativa em uma data e hora exata para disparar uma mensagem ou ação programada com antecedência.</div>
+        <div class="card-example"><strong>Exemplo de uso</strong>Enviar lembrete 1h antes de reunião agendada pelo agente.</div>
+      </div>
+
+    </div>
+
+    <!-- GATILHOS DE COMPORTAMENTO -->
+    <div class="section-title">Gatilhos de Comportamento</div>
+    <div class="grid">
+
+      <div class="card">
+        <div class="card-top">
+          <div class="card-icon icon-behavior">🔁</div>
+          <span class="tag tag-behavior">Comportamento</span>
+        </div>
+        <div class="card-title">Lead retorna ao chat</div>
+        <div class="card-desc">Ativa quando um lead que estava inativo volta a enviar mensagem após um período de silêncio.</div>
+        <div class="card-example"><strong>Exemplo de uso</strong>Lead inativo há 7 dias volta → reativar sequência de reengajamento.</div>
+      </div>
+
+      <div class="card">
+        <div class="card-top">
+          <div class="card-icon icon-behavior">🔄</div>
+          <span class="tag tag-behavior">Comportamento</span>
+        </div>
+        <div class="card-title">Número de mensagens enviadas</div>
+        <div class="card-desc">Ativa após o lead atingir um número definido de interações com o agente, indicando alto engajamento.</div>
+        <div class="card-example"><strong>Exemplo de uso</strong>Após 5 mensagens trocadas → acionar time comercial para contato humano.</div>
+      </div>
+
+      <div class="card">
+        <div class="card-top">
+          <div class="card-icon icon-behavior">😤</div>
+          <span class="tag tag-behavior">Comportamento</span>
+        </div>
+        <div class="card-title">Sentimento negativo detectado</div>
+        <div class="card-desc">Ativa quando a IA identifica frustração, reclamação ou insatisfação na mensagem do lead.</div>
+        <div class="card-example"><strong>Exemplo de uso</strong>Sentimento negativo detectado → escalar imediatamente para atendimento humano.</div>
+      </div>
+
+    </div>
+
+    <!-- GATILHOS EXTERNOS -->
+    <div class="section-title">Gatilhos Externos / Integrações</div>
+    <div class="grid">
+
+      <div class="card">
+        <div class="card-top">
+          <div class="card-icon icon-external">💳</div>
+          <span class="tag tag-external">Externo</span>
+        </div>
+        <div class="card-title">Pagamento confirmado</div>
+        <div class="card-desc">Ativa via webhook quando um pagamento é aprovado em plataformas como Stripe, Asaas, Hotmart ou Kiwify.</div>
+        <div class="card-example"><strong>Exemplo de uso</strong>Pagamento aprovado → mover para "Cliente" e enviar mensagem de onboarding.</div>
+      </div>
+
+      <div class="card">
+        <div class="card-top">
+          <div class="card-icon icon-external">🔗</div>
+          <span class="tag tag-external">Externo</span>
+        </div>
+        <div class="card-title">Webhook recebido</div>
+        <div class="card-desc">Ativa quando um sistema externo envia um POST para o endpoint do WHITE ZAP com dados personalizados.</div>
+        <div class="card-example"><strong>Exemplo de uso</strong>CRM atualiza status do lead → sincronizar etapa do funil automaticamente.</div>
+      </div>
+
+      <div class="card">
+        <div class="card-top">
+          <div class="card-icon icon-external">📦</div>
+          <span class="tag tag-external">Externo</span>
+        </div>
+        <div class="card-title">Status do pedido alterado</div>
+        <div class="card-desc">Ativa quando há mudança de status em pedido de e-commerce integrado (enviado, entregue, cancelado).</div>
+        <div class="card-example"><strong>Exemplo de uso</strong>Pedido enviado → notificar lead com código de rastreio automaticamente.</div>
+      </div>
+
+    </div>
+
+    <!-- GATILHOS MANUAIS -->
+    <div class="section-title">Gatilhos Manuais</div>
+    <div class="grid">
+
+      <div class="card">
+        <div class="card-top">
+          <div class="card-icon icon-manual">👤</div>
+          <span class="tag tag-manual">Manual</span>
+        </div>
+        <div class="card-title">Ação do operador</div>
+        <div class="card-desc">Ativa quando um membro da equipe move o lead manualmente entre etapas ou aciona um gatilho pelo painel.</div>
+        <div class="card-example"><strong>Exemplo de uso</strong>Vendedor fecha negócio → mover para "Ganho" e disparar mensagem de parabéns ao lead.</div>
+      </div>
+
+      <div class="card">
+        <div class="card-top">
+          <div class="card-icon icon-manual">🚫</div>
+          <span class="tag tag-manual">Manual</span>
+        </div>
+        <div class="card-title">Lead marcado como perdido</div>
+        <div class="card-desc">Ativa quando o operador marca o lead como "Perdido" no funil, permitindo ações automáticas de recuperação futura.</div>
+        <div class="card-example"><strong>Exemplo de uso</strong>Marcado como perdido → agendar recontato automático em 30 dias.</div>
+      </div>
+
+    </div>
+
+    <!-- TIP BOX -->
+    <div class="tip-box">
+      <strong>💡 Boas práticas ao configurar gatilhos</strong>
+      <ul>
+        <li>Combine gatilhos de <strong>evento + tempo</strong> para criar fluxos de fallback (ex.: se não responder em 2h, enviar follow-up automático).</li>
+        <li>Use <strong>tags</strong> como camada de segmentação antes de acionar gatilhos críticos ou irreversíveis.</li>
+        <li>Defina <strong>condições de saída</strong> para evitar que o lead receba múltiplos gatilhos conflitantes ao mesmo tempo.</li>
+        <li>Gatilhos de <strong>sentimento negativo</strong> devem sempre escalar para humano — nunca deixar a IA responder sozinha nesses casos.</li>
+        <li>Teste cada gatilho em ambiente de <strong>staging</strong> antes de ativar em produção com leads reais.</li>
+      </ul>
+    </div>
+
+    <footer>
+      <span>WHITE ZAP</span> &mdash; Documentação Interna &mdash; Módulo de Funil &mdash; 2026
+    </footer>
+
+  </div>
+</body>
+</html>

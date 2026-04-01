@@ -14,7 +14,7 @@ export const channelsRouter = router({
 
       const { data, error } = await ctx.supabase
         .from('channels')
-        .select('*')
+        .select('*, agents(id, name)')
         .eq('organization_id', member.organization_id)
         .order('created_at', { ascending: false })
 

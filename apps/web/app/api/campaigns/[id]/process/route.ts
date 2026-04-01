@@ -48,6 +48,30 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     console.log(`[campaign/process] campaign ${campaignId} status=${campaign.status}`)
     if (campaign.status !== 'running') return NextResponse.json({ status: campaign.status, done: true })
 
+    // Daily limit check
+    if (campaign.daily_limit) {
+      const todayStart = new Intl.DateTimeFormat('sv-SE', {
+        timeZone: 'America/Sao_Paulo',
+        year: 'numeric', month: '2-digit', day: '2-digit',
+      }).format(new Date()) + 'T00:00:00-03:00'
+
+      const { count: sentToday } = await supabase
+        .from('campaign_messages')
+        .select('*', { count: 'exact', head: true })
+        .eq('campaign_id', campaignId)
+        .eq('status', 'sent')
+        .gte('sent_at', todayStart)
+
+      if ((sentToday ?? 0) >= campaign.daily_limit) {
+        return NextResponse.json({
+          status: 'daily_limit_reached',
+          message: `Limite diário de ${campaign.daily_limit} disparos atingido. Retomará amanhã.`,
+          sentToday,
+          done: false,
+        })
+      }
+    }
+
     // Business hours check
     if (campaign.business_hours_only && !isBusinessHours()) {
       return NextResponse.json({

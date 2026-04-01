@@ -8,16 +8,16 @@ export async function GET(req: NextRequest) {
   const userId = searchParams.get('state')
   const error = searchParams.get('error')
 
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000'
+  const origin = new URL(req.url).origin
 
   if (error || !code || !userId) {
-    return NextResponse.redirect(`${appUrl}/settings?integration_error=1`)
+    return NextResponse.redirect(`${origin}/settings?integration_error=1`)
   }
 
   // Exchange code for tokens
   const clientId = process.env.GOOGLE_CLIENT_ID!
   const clientSecret = process.env.GOOGLE_CLIENT_SECRET!
-  const redirectUri = `${appUrl}/api/auth/google/callback`
+  const redirectUri = `${origin}/api/auth/google/callback`
 
   const tokenRes = await fetch('https://oauth2.googleapis.com/token', {
     method: 'POST',
@@ -32,7 +32,7 @@ export async function GET(req: NextRequest) {
   })
 
   if (!tokenRes.ok) {
-    return NextResponse.redirect(`${appUrl}/settings?integration_error=1`)
+    return NextResponse.redirect(`${origin}/settings?integration_error=1`)
   }
 
   const tokens = await tokenRes.json()
@@ -57,7 +57,7 @@ export async function GET(req: NextRequest) {
     .single()
 
   if (!member) {
-    return NextResponse.redirect(`${appUrl}/settings?integration_error=1`)
+    return NextResponse.redirect(`${origin}/settings?integration_error=1`)
   }
 
   const tokenExpiry = tokens.expires_in
@@ -79,5 +79,5 @@ export async function GET(req: NextRequest) {
     }, { onConflict: 'organization_id,provider' })
   }
 
-  return NextResponse.redirect(`${appUrl}/settings?integration_success=1`)
+  return NextResponse.redirect(`${origin}/settings?integration_success=1`)
 }

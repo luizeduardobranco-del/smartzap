@@ -1,7 +1,7 @@
 'use client'
 
-import { useState, useRef, useCallback } from 'react'
-import { X, Plus, Phone, MessageSquare, Edit2, Check, Pencil, Save, ChevronDown, ChevronUp } from 'lucide-react'
+import { useState, useRef, useCallback, useEffect } from 'react'
+import { X, Plus, Phone, MessageSquare, Edit2, Check, Pencil, Save, ChevronDown, ChevronUp, ArrowLeft, Bot, UserCheck, Send, Loader2 } from 'lucide-react'
 import { trpc } from '@/lib/trpc/client'
 
 // ─── Stage config ───────────────────────────────────────────────────────────
@@ -83,6 +83,7 @@ function LeadModal({
   const [showCustomInput, setShowCustomInput] = useState(false)
   const [detailsOpen, setDetailsOpen] = useState(true)
   const [editingContact, setEditingContact] = useState(false)
+  const [showConv, setShowConv] = useState(false)
   const [editFields, setEditFields] = useState({
     phone: lead.phone ?? '',
     company_name: '',
@@ -163,9 +164,17 @@ function LeadModal({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={onClose}>
       <div
-        className="w-full max-w-md rounded-2xl bg-white shadow-2xl max-h-[90vh] overflow-y-auto"
+        className={`w-full rounded-2xl bg-white shadow-2xl flex flex-col transition-all duration-200 ${
+          showConv ? 'max-w-2xl h-[90vh]' : 'max-w-md max-h-[90vh]'
+        }`}
         onClick={(e) => e.stopPropagation()}
       >
+        {/* Inline conversation panel */}
+        {showConv && (
+          <InlineConversation contactId={lead.id} contactName={lead.name ?? lead.phone ?? 'Contato'} onBack={() => setShowConv(false)} onClose={onClose} />
+        )}
+        {/* Lead details — hidden when conversation is open */}
+        <div className={showConv ? 'hidden' : 'overflow-y-auto flex-1'}>
         {/* Header */}
         <div className="flex items-start justify-between border-b p-5">
           <div className="flex items-center gap-3">
@@ -377,17 +386,189 @@ function LeadModal({
               </div>
             )}
 
-            {/* Link to conversation */}
+            {/* View conversation inline */}
             {lead.id && (
-              <a
-                href={`/conversations/${lead.id}`}
-                className="flex items-center justify-center gap-2 rounded-lg border px-4 py-2 text-sm font-medium hover:bg-muted"
+              <button
+                onClick={() => setShowConv(true)}
+                className="flex w-full items-center justify-center gap-2 rounded-lg bg-primary/10 border border-primary/20 px-4 py-2 text-sm font-medium text-primary hover:bg-primary/20"
               >
                 <MessageSquare className="h-4 w-4" />
                 Ver conversa completa
-              </a>
+              </button>
             )}
           </div>
+        )}
+        </div>{/* end lead details wrapper */}
+      </div>
+    </div>
+  )
+}
+
+// ─── Inline Conversation ─────────────────────────────────────────────────────
+
+function InlineConversation({ contactId, contactName, onBack, onClose }: {
+  contactId: string
+  contactName: string
+  onBack: () => void
+  onClose: () => void
+}) {
+  const utils = trpc.useUtils()
+  const [text, setText] = useState('')
+  const bottomRef = useRef<HTMLDivElement>(null)
+  const textareaRef = useRef<HTMLTextAreaElement>(null)
+
+  const { data, isLoading } = trpc.conversations.getContactThread.useQuery(
+    { contactId },
+    { refetchInterval: 5000 }
+  )
+
+  useEffect(() => {
+    bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
+  }, [data?.messages])
+
+  const activeConv = data?.conversations
+    .slice().reverse()
+    .find((c: any) => c.status !== 'resolved') ?? data?.conversations.at(-1)
+
+  const isAI = (activeConv?.mode ?? 'ai') === 'ai'
+  const isResolved = activeConv?.status === 'resolved'
+  const canType = !isAI && !isResolved && !!activeConv
+
+  const setMode = trpc.conversations.setMode.useMutation({
+    onSuccess: () => utils.conversations.getContactThread.invalidate({ contactId }),
+  })
+  const resolve = trpc.conversations.resolve.useMutation({
+    onSuccess: () => utils.conversations.getContactThread.invalidate({ contactId }),
+  })
+  const sendMessage = trpc.conversations.sendMessage.useMutation({
+    onSuccess: () => {
+      setText('')
+      utils.conversations.getContactThread.invalidate({ contactId })
+    },
+  })
+
+  function handleSend() {
+    if (!text.trim() || !activeConv || !canType) return
+    sendMessage.mutate({ conversationId: activeConv.id, text: text.trim() })
+  }
+
+  let lastDate = ''
+
+  return (
+    <div className="flex flex-col h-full min-h-0">
+      {/* Header */}
+      <div className="flex items-center gap-2 border-b px-4 py-3 shrink-0">
+        <button onClick={onBack} className="rounded-lg p-1.5 hover:bg-muted" title="Voltar para detalhes">
+          <ArrowLeft className="h-4 w-4" />
+        </button>
+        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-bold text-primary">
+          {contactName.charAt(0).toUpperCase()}
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-semibold truncate">{contactName}</p>
+          <p className="text-xs text-muted-foreground">
+            {data?.conversations.length ?? 0} conversa{(data?.conversations.length ?? 0) !== 1 ? 's' : ''} ·{' '}
+            <span className={isAI ? 'text-purple-600' : 'text-blue-600'}>
+              {isAI ? '🤖 IA' : '👤 Humano'}
+            </span>
+          </p>
+        </div>
+        <div className="flex items-center gap-1.5 shrink-0">
+          {activeConv && !isResolved && (
+            <>
+              <button
+                onClick={() => setMode.mutate({ id: activeConv.id, mode: isAI ? 'human' : 'ai' })}
+                className={`flex items-center gap-1 rounded-lg border px-2.5 py-1 text-xs font-medium ${isAI ? 'text-purple-700 border-purple-200 hover:bg-purple-50' : 'text-blue-700 border-blue-200 hover:bg-blue-50'}`}
+              >
+                {isAI ? <Bot className="h-3 w-3" /> : <UserCheck className="h-3 w-3" />}
+                {isAI ? 'Assumir' : 'Devolver IA'}
+              </button>
+              <button
+                onClick={() => resolve.mutate({ id: activeConv.id })}
+                className="flex items-center gap-1 rounded-lg border border-green-200 px-2.5 py-1 text-xs font-medium text-green-700 hover:bg-green-50"
+              >
+                <Check className="h-3 w-3" /> Resolver
+              </button>
+            </>
+          )}
+          {isResolved && (
+            <span className="rounded-full bg-green-100 px-2.5 py-0.5 text-xs font-medium text-green-700">Resolvida</span>
+          )}
+          <button onClick={onClose} className="ml-1 rounded-lg p-1.5 hover:bg-muted">
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+      </div>
+
+      {/* Messages */}
+      <div className="flex-1 min-h-0 overflow-y-auto p-3 space-y-1 bg-slate-50">
+        {isLoading ? (
+          <div className="flex h-32 items-center justify-center">
+            <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+          </div>
+        ) : !data?.messages.length ? (
+          <div className="flex h-32 items-center justify-center text-sm text-muted-foreground">
+            Nenhuma mensagem ainda
+          </div>
+        ) : (
+          <>
+            {(data.messages as any[]).map((msg) => {
+              const msgDate = new Date(msg.created_at).toLocaleDateString('pt-BR', { day: '2-digit', month: 'long' })
+              const showDivider = msgDate !== lastDate
+              lastDate = msgDate
+              const isUser = msg.role === 'user'
+              return (
+                <div key={msg.id}>
+                  {showDivider && (
+                    <div className="flex items-center gap-2 py-2">
+                      <div className="flex-1 border-t border-dashed border-slate-300" />
+                      <span className="text-[10px] text-muted-foreground">{msgDate}</span>
+                      <div className="flex-1 border-t border-dashed border-slate-300" />
+                    </div>
+                  )}
+                  <div className={`flex mb-1 ${isUser ? 'justify-start' : 'justify-end'}`}>
+                    <div className={`max-w-[80%] rounded-2xl px-3 py-2 text-sm ${
+                      isUser ? 'rounded-tl-sm bg-white border text-foreground' : 'rounded-tr-sm bg-primary text-white'
+                    }`}>
+                      <p className="leading-relaxed whitespace-pre-wrap">{msg.content}</p>
+                      <p className={`mt-0.5 text-[10px] ${isUser ? 'text-muted-foreground' : 'text-white/70'}`}>
+                        {new Date(msg.created_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )
+            })}
+            <div ref={bottomRef} />
+          </>
+        )}
+      </div>
+
+      {/* Input */}
+      <div className="shrink-0 border-t p-3">
+        {canType ? (
+          <div className="flex items-end gap-2">
+            <textarea
+              ref={textareaRef}
+              value={text}
+              onChange={(e) => setText(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend() } }}
+              rows={2}
+              placeholder="Digite uma mensagem..."
+              className="flex-1 resize-none rounded-xl border px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/30"
+            />
+            <button
+              onClick={handleSend}
+              disabled={!text.trim() || sendMessage.isPending}
+              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary text-white hover:bg-primary/90 disabled:opacity-50"
+            >
+              {sendMessage.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+            </button>
+          </div>
+        ) : (
+          <p className="text-center text-xs text-muted-foreground py-1">
+            {isResolved ? 'Conversa encerrada' : 'Clique em "Assumir" para digitar'}
+          </p>
         )}
       </div>
     </div>

@@ -30,6 +30,8 @@ function parseCSV(text: string): { name: string; phone: string }[] {
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
+const LIST_TAG_PREFIX = '_list:'
+
 const LIST_COLORS = [
   { value: '#6366f1', label: 'Índigo' },
   { value: '#3b82f6', label: 'Azul' },
@@ -96,6 +98,9 @@ export function ContactsManager() {
   const [deleteListId, setDeleteListId] = useState<string | null>(null)
   const [editContact, setEditContact] = useState<Contact | null>(null)
   const [showMapsSearch, setShowMapsSearch] = useState(false)
+  const [moveContactId, setMoveContactId] = useState<string | null>(null)
+  const [moveFromListId, setMoveFromListId] = useState<string>('')
+  const [moveToListId, setMoveToListId] = useState<string>('')
   const [renamingListId, setRenamingListId] = useState<string | null>(null)
   const [renameValue, setRenameValue] = useState('')
   const utils = trpc.useUtils()
@@ -165,6 +170,9 @@ export function ContactsManager() {
   })
   const removeFromList = trpc.contacts.removeFromList.useMutation({
     onSuccess: () => utils.contacts.list.invalidate(),
+  })
+  const moveToList = trpc.contacts.moveToList.useMutation({
+    onSuccess: () => { utils.contacts.list.invalidate(); setMoveContactId(null); setMoveFromListId(''); setMoveToListId('') },
   })
 
   const typedLists = lists as ContactList[]
@@ -561,6 +569,13 @@ export function ContactsManager() {
                     </td>
                     <td className="px-4 py-3 text-right">
                       <div className="flex items-center justify-end gap-1">
+                        <button
+                          onClick={() => { setMoveContactId(c.id); setMoveFromListId(activeListId ?? ''); setMoveToListId('') }}
+                          title="Mover para lista"
+                          className="rounded p-1.5 text-muted-foreground hover:bg-purple-50 hover:text-purple-600"
+                        >
+                          <FolderOpen className="h-4 w-4" />
+                        </button>
                         {activeListId && (
                           <button
                             onClick={() => removeFromList.mutate({ contactId: c.id, listId: activeListId })}
@@ -624,6 +639,78 @@ export function ContactsManager() {
           isPending={deleteList.isPending}
         />
       )}
+      {moveContactId && (() => {
+        const movingContact = contacts.find((c) => c.id === moveContactId)
+        const contactListIds = (movingContact?.tags ?? [])
+          .filter((t: string) => t.startsWith(LIST_TAG_PREFIX))
+          .map((t: string) => t.replace(LIST_TAG_PREFIX, ''))
+        const contactCurrentLists = typedLists.filter((l) => contactListIds.includes(l.id))
+        const availableDestinations = typedLists.filter((l) => l.id !== moveFromListId)
+        return (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+            <div className="w-full max-w-sm rounded-2xl bg-white shadow-2xl">
+              <div className="flex items-center justify-between border-b px-6 py-4">
+                <h3 className="font-semibold">Mover contato de lista</h3>
+                <button onClick={() => setMoveContactId(null)} className="rounded-lg p-1 hover:bg-muted">
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+              <div className="space-y-4 p-6">
+                {/* Contact name */}
+                <p className="text-sm text-muted-foreground">
+                  <span className="font-medium text-foreground">{movingContact?.name ?? 'Contato'}</span>
+                </p>
+
+                {/* From list */}
+                <div>
+                  <label className="mb-1 block text-sm font-medium">Remover de</label>
+                  <select
+                    value={moveFromListId}
+                    onChange={(e) => setMoveFromListId(e.target.value)}
+                    className="w-full rounded-lg border px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/30"
+                  >
+                    <option value="">— Não remover de nenhuma lista —</option>
+                    {contactCurrentLists.map((l) => (
+                      <option key={l.id} value={l.id}>{l.name}</option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* To list */}
+                <div>
+                  <label className="mb-1 block text-sm font-medium">Adicionar a</label>
+                  <select
+                    value={moveToListId}
+                    onChange={(e) => setMoveToListId(e.target.value)}
+                    className="w-full rounded-lg border px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/30"
+                  >
+                    <option value="">Selecione a lista de destino...</option>
+                    {availableDestinations.map((l) => (
+                      <option key={l.id} value={l.id}>{l.name}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="flex justify-end gap-2 pt-1">
+                  <button onClick={() => setMoveContactId(null)} className="rounded-lg border px-4 py-2 text-sm hover:bg-muted">Cancelar</button>
+                  <button
+                    disabled={!moveToListId || moveToList.isPending}
+                    onClick={() => moveToList.mutate({
+                      contactIds: [moveContactId],
+                      toListId: moveToListId,
+                      fromListId: moveFromListId || undefined,
+                    })}
+                    className="flex items-center gap-1.5 rounded-lg bg-primary px-5 py-2 text-sm font-medium text-white hover:bg-primary/90 disabled:opacity-60"
+                  >
+                    {moveToList.isPending && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+                    {moveFromListId ? 'Mover' : 'Adicionar'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )
+      })()}
       {showNewList && (
         <NewListModal
           onClose={() => setShowNewList(false)}

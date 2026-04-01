@@ -374,4 +374,60 @@ export const contactsRouter = router({
       if (error) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: error.message })
       return { success: true }
     }),
+
+  // ─── Move/copy contacts between lists ─────────────────────────────────────
+
+  moveToList: protectedProcedure
+    .input(z.object({
+      contactIds: z.array(z.string().uuid()).min(1),
+      toListId: z.string(),
+      fromListId: z.string().optional(), // when provided, removes from source list
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const orgId = await getOrgId(ctx)
+      const toTag = `${LIST_TAG_PREFIX}${input.toListId}`
+      const fromTag = input.fromListId ? `${LIST_TAG_PREFIX}${input.fromListId}` : null
+
+      const { data: contacts } = await ctx.supabase
+        .from('contacts')
+        .select('id, tags')
+        .in('id', input.contactIds)
+        .eq('organization_id', orgId)
+
+      if (!contacts?.length) throw new TRPCError({ code: 'NOT_FOUND' })
+
+      for (const contact of contacts) {
+        let tags: string[] = contact.tags ?? []
+        // Remove from source list if moving
+        if (fromTag) tags = tags.filter((t: string) => t !== fromTag)
+        // Add to destination list (avoid duplicates)
+        if (!tags.includes(toTag)) tags.push(toTag)
+        await ctx.supabase.from('contacts').update({ tags }).eq('id', contact.id)
+      }
+
+      return { success: true, moved: contacts.length }
+    }),
+
+  bulkRemoveFromList: protectedProcedure
+    .input(z.object({
+      contactIds: z.array(z.string().uuid()).min(1),
+      listId: z.string(),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const orgId = await getOrgId(ctx)
+      const listTag = `${LIST_TAG_PREFIX}${input.listId}`
+
+      const { data: contacts } = await ctx.supabase
+        .from('contacts')
+        .select('id, tags')
+        .in('id', input.contactIds)
+        .eq('organization_id', orgId)
+
+      for (const contact of contacts ?? []) {
+        const tags = (contact.tags ?? []).filter((t: string) => t !== listTag)
+        await ctx.supabase.from('contacts').update({ tags }).eq('id', contact.id)
+      }
+
+      return { success: true }
+    }),
 })

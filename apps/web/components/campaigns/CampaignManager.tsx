@@ -41,6 +41,7 @@ const schema = z.object({
   targetValue: z.string().optional(),
   delaySeconds: z.number().min(3).max(30).default(5),
   businessHoursOnly: z.boolean().default(true),
+  dailyLimit: z.number().min(1).max(500).optional(),
   funnelId: z.string().optional(),
   funnelStageId: z.string().optional(),
 })
@@ -230,6 +231,11 @@ export function CampaignManager() {
                       </div>
                     )}
                     <p className="mt-2 text-xs text-muted-foreground">
+                      {(() => {
+                        const ch = (channels as any[]).find((ch) => ch.id === c.channel_id)
+                        const agentName = ch?.agents?.name ?? ch?.name
+                        return agentName ? <span className="font-medium text-slate-600">Agente: {agentName} · </span> : null
+                      })()}
                       {c.delay_seconds}s entre envios · {c.business_hours_only ? 'Horário comercial' : 'Qualquer horário'} ·{' '}
                       {TARGET_OPTIONS.find((t) => t.value === c.target_type)?.label ?? c.target_type}
                       {c.target_value ? ` (${c.target_value})` : ''}
@@ -354,6 +360,7 @@ export function CampaignManager() {
             targetValue: editingCampaign.target_value ?? undefined,
             delaySeconds: editingCampaign.delay_seconds,
             businessHoursOnly: editingCampaign.business_hours_only,
+            dailyLimit: (editingCampaign as any).daily_limit ?? undefined,
             funnelId: editingCampaign.funnel_id ?? undefined,
             funnelStageId: editingCampaign.funnel_stage_id ?? undefined,
           }}
@@ -441,7 +448,7 @@ function CampaignForm({
                 <option value="">Selecione...</option>
                 {channels.map((ch: any) => (
                   <option key={ch.id} value={ch.id}>
-                    {(ch.credentials as any)?.instanceName ?? ch.id}
+                    {ch.agents?.name ?? ch.name ?? 'Agente sem nome'}
                   </option>
                 ))}
               </select>
@@ -556,6 +563,27 @@ function CampaignForm({
                 <p className="text-xs text-muted-foreground">Reduz risco de bloqueio e denúncias</p>
               </div>
             </label>
+
+            {/* Daily limit */}
+            <div className="border-t pt-3">
+              <label className="mb-1.5 block text-sm font-medium">
+                Limite diário de disparos
+                <span className="ml-2 font-normal text-muted-foreground text-xs">(opcional)</span>
+              </label>
+              <div className="flex items-center gap-3">
+                <input
+                  type="number"
+                  min={1}
+                  max={500}
+                  placeholder="Ex: 25"
+                  {...register('dailyLimit', { valueAsNumber: true })}
+                  className="w-32 rounded-lg border px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/30"
+                />
+                <p className="text-xs text-muted-foreground">
+                  disparos por dia. Ao atingir o limite, retoma automaticamente no dia seguinte.
+                </p>
+              </div>
+            </div>
           </div>
 
           {/* Funnel */}

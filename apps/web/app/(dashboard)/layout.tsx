@@ -3,6 +3,8 @@ import { getUser } from '@/lib/supabase/server'
 import { isPlatformAdmin } from '@/lib/admin'
 import { Sidebar } from '@/components/layout/Sidebar'
 import { DashboardScroll } from '@/components/layout/DashboardScroll'
+import { GettingStarted } from '@/components/onboarding/GettingStarted'
+import { SupportChat } from '@/components/support/SupportChat'
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
   const user = await getUser()
@@ -19,6 +21,8 @@ export default async function DashboardLayout({ children }: { children: React.Re
       <main className="flex-1 min-h-0 overflow-hidden flex flex-col">
         <DashboardScroll>{children}</DashboardScroll>
       </main>
+      <GettingStarted />
+      <SupportChat />
     </div>
   )
 }

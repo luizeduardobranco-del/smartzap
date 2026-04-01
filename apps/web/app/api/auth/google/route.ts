@@ -17,8 +17,11 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: 'Google OAuth não configurado' }, { status: 500 })
   }
 
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000'
-  const redirectUri = `${appUrl}/api/auth/google/callback`
+  const origin = new URL(req.url).origin
+  const redirectUri = `${origin}/api/auth/google/callback`
+
+  console.log('[Google OAuth] client_id:', clientId)
+  console.log('[Google OAuth] redirect_uri:', redirectUri)
 
   const params = new URLSearchParams({
     client_id: clientId,
