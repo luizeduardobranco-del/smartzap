@@ -15,10 +15,19 @@ export default function SignupPage() {
   const [loading, setLoading] = useState(false)
   const [confirmed, setConfirmed] = useState(false)
 
+  function fbq(...args: unknown[]) {
+    if (typeof window !== 'undefined' && (window as any).fbq) {
+      ;(window as any).fbq(...args)
+    }
+  }
+
   async function handleSignup(e: React.FormEvent) {
     e.preventDefault()
     setError(null)
     setLoading(true)
+
+    // Evento: usuário iniciou o cadastro
+    fbq('track', 'Lead')
 
     try {
       const supabase = createSupabaseBrowserClient()
@@ -42,11 +51,13 @@ export default function SignupPage() {
 
       // Supabase requires email confirmation — session will be null
       if (data.user && !data.session) {
+        fbq('track', 'CompleteRegistration')
         setConfirmed(true)
         return
       }
 
       // Email confirmation disabled — user is already logged in
+      fbq('track', 'CompleteRegistration')
       window.location.href = '/agents'
     } finally {
       setLoading(false)
