@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useRef, useEffect } from 'react'
-import { X, Send, Loader2, Bot, Trash2, ChevronDown, Headphones } from 'lucide-react'
+import { X, Send, Loader2, Bot, Trash2, ChevronDown, Headphones, GripVertical } from 'lucide-react'
 
 type Message = {
   role: 'user' | 'assistant'
@@ -19,8 +19,11 @@ export function SupportChat() {
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
   const [unread, setUnread] = useState(0)
+  const [btnPos, setBtnPos] = useState({ right: 20, bottom: 20 })
   const bottomRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
+  const dragRef = useRef<{ startX: number; startY: number; startRight: number; startBottom: number } | null>(null)
+  const wasDragRef = useRef(false)
 
   useEffect(() => {
     if (open) {
@@ -34,6 +37,44 @@ export function SupportChat() {
       bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
     }
   }, [messages, loading, open])
+
+  function handleBubbleMouseDown(e: React.MouseEvent) {
+    wasDragRef.current = false
+    dragRef.current = {
+      startX: e.clientX,
+      startY: e.clientY,
+      startRight: btnPos.right,
+      startBottom: btnPos.bottom,
+    }
+
+    function onMove(ev: MouseEvent) {
+      if (!dragRef.current) return
+      const dx = ev.clientX - dragRef.current.startX
+      const dy = ev.clientY - dragRef.current.startY
+      if (Math.abs(dx) > 5 || Math.abs(dy) > 5) wasDragRef.current = true
+      setBtnPos({
+        right: Math.max(5, dragRef.current.startRight - dx),
+        bottom: Math.max(5, dragRef.current.startBottom - dy),
+      })
+    }
+
+    function onUp() {
+      dragRef.current = null
+      window.removeEventListener('mousemove', onMove)
+      window.removeEventListener('mouseup', onUp)
+    }
+
+    window.addEventListener('mousemove', onMove)
+    window.addEventListener('mouseup', onUp)
+  }
+
+  function handleBubbleClick() {
+    if (wasDragRef.current) {
+      wasDragRef.current = false
+      return
+    }
+    setOpen((v) => !v)
+  }
 
   async function send() {
     const text = input.trim()
@@ -51,7 +92,6 @@ export function SupportChat() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           message: text,
-          // pass history without the initial greeting to keep context clean
           history: messages.filter((m) => !(m.role === 'assistant' && m.content === GREETING.content)),
         }),
       })
@@ -81,12 +121,43 @@ export function SupportChat() {
   }
 
   return (
-    <div className="fixed bottom-5 right-5 z-50 flex flex-col items-end">
+    <div
+      className="z-50 flex flex-col items-end"
+      style={{ position: 'fixed', right: btnPos.right, bottom: btnPos.bottom }}
+    >
       {/* Chat panel */}
       {open && (
         <div className="mb-4 flex h-[520px] w-[360px] flex-col rounded-2xl border bg-white shadow-2xl">
-          {/* Header */}
-          <div className="flex items-center gap-2.5 rounded-t-2xl bg-gradient-to-r from-primary to-primary/80 px-4 py-3 text-white">
+          {/* Header — drag handle */}
+          <div
+            className="flex cursor-grab active:cursor-grabbing items-center gap-2.5 rounded-t-2xl bg-gradient-to-r from-primary to-primary/80 px-4 py-3 text-white select-none"
+            onMouseDown={(e) => {
+              // Drag the whole chat panel via header
+              const panel = e.currentTarget.closest('.flex.flex-col.items-end') as HTMLElement | null
+              if (!panel) return
+              const startX = e.clientX
+              const startY = e.clientY
+              const startRight = btnPos.right
+              const startBottom = btnPos.bottom
+
+              function onMove(ev: MouseEvent) {
+                const dx = ev.clientX - startX
+                const dy = ev.clientY - startY
+                setBtnPos({
+                  right: Math.max(5, startRight - dx),
+                  bottom: Math.max(5, startBottom - dy),
+                })
+              }
+
+              function onUp() {
+                window.removeEventListener('mousemove', onMove)
+                window.removeEventListener('mouseup', onUp)
+              }
+
+              window.addEventListener('mousemove', onMove)
+              window.addEventListener('mouseup', onUp)
+            }}
+          >
             <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white/20">
               <Bot className="h-5 w-5" />
             </div>
@@ -98,8 +169,10 @@ export function SupportChat() {
               </div>
             </div>
             <div className="flex items-center gap-1">
+              <GripVertical className="h-4 w-4 opacity-40" />
               <button
                 onClick={clearChat}
+                onMouseDown={(e) => e.stopPropagation()}
                 className="rounded p-1.5 hover:bg-white/20"
                 title="Limpar conversa"
               >
@@ -107,6 +180,7 @@ export function SupportChat() {
               </button>
               <button
                 onClick={() => setOpen(false)}
+                onMouseDown={(e) => e.stopPropagation()}
                 className="rounded p-1.5 hover:bg-white/20"
                 title="Minimizar"
               >
@@ -203,9 +277,10 @@ export function SupportChat() {
 
       {/* Bubble button */}
       <button
-        onClick={() => setOpen((v) => !v)}
-        className="relative flex h-14 w-14 items-center justify-center rounded-full bg-primary text-white shadow-lg hover:bg-primary/90 transition-all hover:scale-105 active:scale-95"
-        title="Suporte White Zap"
+        onMouseDown={handleBubbleMouseDown}
+        onClick={handleBubbleClick}
+        className="relative flex h-14 w-14 items-center justify-center rounded-full bg-primary text-white shadow-lg hover:bg-primary/90 transition-all hover:scale-105 active:scale-95 cursor-grab active:cursor-grabbing"
+        title="Suporte White Zap — arraste para mover"
       >
         {open ? (
           <ChevronDown className="h-6 w-6" />
@@ -217,7 +292,6 @@ export function SupportChat() {
             {unread}
           </span>
         )}
-        {/* Pulse ring when closed */}
         {!open && (
           <span className="absolute inset-0 rounded-full bg-primary animate-ping opacity-20" />
         )}

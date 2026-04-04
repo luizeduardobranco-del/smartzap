@@ -12,6 +12,24 @@ import {
 } from 'lucide-react'
 import { trpc } from '@/lib/trpc/client'
 
+// ─── Tag helpers ──────────────────────────────────────────────────────────────
+
+const PRESET_TAGS = [
+  { label: 'Hot Lead',      cls: 'bg-red-100 text-red-700 border-red-200' },
+  { label: 'Cold Lead',     cls: 'bg-slate-100 text-slate-600 border-slate-200' },
+  { label: 'VIP',           cls: 'bg-amber-100 text-amber-700 border-amber-200' },
+  { label: 'Suporte',       cls: 'bg-blue-100 text-blue-700 border-blue-200' },
+  { label: 'Venda',         cls: 'bg-green-100 text-green-700 border-green-200' },
+  { label: 'Reclamação',    cls: 'bg-orange-100 text-orange-700 border-orange-200' },
+  { label: 'Parceiro',      cls: 'bg-purple-100 text-purple-700 border-purple-200' },
+  { label: 'Inativo',       cls: 'bg-gray-100 text-gray-500 border-gray-200' },
+  { label: 'Sem interesse', cls: 'bg-rose-100 text-rose-700 border-rose-200' },
+]
+
+function getTagCls(tag: string) {
+  return PRESET_TAGS.find((t) => t.label === tag)?.cls ?? 'bg-indigo-100 text-indigo-700 border-indigo-200'
+}
+
 // ─── CSV Parser ───────────────────────────────────────────────────────────────
 
 function parseCSV(text: string): { name: string; phone: string }[] {
@@ -1072,8 +1090,11 @@ function EditContactModal({ contact, onClose, onSaved }: {
   onClose: () => void
   onSaved: () => void
 }) {
-  const [tags, setTags] = useState<string[]>(contact.tags ?? [])
+  // Separate user tags from internal _list: tags to preserve them on save
+  const listTagsRaw = (contact.tags ?? []).filter((t: string) => t.startsWith('_list:'))
+  const [userTags, setUserTags] = useState<string[]>((contact.tags ?? []).filter((t: string) => !t.startsWith('_list:')))
   const [tagInput, setTagInput] = useState('')
+  const [showCustomInput, setShowCustomInput] = useState(false)
   const { register, handleSubmit, formState: { errors } } = useForm({
     defaultValues: {
       name: contact.name,
@@ -1085,10 +1106,15 @@ function EditContactModal({ contact, onClose, onSaved }: {
   })
   const update = trpc.contacts.update.useMutation({ onSuccess: onSaved })
 
-  function addTag() {
-    const t = tagInput.trim().toLowerCase().replace(/\s+/g, '-')
-    if (t && !tags.includes(t)) setTags([...tags, t])
+  function toggleTag(tag: string) {
+    setUserTags((prev) => prev.includes(tag) ? prev.filter((t) => t !== tag) : [...prev, tag])
+  }
+
+  function addCustomTag() {
+    const t = tagInput.trim()
+    if (t && !userTags.includes(t)) setUserTags((prev) => [...prev, t])
     setTagInput('')
+    setShowCustomInput(false)
   }
 
   return (
@@ -1101,7 +1127,7 @@ function EditContactModal({ contact, onClose, onSaved }: {
           </button>
         </div>
         <form
-          onSubmit={handleSubmit((d) => update.mutate({ id: contact.id, ...d, tags }))}
+          onSubmit={handleSubmit((d) => update.mutate({ id: contact.id, ...d, tags: [...userTags, ...listTagsRaw] }))}
           className="space-y-4 p-6"
         >
           <div>
@@ -1145,23 +1171,52 @@ function EditContactModal({ contact, onClose, onSaved }: {
             />
           </div>
           <div>
-            <label className="mb-1.5 block text-sm font-medium">Tags</label>
-            <div className="flex gap-2">
-              <input
-                value={tagInput}
-                onChange={(e) => setTagInput(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), addTag())}
-                placeholder="Pressione Enter para adicionar"
-                className="flex-1 rounded-lg border px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/30"
-              />
-              <button type="button" onClick={addTag} className="rounded-lg border px-3 py-2 text-sm hover:bg-muted">+</button>
+            <div className="mb-1.5 flex items-center justify-between">
+              <label className="text-sm font-medium">Tags</label>
+              <button
+                type="button"
+                onClick={() => setShowCustomInput(!showCustomInput)}
+                className="text-xs text-primary hover:underline"
+              >
+                + Personalizada
+              </button>
             </div>
-            {tags.length > 0 && (
+            <div className="flex flex-wrap gap-1.5">
+              {PRESET_TAGS.map((t) => {
+                const active = userTags.includes(t.label)
+                return (
+                  <button
+                    type="button"
+                    key={t.label}
+                    onClick={() => toggleTag(t.label)}
+                    className={`rounded-full border px-2.5 py-1 text-xs font-medium transition-all ${
+                      active ? t.cls + ' ring-1 ring-offset-1 ring-current' : 'border-slate-200 bg-white text-slate-500 hover:bg-slate-50'
+                    }`}
+                  >
+                    {t.label}
+                  </button>
+                )
+              })}
+            </div>
+            {showCustomInput && (
+              <div className="mt-2 flex gap-2">
+                <input
+                  autoFocus
+                  value={tagInput}
+                  onChange={(e) => setTagInput(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), addCustomTag())}
+                  placeholder="Nome da tag personalizada..."
+                  className="flex-1 rounded-lg border px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/30"
+                />
+                <button type="button" onClick={addCustomTag} className="rounded-lg border px-3 py-2 text-sm hover:bg-muted">+</button>
+              </div>
+            )}
+            {userTags.filter((t) => !PRESET_TAGS.map((p) => p.label).includes(t)).length > 0 && (
               <div className="mt-2 flex flex-wrap gap-1">
-                {tags.map((t) => (
-                  <span key={t} className="flex items-center gap-1 rounded-full bg-primary/10 px-2.5 py-1 text-xs font-medium text-primary">
+                {userTags.filter((t) => !PRESET_TAGS.map((p) => p.label).includes(t)).map((t) => (
+                  <span key={t} className={`flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs font-medium ${getTagCls(t)}`}>
                     {t}
-                    <button type="button" onClick={() => setTags(tags.filter((x) => x !== t))} className="hover:text-red-500">×</button>
+                    <button type="button" onClick={() => setUserTags(userTags.filter((x) => x !== t))} className="opacity-60 hover:opacity-100"><X className="h-3 w-3" /></button>
                   </span>
                 ))}
               </div>
@@ -1202,16 +1257,22 @@ function AddContactModal({ lists, defaultListId, onClose, onSaved }: {
   onClose: () => void
   onSaved: () => void
 }) {
-  const [tags, setTags] = useState<string[]>([])
+  const [userTags, setUserTags] = useState<string[]>([])
   const [tagInput, setTagInput] = useState('')
+  const [showCustomInput, setShowCustomInput] = useState(false)
   const [listId, setListId] = useState<string>(defaultListId ?? '')
   const { register, handleSubmit, formState: { errors } } = useForm({ resolver: zodResolver(addSchema) })
   const create = trpc.contacts.create.useMutation({ onSuccess: onSaved })
 
-  function addTag() {
-    const t = tagInput.trim().toLowerCase().replace(/\s+/g, '-')
-    if (t && !tags.includes(t)) setTags([...tags, t])
+  function toggleTag(tag: string) {
+    setUserTags((prev) => prev.includes(tag) ? prev.filter((t) => t !== tag) : [...prev, tag])
+  }
+
+  function addCustomTag() {
+    const t = tagInput.trim()
+    if (t && !userTags.includes(t)) setUserTags((prev) => [...prev, t])
     setTagInput('')
+    setShowCustomInput(false)
   }
 
   // Group lists by type for the select
@@ -1232,7 +1293,7 @@ function AddContactModal({ lists, defaultListId, onClose, onSaved }: {
           </button>
         </div>
         <form
-          onSubmit={handleSubmit((d) => create.mutate({ name: d.name, phone: d.phone, tags, listId: listId || undefined }))}
+          onSubmit={handleSubmit((d) => create.mutate({ name: d.name, phone: d.phone, tags: userTags, listId: listId || undefined }))}
           className="space-y-4 p-6"
         >
           <div>
@@ -1271,25 +1332,48 @@ function AddContactModal({ lists, defaultListId, onClose, onSaved }: {
             </select>
           </div>
           <div>
-            <label className="mb-1.5 block text-sm font-medium">Tags</label>
-            <div className="flex gap-2">
-              <input
-                value={tagInput}
-                onChange={(e) => setTagInput(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), addTag())}
-                placeholder="Pressione Enter para adicionar"
-                className="flex-1 rounded-lg border px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/30"
-              />
-              <button type="button" onClick={addTag} className="rounded-lg border px-3 py-2 text-sm hover:bg-muted">
-                +
+            <div className="mb-1.5 flex items-center justify-between">
+              <label className="text-sm font-medium">Tags</label>
+              <button type="button" onClick={() => setShowCustomInput(!showCustomInput)} className="text-xs text-primary hover:underline">
+                + Personalizada
               </button>
             </div>
-            {tags.length > 0 && (
+            <div className="flex flex-wrap gap-1.5">
+              {PRESET_TAGS.map((t) => {
+                const active = userTags.includes(t.label)
+                return (
+                  <button
+                    type="button"
+                    key={t.label}
+                    onClick={() => toggleTag(t.label)}
+                    className={`rounded-full border px-2.5 py-1 text-xs font-medium transition-all ${
+                      active ? t.cls + ' ring-1 ring-offset-1 ring-current' : 'border-slate-200 bg-white text-slate-500 hover:bg-slate-50'
+                    }`}
+                  >
+                    {t.label}
+                  </button>
+                )
+              })}
+            </div>
+            {showCustomInput && (
+              <div className="mt-2 flex gap-2">
+                <input
+                  autoFocus
+                  value={tagInput}
+                  onChange={(e) => setTagInput(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), addCustomTag())}
+                  placeholder="Nome da tag personalizada..."
+                  className="flex-1 rounded-lg border px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/30"
+                />
+                <button type="button" onClick={addCustomTag} className="rounded-lg border px-3 py-2 text-sm hover:bg-muted">+</button>
+              </div>
+            )}
+            {userTags.filter((t) => !PRESET_TAGS.map((p) => p.label).includes(t)).length > 0 && (
               <div className="mt-2 flex flex-wrap gap-1">
-                {tags.map((t) => (
-                  <span key={t} className="flex items-center gap-1 rounded-full bg-primary/10 px-2.5 py-1 text-xs font-medium text-primary">
+                {userTags.filter((t) => !PRESET_TAGS.map((p) => p.label).includes(t)).map((t) => (
+                  <span key={t} className={`flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs font-medium ${getTagCls(t)}`}>
                     {t}
-                    <button type="button" onClick={() => setTags(tags.filter((x) => x !== t))} className="hover:text-red-500">×</button>
+                    <button type="button" onClick={() => setUserTags(userTags.filter((x) => x !== t))} className="opacity-60 hover:opacity-100"><X className="h-3 w-3" /></button>
                   </span>
                 ))}
               </div>
@@ -1329,8 +1413,9 @@ function ImportModal({ lists, defaultListId, onClose, onSaved }: {
   const [newListType, setNewListType] = useState('')
   const [newListColor, setNewListColor] = useState('#6366f1')
   const [csvText, setCsvText] = useState('')
-  const [tags, setTags] = useState<string[]>([])
-  const [tagInput, setTagInput] = useState('')
+  const [importTags, setImportTags] = useState<string[]>([])
+  const [importTagInput, setImportTagInput] = useState('')
+  const [showImportCustomInput, setShowImportCustomInput] = useState(false)
   const [result, setResult] = useState<{ inserted: number; skipped: number; fileDuplicates?: number; total: number } | null>(null)
   const [createdListId, setCreatedListId] = useState<string | null>(null)
   const [showTypeSuggestions, setShowTypeSuggestions] = useState(false)
@@ -1353,10 +1438,15 @@ function ImportModal({ lists, defaultListId, onClose, onSaved }: {
     return acc
   }, {})
 
-  function addTag() {
-    const t = tagInput.trim().toLowerCase().replace(/\s+/g, '-')
-    if (t && !tags.includes(t)) setTags([...tags, t])
-    setTagInput('')
+  function toggleImportTag(tag: string) {
+    setImportTags((prev) => prev.includes(tag) ? prev.filter((t) => t !== tag) : [...prev, tag])
+  }
+
+  function addImportCustomTag() {
+    const t = importTagInput.trim()
+    if (t && !importTags.includes(t)) setImportTags((prev) => [...prev, t])
+    setImportTagInput('')
+    setShowImportCustomInput(false)
   }
 
   function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
@@ -1378,7 +1468,7 @@ function ImportModal({ lists, defaultListId, onClose, onSaved }: {
 
   function handleImport() {
     const listId = createdListId ?? (selectedListId || undefined)
-    importBulk.mutate({ contacts: parsed, tags, listId })
+    importBulk.mutate({ contacts: parsed, tags: importTags, listId })
   }
 
   const finalListId = createdListId ?? selectedListId
@@ -1587,25 +1677,48 @@ function ImportModal({ lists, defaultListId, onClose, onSaved }: {
               )}
 
               <div>
-                <label className="mb-1.5 block text-sm font-medium">Tags para todos os contatos</label>
-                <div className="flex gap-2">
-                  <input
-                    value={tagInput}
-                    onChange={(e) => setTagInput(e.target.value)}
-                    onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), addTag())}
-                    placeholder="Pressione Enter para adicionar"
-                    className="flex-1 rounded-lg border px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/30"
-                  />
-                  <button type="button" onClick={addTag} className="rounded-lg border px-3 py-2 text-sm hover:bg-muted">
-                    +
+                <div className="mb-1.5 flex items-center justify-between">
+                  <label className="text-sm font-medium">Tags para todos os contatos</label>
+                  <button type="button" onClick={() => setShowImportCustomInput(!showImportCustomInput)} className="text-xs text-primary hover:underline">
+                    + Personalizada
                   </button>
                 </div>
-                {tags.length > 0 && (
+                <div className="flex flex-wrap gap-1.5">
+                  {PRESET_TAGS.map((t) => {
+                    const active = importTags.includes(t.label)
+                    return (
+                      <button
+                        type="button"
+                        key={t.label}
+                        onClick={() => toggleImportTag(t.label)}
+                        className={`rounded-full border px-2.5 py-1 text-xs font-medium transition-all ${
+                          active ? t.cls + ' ring-1 ring-offset-1 ring-current' : 'border-slate-200 bg-white text-slate-500 hover:bg-slate-50'
+                        }`}
+                      >
+                        {t.label}
+                      </button>
+                    )
+                  })}
+                </div>
+                {showImportCustomInput && (
+                  <div className="mt-2 flex gap-2">
+                    <input
+                      autoFocus
+                      value={importTagInput}
+                      onChange={(e) => setImportTagInput(e.target.value)}
+                      onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), addImportCustomTag())}
+                      placeholder="Nome da tag personalizada..."
+                      className="flex-1 rounded-lg border px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/30"
+                    />
+                    <button type="button" onClick={addImportCustomTag} className="rounded-lg border px-3 py-2 text-sm hover:bg-muted">+</button>
+                  </div>
+                )}
+                {importTags.filter((t) => !PRESET_TAGS.map((p) => p.label).includes(t)).length > 0 && (
                   <div className="mt-2 flex flex-wrap gap-1">
-                    {tags.map((t) => (
-                      <span key={t} className="flex items-center gap-1 rounded-full bg-primary/10 px-2.5 py-1 text-xs font-medium text-primary">
+                    {importTags.filter((t) => !PRESET_TAGS.map((p) => p.label).includes(t)).map((t) => (
+                      <span key={t} className={`flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs font-medium ${getTagCls(t)}`}>
                         {t}
-                        <button type="button" onClick={() => setTags(tags.filter((x) => x !== t))} className="hover:text-red-500">×</button>
+                        <button type="button" onClick={() => setImportTags(importTags.filter((x) => x !== t))} className="opacity-60 hover:opacity-100"><X className="h-3 w-3" /></button>
                       </span>
                     ))}
                   </div>

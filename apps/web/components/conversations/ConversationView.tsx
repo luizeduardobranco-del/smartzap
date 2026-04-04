@@ -299,8 +299,8 @@ export function ConversationView({ contactId, onClose }: { contactId: string; on
               })}
               {/* Custom tags already applied */}
               {currentTags
-                .filter((t) => !PRESET_TAGS.find((p) => p.label === t))
-                .map((t) => (
+                .filter((t: string) => !PRESET_TAGS.find((p) => p.label === t))
+                .map((t: string) => (
                   <button
                     key={t}
                     onClick={() => toggleTag(t)}
