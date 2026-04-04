@@ -191,6 +191,30 @@ export class EvolutionWhatsAppAdapter implements ChannelAdapter {
     }
   }
 
+  async sendStatus(options: {
+    type: 'image' | 'video' | 'text'
+    content: string          // URL (image/video) or text content
+    caption?: string
+    backgroundColor?: string // for text stories
+  }): Promise<void> {
+    const url = `${this.apiUrl}/message/sendStatus/${this.instanceName}`
+    await axios.post(
+      url,
+      {
+        statusMessage: {
+          type: options.type,
+          content: options.content,
+          caption: options.caption ?? '',
+          backgroundColor: options.backgroundColor ?? '#000000',
+          font: 1,
+          allContacts: true,
+          statusJidList: [],
+        },
+      },
+      { headers: { apikey: this.apiKey, 'Content-Type': 'application/json' } }
+    )
+  }
+
   async getConnectedPhone(): Promise<string | null> {
     try {
       const response = await axios.get(

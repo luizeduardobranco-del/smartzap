@@ -15,6 +15,7 @@ import { funnelsRouter } from './routers/funnels'
 import { onboardingRouter } from './routers/onboarding'
 import { couponsRouter } from './routers/coupons'
 import { referralsRouter } from './routers/referrals'
+import { storiesRouter } from './routers/stories'
 
 export const appRouter = router({
   agents: agentsRouter,
@@ -33,6 +34,7 @@ export const appRouter = router({
   onboarding: onboardingRouter,
   coupons: couponsRouter,
   referrals: referralsRouter,
+  stories: storiesRouter,
 })
 
 export type AppRouter = typeof appRouter

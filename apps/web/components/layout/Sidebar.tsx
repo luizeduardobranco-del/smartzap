@@ -7,7 +7,7 @@ import { usePathname } from 'next/navigation'
 import type { User } from '@supabase/supabase-js'
 import {
   Bot, MessageSquare, Zap, BarChart3, Settings, Coins, LogOut,
-  Kanban, Send, Users, ShieldCheck, ChevronLeft, ChevronRight, Menu, X, GitBranch, Handshake,
+  Kanban, Send, Users, ShieldCheck, ChevronLeft, ChevronRight, Menu, X, GitBranch, Handshake, ImagePlay,
 } from 'lucide-react'
 
 const navItems = [
@@ -18,6 +18,7 @@ const navItems = [
   { href: '/funnels',       label: 'Funis',           icon: GitBranch },
   { href: '/automations',   label: 'Automações',      icon: Zap },
   { href: '/campaigns',     label: 'Disparos',        icon: Send },
+  { href: '/stories',       label: 'Stories',         icon: ImagePlay },
   { href: '/analytics',     label: 'Analytics',       icon: BarChart3 },
   { href: '/credits',       label: 'Créditos',        icon: Coins },
   { href: '/referrals',     label: 'Afiliados',       icon: Handshake },
