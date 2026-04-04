@@ -333,7 +333,7 @@ function LeadModal({
 
             {/* Stage selector */}
             <div>
-              <p className="mb-2 text-xs font-medium text-muted-foreground uppercase tracking-wide">Estágio</p>
+              <p className="mb-2 text-xs font-medium text-muted-foreground uppercase tracking-wide">Estágio no CRM</p>
               <div className="grid grid-cols-3 gap-1.5">
                 {STAGES.map((s) => (
                   <button
