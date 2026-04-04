@@ -31,6 +31,18 @@ export const crmRouter = router({
       return data ?? []
     }),
 
+  getContact: protectedProcedure
+    .input(z.object({ contactId: z.string().uuid() }))
+    .query(async ({ ctx, input }) => {
+      const { data, error } = await ctx.supabase
+        .from('contacts')
+        .select('id, name, phone, channel_type, kanban_stage, tags')
+        .eq('id', input.contactId)
+        .single()
+      if (error || !data) throw new TRPCError({ code: 'NOT_FOUND' })
+      return data
+    }),
+
   updateStage: protectedProcedure
     .input(z.object({
       contactId: z.string().uuid(),

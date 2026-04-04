@@ -360,6 +360,21 @@ export const funnelsRouter = router({
     }),
 
   // ── Toggle contact status (pause/resume) ──────────────────────
+  getContactFunnels: protectedProcedure
+    .input(z.object({ contactId: z.string().uuid() }))
+    .query(async ({ ctx, input }) => {
+      const db = getDb()
+      const { data, error } = await db
+        .from('funnel_contacts')
+        .select(`
+          id, stage_id, status,
+          funnels(id, name, funnel_stages(id, name, color, position))
+        `)
+        .eq('contact_id', input.contactId)
+      if (error) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: error.message })
+      return data ?? []
+    }),
+
   toggleContactStatus: protectedProcedure
     .input(z.object({ contactFunnelId: z.string().uuid() }))
     .mutation(async ({ ctx, input }) => {

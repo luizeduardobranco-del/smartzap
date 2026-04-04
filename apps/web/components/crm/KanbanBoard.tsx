@@ -84,6 +84,11 @@ function LeadModal({
   const [detailsOpen, setDetailsOpen] = useState(true)
   const [editingContact, setEditingContact] = useState(false)
   const [showConv, setShowConv] = useState(false)
+
+  const { data: contactFunnels = [] } = trpc.funnels.getContactFunnels.useQuery({ contactId: lead.id })
+  const moveContact = trpc.funnels.moveContact.useMutation({
+    onSettled: () => utils.funnels.getContactFunnels.invalidate({ contactId: lead.id }),
+  })
   const [editFields, setEditFields] = useState({
     phone: lead.phone ?? '',
     company_name: '',
@@ -289,6 +294,43 @@ function LeadModal({
 
         {detailsOpen && (
           <div className="space-y-5 px-5 pb-5">
+            {/* Funis vinculados */}
+            {contactFunnels.length > 0 && (
+              <div>
+                <p className="mb-2 text-xs font-medium text-muted-foreground uppercase tracking-wide">Funis vinculados</p>
+                <div className="space-y-3">
+                  {contactFunnels.map((fc: any) => {
+                    const funnel = fc.funnels
+                    if (!funnel) return null
+                    const stages = [...(funnel.funnel_stages ?? [])].sort(
+                      (a: any, b: any) => a.position - b.position
+                    )
+                    return (
+                      <div key={fc.id} className="rounded-xl border border-slate-100 bg-slate-50 p-3">
+                        <p className="mb-2 text-xs font-semibold text-slate-700">{funnel.name}</p>
+                        <div className="flex flex-wrap gap-1.5">
+                          {stages.map((s: any) => (
+                            <button
+                              key={s.id}
+                              onClick={() => moveContact.mutate({ contactFunnelId: fc.id, newStageId: s.id })}
+                              className={`flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium transition-all ${
+                                fc.stage_id === s.id
+                                  ? 'border-primary bg-primary text-white shadow-sm'
+                                  : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:bg-slate-50'
+                              }`}
+                            >
+                              <span className="h-2 w-2 rounded-full flex-shrink-0" style={{ backgroundColor: s.color }} />
+                              {s.name}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+            )}
+
             {/* Stage selector */}
             <div>
               <p className="mb-2 text-xs font-medium text-muted-foreground uppercase tracking-wide">Estágio</p>
