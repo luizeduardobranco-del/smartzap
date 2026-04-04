@@ -26,6 +26,12 @@ async function handleWebhook(payload: unknown) {
   const p = payload as Record<string, unknown>
   console.log('[webhook] event:', p?.event, 'instance:', p?.instance)
 
+  // ── CONNECTION_UPDATE: track channel connectivity ──────────────────────────
+  if (p?.event === 'connection.update' || p?.event === 'CONNECTION_UPDATE') {
+    await handleConnectionUpdate(p)
+    return
+  }
+
   const msg = parseAdapter.parseWebhook(payload)
   if (!msg) {
     console.log('[webhook] parseWebhook returned null — skipping')
@@ -542,6 +548,84 @@ async function handleWebhook(payload: unknown) {
       .update({ mode: 'human' })
       .eq('id', conversationId)
     console.log('[webhook] conversation switched to human mode')
+  }
+}
+
+// ─── Connection state handler ─────────────────────────────────────────────────
+
+async function handleConnectionUpdate(p: Record<string, unknown>) {
+  const instanceName = p?.instance as string | undefined
+  if (!instanceName) return
+
+  // Evolution API sends state as p.data.instance.state or p.state
+  const data = p?.data as Record<string, unknown> | undefined
+  const state: string =
+    (data?.instance as any)?.state ??
+    (data as any)?.state ??
+    (p?.state as string) ??
+    ''
+
+  console.log(`[webhook/connection] instance=${instanceName} state=${state}`)
+
+  const supabase = getSupabase()
+
+  // Find the channel by instanceName
+  const { data: channels } = await supabase
+    .from('channels')
+    .select('id, organization_id, status')
+    .eq('type', 'whatsapp')
+    .filter('credentials->>instanceName', 'eq', instanceName)
+    .limit(1)
+
+  const channel = channels?.[0]
+  if (!channel) {
+    console.warn(`[webhook/connection] no channel found for instance: ${instanceName}`)
+    return
+  }
+
+  if (state === 'open') {
+    // Connection established — mark as connected
+    if (channel.status !== 'connected') {
+      await supabase
+        .from('channels')
+        .update({ status: 'connected', connected_at: new Date().toISOString() })
+        .eq('id', channel.id)
+      console.log(`[webhook/connection] channel ${channel.id} → connected`)
+    }
+  } else if (['close', 'closing', 'qrcode', 'notLogged'].includes(state) || state === '') {
+    // Connection lost — mark as disconnected and create alert
+    if (channel.status !== 'disconnected') {
+      await supabase
+        .from('channels')
+        .update({ status: 'disconnected' })
+        .eq('id', channel.id)
+      console.warn(`[webhook/connection] channel ${channel.id} → DISCONNECTED (state=${state})`)
+
+      // Store disconnection alert in organization settings for UI banner
+      const { data: org } = await supabase
+        .from('organizations')
+        .select('settings')
+        .eq('id', channel.organization_id)
+        .single()
+
+      const settings = (org?.settings ?? {}) as Record<string, unknown>
+      const alerts: any[] = Array.isArray(settings.channelAlerts) ? settings.channelAlerts : []
+
+      // Keep only last 10 alerts and avoid duplicates for the same channel
+      const filtered = alerts.filter((a: any) => a.channelId !== channel.id)
+      filtered.unshift({
+        channelId: channel.id,
+        instanceName,
+        type: 'disconnected',
+        state,
+        at: new Date().toISOString(),
+      })
+
+      await supabase
+        .from('organizations')
+        .update({ settings: { ...settings, channelAlerts: filtered.slice(0, 10) } })
+        .eq('id', channel.organization_id)
+    }
   }
 }
 

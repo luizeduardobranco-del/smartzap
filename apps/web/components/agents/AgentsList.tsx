@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { Plus, Bot, Play, Pause, Trash2, Loader2, Sparkles } from 'lucide-react'
+import { Plus, Bot, Play, Pause, Trash2, Loader2, Sparkles, WifiOff } from 'lucide-react'
 import { trpc } from '@/lib/trpc/client'
 
 const statusConfig = {
@@ -74,11 +74,12 @@ export function AgentsList() {
             const channels = channelRows
               .filter((c) => c.status !== 'disconnected')
               .map((c) => c.type)
+            const hasDisconnected = channelRows.some((c) => c.status === 'disconnected')
             const isConfirming = confirmingDelete === agent.id
             const isDeleting = deleteAgent.isPending && confirmingDelete === agent.id
 
             return (
-              <div key={agent.id} className="group rounded-xl border bg-white p-5 shadow-sm transition-shadow hover:shadow-md">
+              <div key={agent.id} className={`group rounded-xl border bg-white p-5 shadow-sm transition-shadow hover:shadow-md ${hasDisconnected ? 'border-red-300' : ''}`}>
                 <div className="mb-4 flex items-start justify-between">
                   <div className="flex items-center gap-3">
                     <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
@@ -118,6 +119,13 @@ export function AgentsList() {
                     </button>
                   )}
                 </div>
+
+                {hasDisconnected && (
+                  <Link href={`/agents/${agent.id}`} className="mb-3 flex items-center gap-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs font-medium text-red-600 hover:bg-red-100 transition-colors">
+                    <WifiOff className="h-3.5 w-3.5 shrink-0" />
+                    Canal desconectado — clique para reconectar
+                  </Link>
+                )}
 
                 {agent.description && (
                   <p className="mb-3 text-xs text-muted-foreground line-clamp-2">{agent.description}</p>

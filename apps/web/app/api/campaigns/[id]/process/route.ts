@@ -139,9 +139,18 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
         contentType: 'text',
         text,
       })
-    } catch (err) {
-      sendError = err instanceof Error ? err.message : 'Send failed'
-      console.error('[campaign/process] send error:', sendError)
+    } catch (err: any) {
+      // Extract the actual Evolution API error body when available
+      const responseData = err?.response?.data
+      const evolutionReason =
+        responseData?.message ??
+        responseData?.error ??
+        responseData?.response?.message ??
+        (typeof responseData === 'string' ? responseData : null)
+      sendError = evolutionReason
+        ? `${err.message} — Evolution: ${JSON.stringify(evolutionReason)}`
+        : (err instanceof Error ? err.message : 'Send failed')
+      console.error('[campaign/process] send error:', sendError, '| phone:', nextMsg.contact_phone, '| instance:', instanceName)
     }
 
     // Update message status
