@@ -40,7 +40,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     // Get campaign
     const { data: campaign } = await supabase
       .from('campaigns')
-      .select('*, channels(credentials)')
+      .select('*, channels(id, credentials, agent_id)')
       .eq('id', campaignId)
       .single()
 
@@ -151,6 +151,84 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
         error_message: sendError,
       })
       .eq('id', nextMsg.id)
+
+    // Save campaign message to conversation history so the AI agent has context
+    if (!sendError && nextMsg.contact_id) {
+      const channelId = campaign.channels?.id ?? campaign.channel_id
+      const agentId = campaign.channels?.agent_id ?? null
+
+      // Find open conversation for this contact+channel or create one
+      const { data: existingConv } = await supabase
+        .from('conversations')
+        .select('id')
+        .eq('contact_id', nextMsg.contact_id)
+        .eq('channel_id', channelId)
+        .eq('status', 'open')
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle()
+
+      let conversationId: string | null = existingConv?.id ?? null
+
+      if (!conversationId) {
+        const { data: newConv, error: convErr } = await supabase
+          .from('conversations')
+          .insert({
+            organization_id: campaign.organization_id,
+            contact_id: nextMsg.contact_id,
+            channel_id: channelId,
+            agent_id: agentId,
+            status: 'open',
+            mode: 'ai',
+            last_message_at: new Date().toISOString(),
+          })
+          .select('id')
+          .single()
+        if (convErr) console.error('[campaign/process] conversation insert error:', convErr.message, convErr.details)
+        conversationId = newConv?.id ?? null
+      }
+
+      if (conversationId) {
+        const { error: msgErr } = await supabase.from('messages').insert({
+          conversation_id: conversationId,
+          organization_id: campaign.organization_id,
+          role: 'assistant',
+          content: text,
+          content_type: 'text',
+          sender_type: 'campaign',
+          delivery_status: 'sent',
+          metadata: { campaign_id: campaignId, campaign_name: campaign.name },
+        })
+        if (msgErr) console.error('[campaign/process] message insert error:', msgErr.message, msgErr.details)
+
+        await supabase
+          .from('conversations')
+          .update({ last_message_at: new Date().toISOString() })
+          .eq('id', conversationId)
+      } else {
+        console.error('[campaign/process] could not get conversationId for contact', nextMsg.contact_id)
+      }
+    }
+
+    // Enroll contact into funnel stage after successful send
+    if (!sendError && nextMsg.contact_id && campaign.funnel_id && campaign.funnel_stage_id) {
+      await supabase
+        .from('funnel_contacts')
+        .upsert(
+          [{
+            funnel_id: campaign.funnel_id,
+            stage_id: campaign.funnel_stage_id,
+            contact_id: nextMsg.contact_id,
+            organization_id: campaign.organization_id,
+            channel_id: campaign.channels?.id ?? campaign.channel_id ?? null,
+            status: 'active',
+            entered_stage_at: new Date().toISOString(),
+            next_message_index: 0,
+            next_message_at: null,
+          }],
+          { onConflict: 'funnel_id,contact_id', ignoreDuplicates: true }
+        )
+    }
 
     // Auto-tag contact with campaign name + ensure CRM entry
     if (!sendError && nextMsg.contact_id) {

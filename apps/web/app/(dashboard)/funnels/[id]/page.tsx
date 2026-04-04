@@ -1,12 +1,12 @@
 'use client'
 
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useRef, useEffect } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { trpc } from '@/lib/trpc/client'
 import {
   ArrowLeft, Plus, Settings, Trash2, Loader2, X, Check,
   GripVertical, UserPlus, Pause, Play, ChevronDown, ChevronUp,
-  Clock, MessageSquare, Image, Volume2, Pencil, HelpCircle,
+  Clock, MessageSquare, Image, Volume2, Pencil, HelpCircle, Bot, UserCheck,
 } from 'lucide-react'
 import Link from 'next/link'
 import { FunnelHelpModal } from '@/components/funnels/FunnelHelpModal'
@@ -385,6 +385,7 @@ function ContactCard({ fc, stages, onMove, onRemove, onToggle }: {
   onRemove: () => void; onToggle: () => void
 }) {
   const [showMoveMenu, setShowMoveMenu] = useState(false)
+  const [showConv, setShowConv] = useState(false)
   const contact = fc.contacts as any
   const name = contact?.name ?? contact?.phone ?? 'Contato'
   const phone = contact?.phone
@@ -396,78 +397,202 @@ function ContactCard({ fc, stages, onMove, onRemove, onToggle }: {
     : ''
 
   return (
-    <div className={`rounded-xl border bg-white p-3 shadow-sm hover:shadow-md transition-all ${isPaused ? 'opacity-60' : ''}`}>
-      <div className="flex items-start gap-2">
-        <div className="h-7 w-7 rounded-full bg-primary/10 flex items-center justify-center text-xs font-bold text-primary flex-shrink-0">
-          {name[0].toUpperCase()}
+    <>
+      {showConv && contact?.id && (
+        <FunnelConversationModal
+          contactId={contact.id}
+          contactName={name}
+          onClose={() => setShowConv(false)}
+        />
+      )}
+      <div className={`rounded-xl border bg-white p-3 shadow-sm hover:shadow-md transition-all ${isPaused ? 'opacity-60' : ''}`}>
+        <div className="flex items-start gap-2">
+          <div className="h-7 w-7 rounded-full bg-primary/10 flex items-center justify-center text-xs font-bold text-primary flex-shrink-0">
+            {name[0].toUpperCase()}
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="text-xs font-semibold text-slate-800 truncate">{name}</p>
+            {phone && <p className="text-xs text-slate-400 truncate">{phone}</p>}
+          </div>
         </div>
-        <div className="min-w-0 flex-1">
-          <p className="text-xs font-semibold text-slate-800 truncate">{name}</p>
-          {phone && <p className="text-xs text-slate-400 truncate">{phone}</p>}
-        </div>
-      </div>
 
-      <div className="mt-2 flex items-center gap-1.5 flex-wrap">
-        {timeInStage && (
-          <span className="flex items-center gap-0.5 text-xs text-slate-400">
-            <Clock className="h-3 w-3" />
-            {timeInStage}
-          </span>
-        )}
-        {isWaiting && (
-          <span className="rounded-full bg-amber-100 px-1.5 py-0.5 text-xs font-medium text-amber-700">
-            Aguardando
-          </span>
-        )}
-        {isPaused && (
-          <span className="rounded-full bg-slate-100 px-1.5 py-0.5 text-xs font-medium text-slate-500">
-            Pausado
-          </span>
-        )}
-      </div>
-
-      {/* Actions */}
-      <div className="mt-2 flex items-center gap-1 border-t pt-2">
-        <button
-          onClick={onToggle}
-          title={isPaused ? 'Retomar' : 'Pausar'}
-          className="rounded p-1 hover:bg-slate-100 transition-colors"
-        >
-          {isPaused ? <Play className="h-3.5 w-3.5 text-slate-500" /> : <Pause className="h-3.5 w-3.5 text-slate-500" />}
-        </button>
-
-        <div className="relative">
-          <button
-            onClick={() => setShowMoveMenu(!showMoveMenu)}
-            title="Mover para etapa"
-            className="rounded p-1 hover:bg-slate-100 transition-colors"
-          >
-            <GripVertical className="h-3.5 w-3.5 text-slate-500" />
-          </button>
-          {showMoveMenu && (
-            <div className="absolute left-0 top-7 z-20 w-44 rounded-xl border bg-white shadow-xl">
-              <p className="px-3 py-2 text-xs font-semibold text-slate-500 border-b">Mover para</p>
-              {stages.map((s) => (
-                <button
-                  key={s.id}
-                  onClick={() => { onMove(s.id); setShowMoveMenu(false) }}
-                  className="flex w-full items-center gap-2 px-3 py-2 text-xs hover:bg-slate-50 transition-colors"
-                >
-                  <span className="h-2 w-2 rounded-full flex-shrink-0" style={{ backgroundColor: s.color }} />
-                  {s.name}
-                </button>
-              ))}
-            </div>
+        <div className="mt-2 flex items-center gap-1.5 flex-wrap">
+          {timeInStage && (
+            <span className="flex items-center gap-0.5 text-xs text-slate-400">
+              <Clock className="h-3 w-3" />
+              {timeInStage}
+            </span>
+          )}
+          {isWaiting && (
+            <span className="rounded-full bg-amber-100 px-1.5 py-0.5 text-xs font-medium text-amber-700">
+              Aguardando
+            </span>
+          )}
+          {isPaused && (
+            <span className="rounded-full bg-slate-100 px-1.5 py-0.5 text-xs font-medium text-slate-500">
+              Pausado
+            </span>
           )}
         </div>
 
-        <button
-          onClick={() => { if (confirm('Remover lead do funil?')) onRemove() }}
-          title="Remover do funil"
-          className="ml-auto rounded p-1 hover:bg-red-50 hover:text-red-500 transition-colors"
-        >
-          <X className="h-3.5 w-3.5 text-slate-400" />
-        </button>
+        {/* View conversation */}
+        {contact?.id && (
+          <button
+            onClick={() => setShowConv(true)}
+            className="mt-2 flex w-full items-center justify-center gap-1 rounded-lg bg-primary/8 border border-primary/15 py-1 text-xs font-medium text-primary hover:bg-primary/15 transition-colors"
+          >
+            <MessageSquare className="h-3 w-3" />
+            Ver conversa
+          </button>
+        )}
+
+        {/* Actions */}
+        <div className="mt-2 flex items-center gap-1 border-t pt-2">
+          <button
+            onClick={onToggle}
+            title={isPaused ? 'Retomar' : 'Pausar'}
+            className="rounded p-1 hover:bg-slate-100 transition-colors"
+          >
+            {isPaused ? <Play className="h-3.5 w-3.5 text-slate-500" /> : <Pause className="h-3.5 w-3.5 text-slate-500" />}
+          </button>
+
+          <div className="relative">
+            <button
+              onClick={() => setShowMoveMenu(!showMoveMenu)}
+              title="Mover para etapa"
+              className="rounded p-1 hover:bg-slate-100 transition-colors"
+            >
+              <GripVertical className="h-3.5 w-3.5 text-slate-500" />
+            </button>
+            {showMoveMenu && (
+              <div className="absolute left-0 top-7 z-20 w-44 rounded-xl border bg-white shadow-xl">
+                <p className="px-3 py-2 text-xs font-semibold text-slate-500 border-b">Mover para</p>
+                {stages.map((s) => (
+                  <button
+                    key={s.id}
+                    onClick={() => { onMove(s.id); setShowMoveMenu(false) }}
+                    className="flex w-full items-center gap-2 px-3 py-2 text-xs hover:bg-slate-50 transition-colors"
+                  >
+                    <span className="h-2 w-2 rounded-full flex-shrink-0" style={{ backgroundColor: s.color }} />
+                    {s.name}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <button
+            onClick={() => { if (confirm('Remover lead do funil?')) onRemove() }}
+            title="Remover do funil"
+            className="ml-auto rounded p-1 hover:bg-red-50 hover:text-red-500 transition-colors"
+          >
+            <X className="h-3.5 w-3.5 text-slate-400" />
+          </button>
+        </div>
+      </div>
+    </>
+  )
+}
+
+// ── Funnel Conversation Modal ───────────────────────────────────────────────
+function FunnelConversationModal({ contactId, contactName, onClose }: {
+  contactId: string
+  contactName: string
+  onClose: () => void
+}) {
+  const bottomRef = useRef<HTMLDivElement>(null)
+
+  const { data, isLoading } = trpc.conversations.getContactThread.useQuery(
+    { contactId },
+    { refetchInterval: 10000 }
+  )
+
+  useEffect(() => {
+    bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
+  }, [data?.messages])
+
+  const messages = data?.messages ?? []
+
+  function formatMsgTime(dateStr: string) {
+    const d = new Date(dateStr)
+    return d.toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })
+  }
+
+  let lastDate = ''
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={onClose}>
+      <div
+        className="w-full max-w-lg h-[80vh] rounded-2xl bg-white shadow-2xl flex flex-col"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div className="flex items-center gap-3 border-b px-4 py-3 shrink-0">
+          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-bold text-primary">
+            {contactName.charAt(0).toUpperCase()}
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-semibold truncate">{contactName}</p>
+            <p className="text-xs text-slate-400">
+              {data?.conversations.length ?? 0} conversa{(data?.conversations.length ?? 0) !== 1 ? 's' : ''}
+            </p>
+          </div>
+          <button onClick={onClose} className="rounded-lg p-1.5 hover:bg-slate-100">
+            <X className="h-4 w-4 text-slate-500" />
+          </button>
+        </div>
+
+        {/* Messages */}
+        <div className="flex-1 overflow-y-auto p-4 space-y-1">
+          {isLoading && (
+            <div className="flex items-center justify-center py-16">
+              <Loader2 className="h-5 w-5 animate-spin text-primary" />
+            </div>
+          )}
+          {!isLoading && messages.length === 0 && (
+            <div className="flex flex-col items-center justify-center py-16 text-slate-400">
+              <MessageSquare className="h-8 w-8 mb-2 opacity-40" />
+              <p className="text-sm">Nenhuma mensagem ainda</p>
+            </div>
+          )}
+          {messages.map((msg: any, i: number) => {
+            const msgDate = new Date(msg.created_at).toLocaleDateString('pt-BR')
+            const showDate = msgDate !== lastDate
+            if (showDate) lastDate = msgDate
+            const isUser = msg.role === 'user'
+            const senderLabel =
+              msg.sender_type === 'campaign' ? '📢 Campanha' :
+              msg.sender_type === 'funnel' ? '🔀 Funil' :
+              msg.sender_type === 'human' ? '👤 Humano' :
+              '🤖 IA'
+
+            return (
+              <div key={msg.id ?? i}>
+                {showDate && (
+                  <div className="flex justify-center my-3">
+                    <span className="rounded-full bg-slate-100 px-3 py-0.5 text-xs text-slate-400">{msgDate}</span>
+                  </div>
+                )}
+                <div className={`flex ${isUser ? 'justify-start' : 'justify-end'}`}>
+                  <div className={`max-w-[78%] rounded-2xl px-3 py-2 text-sm shadow-sm ${
+                    isUser
+                      ? 'bg-slate-100 text-slate-800 rounded-tl-sm'
+                      : 'bg-primary text-white rounded-tr-sm'
+                  }`}>
+                    {!isUser && (
+                      <p className="mb-0.5 text-xs font-medium opacity-75">{senderLabel}</p>
+                    )}
+                    <p className="whitespace-pre-wrap break-words">{msg.content}</p>
+                    <p className={`mt-1 text-right text-xs ${isUser ? 'text-slate-400' : 'text-white/60'}`}>
+                      {formatMsgTime(msg.created_at)}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )
+          })}
+          <div ref={bottomRef} />
+        </div>
       </div>
     </div>
   )

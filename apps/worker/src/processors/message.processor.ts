@@ -73,7 +73,9 @@ export async function processMessage(job: Job<MessageJobData>, db: Database): Pr
     ? await retrieveFunnelContext(db, conv.contactId)
     : undefined
 
-  // Combine funnel context with RAG context
+  const campaignContext = await retrieveCampaignContext(db, conversationId)
+
+  // RAG + funnel context combined (campaign context goes separately to agent-runner)
   const combinedContext = [funnelContext, retrievedContext].filter(Boolean).join('\n\n---\n\n') || undefined
 
   // 6. Run AI agent
@@ -88,6 +90,7 @@ export async function processMessage(job: Job<MessageJobData>, db: Database): Pr
     conversationHistory,
     userMessage: userMessageContent,
     retrievedContext: combinedContext,
+    campaignContext: campaignContext ?? undefined,
     env: {
       openaiApiKey: process.env.OPENAI_API_KEY,
       anthropicApiKey: process.env.ANTHROPIC_API_KEY,
@@ -212,6 +215,56 @@ async function retrieveFunnelContext(
     return context
   } catch (err) {
     console.error('[message.processor] retrieveFunnelContext failed:', err)
+    return undefined
+  }
+}
+
+async function retrieveCampaignContext(
+  db: Database,
+  conversationId: string
+): Promise<string | undefined> {
+  try {
+    const result = await db.execute(
+      sql`
+        SELECT
+          m.metadata,
+          m.content   AS campaign_message,
+          c.name      AS campaign_name,
+          c.target_type,
+          c.target_value,
+          c.message   AS campaign_template
+        FROM messages m
+        JOIN campaigns c ON c.id = (m.metadata->>'campaign_id')::uuid
+        WHERE m.conversation_id = ${conversationId}
+          AND m.sender_type = 'campaign'
+        ORDER BY m.created_at DESC
+        LIMIT 1
+      `
+    )
+
+    if (!result.rows.length) return undefined
+
+    const row = result.rows[0] as any
+
+    const targetLabels: Record<string, string> = {
+      all: 'todos os contatos',
+      tag: `contatos com a tag "${row.target_value}"`,
+      stage: `contatos no estágio "${row.target_value}"`,
+      list: `lista "${row.target_value}"`,
+      with_conversation: 'contatos com conversas anteriores',
+    }
+    const targetDesc = targetLabels[row.target_type] ?? row.target_type
+
+    let context = `## Contexto de Campanha\n`
+    context += `Este contato foi abordado pela campanha **"${row.campaign_name}"**, direcionada para ${targetDesc}.\n`
+    context += `Mensagem enviada na campanha: "${row.campaign_template}"\n`
+    context += `\nIMPORTANTE: Você já enviou uma abordagem inicial para este contato via campanha. `
+    context += `Não pergunte informações que você já tem (como segmento, profissão ou tipo de negócio) se a campanha já segmentou esse público. `
+    context += `Continue a conversa de forma coerente com o contexto da campanha.`
+
+    return context
+  } catch (err) {
+    console.error('[message.processor] retrieveCampaignContext failed:', err)
     return undefined
   }
 }

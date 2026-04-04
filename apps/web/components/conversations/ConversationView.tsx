@@ -2,8 +2,33 @@
 
 import { useRef, useEffect, useState } from 'react'
 import Link from 'next/link'
-import { ArrowLeft, Bot, UserCheck, CheckCheck, Loader2, Phone, Send, Lock } from 'lucide-react'
+import { ArrowLeft, Bot, UserCheck, CheckCheck, Loader2, Phone, Send, Lock, Tag, X, Plus, Check } from 'lucide-react'
 import { trpc } from '@/lib/trpc/client'
+
+const PRESET_TAGS = [
+  { label: 'Hot Lead',   cls: 'bg-red-100 text-red-700 border-red-200' },
+  { label: 'Cold Lead',  cls: 'bg-slate-100 text-slate-600 border-slate-200' },
+  { label: 'VIP',        cls: 'bg-amber-100 text-amber-700 border-amber-200' },
+  { label: 'Suporte',    cls: 'bg-blue-100 text-blue-700 border-blue-200' },
+  { label: 'Venda',      cls: 'bg-green-100 text-green-700 border-green-200' },
+  { label: 'Reclamação', cls: 'bg-orange-100 text-orange-700 border-orange-200' },
+  { label: 'Parceiro',   cls: 'bg-purple-100 text-purple-700 border-purple-200' },
+  { label: 'Inativo',    cls: 'bg-gray-100 text-gray-500 border-gray-200' },
+  { label: 'Sem interesse', cls: 'bg-rose-100 text-rose-700 border-rose-200' },
+]
+
+const STAGES = [
+  { id: 'new',       label: 'Novo Lead',   cls: 'bg-blue-100 text-blue-700' },
+  { id: 'contacted', label: 'Em Contato',  cls: 'bg-yellow-100 text-yellow-700' },
+  { id: 'qualified', label: 'Qualificado', cls: 'bg-purple-100 text-purple-700' },
+  { id: 'proposal',  label: 'Proposta',    cls: 'bg-orange-100 text-orange-700' },
+  { id: 'won',       label: 'Fechado',     cls: 'bg-green-100 text-green-700' },
+  { id: 'lost',      label: 'Perdido',     cls: 'bg-red-100 text-red-700' },
+] as const
+
+function getTagCls(tag: string) {
+  return PRESET_TAGS.find((t) => t.label === tag)?.cls ?? 'bg-indigo-100 text-indigo-700 border-indigo-200'
+}
 
 function timeStr(date: string) {
   return new Date(date).toLocaleString('pt-BR', {
@@ -23,12 +48,28 @@ export function ConversationView({ contactId, onClose }: { contactId: string; on
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const [text, setText] = useState('')
   const [localMode, setLocalMode] = useState<'ai' | 'human' | null>(null)
+  const [showTagPanel, setShowTagPanel] = useState(false)
+  const [customTag, setCustomTag] = useState('')
+  const [showCustomInput, setShowCustomInput] = useState(false)
+  const [localTags, setLocalTags] = useState<string[] | null>(null)
+  const [localStage, setLocalStage] = useState<string | null>(null)
   const utils = trpc.useUtils()
 
   const { data, isLoading } = trpc.conversations.getContactThread.useQuery(
     { contactId },
     { refetchInterval: 5000 }
   )
+
+  const updateTags = trpc.crm.updateTags.useMutation({
+    onMutate: ({ tags }) => setLocalTags(tags),
+    onError: () => setLocalTags(null),
+    onSettled: () => utils.conversations.getContactThread.invalidate({ contactId }),
+  })
+  const updateStage = trpc.crm.updateStage.useMutation({
+    onMutate: ({ stage }) => setLocalStage(stage),
+    onError: () => setLocalStage(null),
+    onSettled: () => utils.conversations.getContactThread.invalidate({ contactId }),
+  })
 
   // Scroll to the latest message whenever messages change
   useEffect(() => {
@@ -105,10 +146,34 @@ export function ConversationView({ contactId, onClose }: { contactId: string; on
   const isResolved = activeConv?.status === 'resolved'
   const canType = !isAI && !isResolved && !!activeConv
 
+  const currentTags = (localTags ?? (contact as any).tags ?? []).filter((t: string) => !t.startsWith('_list:'))
+  const currentStage = localStage ?? (contact as any).kanban_stage ?? 'new'
+  const stageConfig = STAGES.find((s) => s.id === currentStage) ?? STAGES[0]
+
+  function toggleTag(tag: string) {
+    const allTags: string[] = (contact as any).tags ?? []
+    const listTagsRaw = allTags.filter((t) => t.startsWith('_list:'))
+    const userTags = (localTags ?? allTags).filter((t) => !t.startsWith('_list:'))
+    const next = userTags.includes(tag) ? userTags.filter((t) => t !== tag) : [...userTags, tag]
+    updateTags.mutate({ contactId, tags: [...next, ...listTagsRaw] })
+  }
+
+  function addCustomTag() {
+    const t = customTag.trim()
+    if (!t) return
+    const allTags: string[] = (contact as any).tags ?? []
+    const listTagsRaw = allTags.filter((t) => t.startsWith('_list:'))
+    const userTags = (localTags ?? allTags).filter((t) => !t.startsWith('_list:'))
+    if (userTags.includes(t)) return
+    updateTags.mutate({ contactId, tags: [...userTags, t, ...listTagsRaw] })
+    setCustomTag('')
+    setShowCustomInput(false)
+  }
+
   let lastDate = ''
 
   return (
-    <div className="flex-1 min-h-0 grid gap-3 overflow-hidden" style={{ gridTemplateRows: 'auto 1fr auto' }}>
+    <div className="flex-1 min-h-0 flex flex-col gap-3 overflow-hidden">
 
       {/* ── Header ── */}
       <div className="flex items-center gap-3 flex-shrink-0">
@@ -143,6 +208,20 @@ export function ConversationView({ contactId, onClose }: { contactId: string; on
           </div>
         </div>
         <div className="flex shrink-0 items-center gap-2">
+          <button
+            onClick={() => setShowTagPanel(!showTagPanel)}
+            title="Tags e estágio"
+            className={`flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs font-medium transition-colors ${
+              showTagPanel ? 'bg-primary/10 border-primary/30 text-primary' : 'hover:bg-muted text-muted-foreground'
+            }`}
+          >
+            <Tag className="h-3.5 w-3.5" />
+            {currentTags.length > 0 ? (
+              <span className="max-w-[80px] truncate">{currentTags.slice(0, 2).join(', ')}{currentTags.length > 2 ? ` +${currentTags.length - 2}` : ''}</span>
+            ) : (
+              'Tags'
+            )}
+          </button>
           {activeConv && !isResolved && (
             <>
               <button
@@ -177,8 +256,88 @@ export function ConversationView({ contactId, onClose }: { contactId: string; on
         </div>
       </div>
 
+      {/* ── Tag & Stage Panel ── */}
+      {showTagPanel && (
+        <div className="flex-shrink-0 rounded-xl border bg-white p-4 shadow-sm space-y-3">
+          {/* Stage */}
+          <div>
+            <p className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Estágio CRM</p>
+            <div className="flex flex-wrap gap-1.5">
+              {STAGES.map((s) => (
+                <button
+                  key={s.id}
+                  onClick={() => updateStage.mutate({ contactId, stage: s.id })}
+                  className={`rounded-full border px-2.5 py-0.5 text-xs font-medium transition-all ${
+                    currentStage === s.id
+                      ? s.cls + ' border-transparent shadow-sm'
+                      : 'border-dashed border-muted-foreground/30 text-muted-foreground hover:border-muted-foreground'
+                  }`}
+                >
+                  {currentStage === s.id && '✓ '}{s.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Tags */}
+          <div>
+            <p className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Tags</p>
+            <div className="flex flex-wrap gap-1.5">
+              {PRESET_TAGS.map((t) => {
+                const active = currentTags.includes(t.label)
+                return (
+                  <button
+                    key={t.label}
+                    onClick={() => toggleTag(t.label)}
+                    className={`rounded-full border px-2.5 py-0.5 text-xs font-medium transition-all ${
+                      active ? t.cls : 'border-dashed border-muted-foreground/30 text-muted-foreground hover:border-muted-foreground'
+                    }`}
+                  >
+                    {active && '✓ '}{t.label}
+                  </button>
+                )
+              })}
+              {/* Custom tags already applied */}
+              {currentTags
+                .filter((t) => !PRESET_TAGS.find((p) => p.label === t))
+                .map((t) => (
+                  <button
+                    key={t}
+                    onClick={() => toggleTag(t)}
+                    className="rounded-full border border-indigo-200 bg-indigo-100 px-2.5 py-0.5 text-xs font-medium text-indigo-700"
+                  >
+                    ✓ {t}
+                  </button>
+                ))}
+              {/* Add custom */}
+              {showCustomInput ? (
+                <div className="flex items-center gap-1">
+                  <input
+                    value={customTag}
+                    onChange={(e) => setCustomTag(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && addCustomTag()}
+                    placeholder="Nova tag..."
+                    className="w-24 rounded-full border px-2.5 py-0.5 text-xs outline-none focus:ring-1 focus:ring-primary/30"
+                    autoFocus
+                  />
+                  <button onClick={addCustomTag} className="text-primary"><Check className="h-3.5 w-3.5" /></button>
+                  <button onClick={() => setShowCustomInput(false)} className="text-muted-foreground"><X className="h-3.5 w-3.5" /></button>
+                </div>
+              ) : (
+                <button
+                  onClick={() => setShowCustomInput(true)}
+                  className="flex items-center gap-0.5 rounded-full border border-dashed px-2.5 py-0.5 text-xs text-muted-foreground hover:border-primary hover:text-primary"
+                >
+                  <Plus className="h-3 w-3" /> Tag
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* ── Messages — scrolls internally ── */}
-      <div className="min-h-0 overflow-y-auto rounded-xl border bg-white p-4 shadow-sm">
+      <div className="flex-1 min-h-0 overflow-y-auto rounded-xl border bg-white p-4 shadow-sm">
         {messages.length === 0 ? (
           <div className="flex h-32 items-center justify-center text-sm text-muted-foreground">
             Nenhuma mensagem ainda

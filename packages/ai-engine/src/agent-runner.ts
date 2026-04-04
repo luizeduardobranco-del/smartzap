@@ -16,6 +16,7 @@ export interface AgentRunInput {
   conversationHistory: ConversationMessage[]
   userMessage: string
   retrievedContext?: string // RAG context
+  campaignContext?: string  // Campaign context — injected before system prompt
   env: {
     openaiApiKey?: string
     anthropicApiKey?: string
@@ -28,10 +29,10 @@ export interface AgentRunResult extends CompletionResult {
 }
 
 export async function runAgent(input: AgentRunInput): Promise<AgentRunResult> {
-  const { personality, aiConfig, conversationHistory, userMessage, retrievedContext, env } = input
+  const { personality, aiConfig, conversationHistory, userMessage, retrievedContext, campaignContext, env } = input
 
   // Build system prompt
-  const systemPrompt = buildSystemPrompt(personality, aiConfig, retrievedContext)
+  const systemPrompt = buildSystemPrompt(personality, aiConfig, retrievedContext, campaignContext)
 
   // Build messages array
   const messages: ChatMessage[] = [
@@ -61,7 +62,7 @@ export async function runAgent(input: AgentRunInput): Promise<AgentRunResult> {
   }
 }
 
-function buildSystemPrompt(personality: AgentPersonality, aiConfig: AgentAIConfig, retrievedContext?: string): string {
+function buildSystemPrompt(personality: AgentPersonality, aiConfig: AgentAIConfig, retrievedContext?: string, campaignContext?: string): string {
   const toneInstructions: Record<string, string> = {
     formal: 'Use linguagem formal e profissional.',
     casual: 'Use linguagem casual e descontraída.',
@@ -77,6 +78,9 @@ function buildSystemPrompt(personality: AgentPersonality, aiConfig: AgentAIConfi
   const systemPromptField = (p.systemPrompt as string | undefined) ?? ''
   if (systemPromptField.trim()) {
     let prompt = systemPromptField.trim()
+    if (campaignContext) {
+      prompt = `## CONTEXTO OBRIGATÓRIO DESTA CONVERSA (leia antes de tudo)\n${campaignContext}\n\n---\n\n` + prompt
+    }
     if (retrievedContext) {
       prompt += `\n\n## Base de conhecimento\n${retrievedContext}\n\nIMPORTANTE: Use as informações acima para embasar suas respostas. Se houver links ou URLs, compartilhe-os exatamente como estão.`
     }

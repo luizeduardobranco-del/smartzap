@@ -364,6 +364,14 @@ async function handleWebhook(payload: unknown) {
     .slice(0, -1) // exclude the message we just inserted
     .map((m) => ({ role: m.role as 'user' | 'assistant', content: m.content }))
 
+  // 9a. Campaign context — inject if contact was reached via campaign
+  let campaignContext = ''
+  try {
+    campaignContext = await retrieveCampaignContext(supabase, conversationId, contactId, channel.organization_id) ?? ''
+  } catch {
+    // optional — continue without it
+  }
+
   // 9. RAG context (optional)
   let retrievedContext = ''
   let imageUrlsFromKnowledge: string[] = []
@@ -408,6 +416,7 @@ async function handleWebhook(payload: unknown) {
       conversationHistory,
       userMessage: effectiveText,
       retrievedContext: retrievedContext || undefined,
+      campaignContext: campaignContext || undefined,
       env: {
         openaiApiKey: aiKeys.openaiApiKey || process.env.OPENAI_API_KEY,
         anthropicApiKey: aiKeys.anthropicApiKey || process.env.ANTHROPIC_API_KEY,
@@ -615,6 +624,97 @@ async function runAutomations(ctx: {
     console.error('[webhook] automations error:', err instanceof Error ? err.message : err)
     return { skipAI: false }
   }
+}
+
+async function retrieveCampaignContext(supabase: any, conversationId: string, contactId: string, organizationId?: string): Promise<string | undefined> {
+  let campaignId: string | undefined
+  let alreadySaved = false
+
+  // 1. Try to find campaign via message history (sender_type='campaign')
+  const { data: campaignMsg } = await supabase
+    .from('messages')
+    .select('metadata')
+    .eq('conversation_id', conversationId)
+    .eq('sender_type', 'campaign')
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+
+  if (campaignMsg?.metadata?.campaign_id) {
+    campaignId = campaignMsg.metadata.campaign_id
+    alreadySaved = true
+  }
+
+  // 2. Fallback: check campaign_messages table
+  let campaignSentAt: string | undefined
+  if (!campaignId && contactId) {
+    const { data: cm } = await supabase
+      .from('campaign_messages')
+      .select('campaign_id, sent_at')
+      .eq('contact_id', contactId)
+      .eq('status', 'sent')
+      .order('sent_at', { ascending: false })
+      .limit(1)
+      .maybeSingle()
+    if (cm?.campaign_id) {
+      campaignId = cm.campaign_id
+      campaignSentAt = cm.sent_at
+    }
+  }
+
+  if (!campaignId) return undefined
+
+  // Load campaign details
+  const { data: campaign } = await supabase
+    .from('campaigns')
+    .select('name, target_type, target_value, message, organization_id')
+    .eq('id', campaignId)
+    .maybeSingle()
+
+  if (!campaign) return undefined
+
+  // 3. Save the campaign message to conversation history if not already there
+  if (!alreadySaved && conversationId) {
+    await supabase.from('messages').insert({
+      conversation_id: conversationId,
+      organization_id: campaign.organization_id ?? organizationId,
+      role: 'assistant',
+      content: campaign.message,
+      content_type: 'text',
+      sender_type: 'campaign',
+      delivery_status: 'sent',
+      metadata: { campaign_id: campaignId, campaign_name: campaign.name },
+      ...(campaignSentAt ? { created_at: campaignSentAt } : {}),
+    })
+  }
+
+  let listName = campaign.target_value
+  if (campaign.target_type === 'list' && campaign.target_value) {
+    const orgId = campaign.organization_id ?? organizationId
+    const { data: org } = await supabase
+      .from('organizations').select('settings').eq('id', orgId).maybeSingle()
+    const lists: any[] = org?.settings?.contactLists ?? []
+    const found = lists.find((l: any) => l.id === campaign.target_value)
+    if (found?.name) listName = found.name
+  }
+
+  const targetLabels: Record<string, string> = {
+    all: 'todos os contatos',
+    tag: `contatos com a tag "${campaign.target_value}"`,
+    stage: `contatos no estágio "${campaign.target_value}"`,
+    list: `lista "${listName}"`,
+    with_conversation: 'contatos com conversas anteriores',
+  }
+  const targetDesc = targetLabels[campaign.target_type] ?? campaign.target_type
+
+  let context = `## Contexto de Campanha\n`
+  context += `Este contato foi abordado pela campanha **"${campaign.name}"**, direcionada para ${targetDesc}.\n`
+  context += `Mensagem enviada na campanha: "${campaign.message}"\n`
+  context += `\nIMPORTANTE: Você já enviou uma abordagem inicial para este contato via campanha. `
+  context += `Não pergunte informações que você já tem (como segmento, profissão ou tipo de negócio) se a campanha já segmentou esse público. `
+  context += `Continue a conversa de forma coerente com o contexto da campanha.`
+
+  return context
 }
 
 // ─── Evolution API media helper ───────────────────────────────────────────────

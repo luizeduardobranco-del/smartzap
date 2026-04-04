@@ -62,7 +62,7 @@ export const conversationsRouter = router({
       // Contact info
       const { data: contact } = await ctx.supabase
         .from('contacts')
-        .select('id, name, phone, avatar_url, channel_type')
+        .select('id, name, phone, avatar_url, channel_type, tags, kanban_stage')
         .eq('id', input.contactId)
         .single()
 

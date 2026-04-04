@@ -127,7 +127,7 @@ export const campaignsRouter = router({
         query = query.in('id', ids)
       }
 
-      const { data: contacts } = await query.limit(200) // daily limit
+      const { data: contacts } = await query.limit(5000)
       if (!contacts?.length) throw new TRPCError({ code: 'BAD_REQUEST', message: 'Nenhum contato encontrado para o alvo selecionado' })
 
       const db = getServiceClient()
@@ -157,27 +157,6 @@ export const campaignsRouter = router({
           failed_count: 0,
         })
         .eq('id', input.id)
-
-      // Enroll contacts into funnel stage if configured
-      if (campaign.funnel_id && campaign.funnel_stage_id) {
-        const contactIds = contacts.map((c: any) => c.id).filter(Boolean)
-        if (contactIds.length > 0) {
-          const funnelRows = contactIds.map((cid: string) => ({
-            funnel_id: campaign.funnel_id,
-            stage_id: campaign.funnel_stage_id,
-            contact_id: cid,
-            organization_id: orgId,
-            channel_id: campaign.channel_id ?? null,
-            status: 'active',
-            entered_stage_at: new Date().toISOString(),
-            next_message_index: 0,
-            next_message_at: null,
-          }))
-          await db
-            .from('funnel_contacts')
-            .upsert(funnelRows, { onConflict: 'funnel_id,contact_id', ignoreDuplicates: true })
-        }
-      }
 
       return { started: true, total: contacts.length }
     }),
