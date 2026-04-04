@@ -8,6 +8,7 @@ export const conversationsRouter = router({
     .input(z.object({
       agentId: z.string().uuid().optional(),
       status: z.string().optional(),
+      mode: z.enum(['ai', 'human']).optional(),
       limit: z.number().default(200),
     }))
     .query(async ({ ctx, input }) => {
@@ -32,6 +33,7 @@ export const conversationsRouter = router({
 
       if (input.agentId) query = query.eq('agent_id', input.agentId)
       if (input.status) query = query.eq('status', input.status)
+      if (input.mode) query = query.eq('mode', input.mode)
 
       const { data, error } = await query
       if (error) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: error.message })

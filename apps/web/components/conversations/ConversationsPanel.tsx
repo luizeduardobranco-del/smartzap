@@ -523,11 +523,25 @@ export function ConversationsPanel() {
   const [agentFilter, setAgentFilter] = useState<string>('')
   const [showAgentFilter, setShowAgentFilter] = useState(false)
   const [selectedContactId, setSelectedContactId] = useState<string | null>(null)
-  // Track which contact IDs have been "seen" (unread tracking)
-  const [seenIds, setSeenIds] = useState<Set<string>>(new Set())
+  // Track read state: contactId → last_message_at timestamp when user read it (persisted in localStorage)
+  const STORAGE_KEY = 'wz_read_at'
+  const [readAtMap, setReadAtMap] = useState<Record<string, string>>(() => {
+    try {
+      return JSON.parse(localStorage.getItem(STORAGE_KEY) ?? '{}')
+    } catch {
+      return {}
+    }
+  })
   const prevLastMsgAt = useRef<Map<string, string>>(new Map())
-  // Human-handoff alerts: contacts that just switched ai→human
-  const [humanAlerts, setHumanAlerts] = useState<{ contactId: string; name: string }[]>([])
+  // Human-handoff alerts: contacts that just switched ai→human (persisted in localStorage)
+  const HANDOFF_KEY = 'wz_handoff_pending'
+  const [humanAlerts, setHumanAlerts] = useState<{ contactId: string; name: string }[]>(() => {
+    try {
+      return JSON.parse(localStorage.getItem(HANDOFF_KEY) ?? '[]')
+    } catch {
+      return []
+    }
+  })
   const prevModeRef = useRef<Map<string, string>>(new Map())
 
   const { data: conversations = [], isLoading, refetch } = trpc.conversations.list.useQuery(
@@ -551,28 +565,23 @@ export function ConversationsPanel() {
     return Array.from(contactMap.values())
   }, [conversations])
 
-  // Detect new messages → mark as unread
+  // Keep prevLastMsgAt in sync (used only to detect transitions, not unread state)
   useEffect(() => {
-    const newUnseen = new Set<string>()
     for (const conv of grouped) {
       const cid = (conv as any).contact_id as string
       const lastAt = conv.last_message_at ?? ''
-      const prev = prevLastMsgAt.current.get(cid)
-      if (prev && lastAt > prev && cid !== selectedContactId) {
-        newUnseen.add(cid)
-      }
       prevLastMsgAt.current.set(cid, lastAt)
     }
-    if (newUnseen.size > 0) {
-      setSeenIds((prev) => {
-        const next = new Set(prev)
-        for (const id of newUnseen) next.delete(id)
-        return next
-      })
-    }
-  }, [grouped, selectedContactId])
+  }, [grouped])
 
-  // Detect ai → human mode transitions → fire alert toast
+  // Request browser notification permission on mount
+  useEffect(() => {
+    if (typeof Notification !== 'undefined' && Notification.permission === 'default') {
+      Notification.requestPermission()
+    }
+  }, [])
+
+  // Detect ai → human mode transitions → fire alert toast + browser notification
   useEffect(() => {
     const newAlerts: { contactId: string; name: string }[] = []
     for (const conv of grouped) {
@@ -586,13 +595,37 @@ export function ConversationsPanel() {
       prevModeRef.current.set(cid, mode)
     }
     if (newAlerts.length > 0) {
-      setHumanAlerts((prev) => [...prev, ...newAlerts])
+      setHumanAlerts((prev) => {
+        // Deduplicate: don't re-add if already pending
+        const existingIds = new Set(prev.map((a) => a.contactId))
+        const toAdd = newAlerts.filter((a) => !existingIds.has(a.contactId))
+        if (toAdd.length === 0) return prev
+        const next = [...prev, ...toAdd]
+        try { localStorage.setItem(HANDOFF_KEY, JSON.stringify(next)) } catch {}
+        // Browser notification for each new handoff
+        if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
+          for (const alert of toAdd) {
+            new Notification('WHITE ZAP — Atendimento solicitado', {
+              body: `${alert.name} pediu para falar com um humano`,
+              icon: '/favicon.ico',
+              tag: `handoff-${alert.contactId}`,
+            })
+          }
+        }
+        return next
+      })
     }
   }, [grouped])
 
   function selectContact(contactId: string) {
     setSelectedContactId(contactId)
-    setSeenIds((prev) => new Set([...prev, contactId]))
+    const conv = grouped.find((c) => (c as any).contact_id === contactId)
+    const lastAt = conv?.last_message_at ?? new Date().toISOString()
+    setReadAtMap((prev) => {
+      const next = { ...prev, [contactId]: lastAt }
+      try { localStorage.setItem(STORAGE_KEY, JSON.stringify(next)) } catch {}
+      return next
+    })
   }
 
   const showChat = selectedContactId !== null
@@ -619,13 +652,24 @@ export function ConversationsPanel() {
               </div>
               <div className="flex gap-1 shrink-0">
                 <button
-                  onClick={() => { selectContact(alert.contactId); setHumanAlerts((p) => p.filter((_, j) => j !== i)) }}
+                  onClick={() => {
+                    selectContact(alert.contactId)
+                    setHumanAlerts((p) => {
+                      const next = p.filter((_, j) => j !== i)
+                      try { localStorage.setItem(HANDOFF_KEY, JSON.stringify(next)) } catch {}
+                      return next
+                    })
+                  }}
                   className="rounded-lg bg-orange-600 px-2.5 py-1 text-xs font-semibold text-white hover:bg-orange-700"
                 >
                   Atender
                 </button>
                 <button
-                  onClick={() => setHumanAlerts((p) => p.filter((_, j) => j !== i))}
+                  onClick={() => setHumanAlerts((p) => {
+                    const next = p.filter((_, j) => j !== i)
+                    try { localStorage.setItem(HANDOFF_KEY, JSON.stringify(next)) } catch {}
+                    return next
+                  })}
                   className="rounded-lg p-1 text-orange-400 hover:text-orange-600 hover:bg-orange-100"
                 >
                   <X className="h-3.5 w-3.5" />
@@ -721,7 +765,8 @@ export function ConversationsPanel() {
                 const isAI = conv.mode === 'ai'
                 const contactId = conv.contact_id
                 const isSelected = selectedContactId === contactId
-                const isUnread = !seenIds.has(contactId)
+                const lastMsgAt = conv.last_message_at ?? ''
+                const isUnread = !!lastMsgAt && lastMsgAt > (readAtMap[contactId] ?? '')
 
                 return (
                   <button
