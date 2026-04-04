@@ -13,7 +13,7 @@ function sleep(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms))
 }
 
-function isBusinessHours() {
+function isBusinessHours(startHour = 8, endHour = 20) {
   const hour = parseInt(
     new Intl.DateTimeFormat('pt-BR', {
       timeZone: 'America/Sao_Paulo',
@@ -22,7 +22,7 @@ function isBusinessHours() {
     }).format(new Date()),
     10
   )
-  return hour >= 8 && hour < 20
+  return hour >= startHour && hour < endHour
 }
 
 function personalizeMessage(template: string, name: string) {
@@ -73,10 +73,12 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     }
 
     // Business hours check
-    if (campaign.business_hours_only && !isBusinessHours()) {
+    const startHour = campaign.start_hour ?? 8
+    const endHour = campaign.end_hour ?? 20
+    if (campaign.business_hours_only && !isBusinessHours(startHour, endHour)) {
       return NextResponse.json({
         status: 'waiting',
-        message: 'Aguardando horário comercial (8h–20h)',
+        message: `Aguardando horário configurado (${String(startHour).padStart(2,'0')}h–${String(endHour).padStart(2,'0')}h)`,
         done: false,
       })
     }

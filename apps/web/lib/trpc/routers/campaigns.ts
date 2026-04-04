@@ -55,6 +55,8 @@ export const campaignsRouter = router({
       targetValue: z.string().optional(),
       delaySeconds: z.number().min(3).max(30).default(5),
       businessHoursOnly: z.boolean().default(true),
+      startHour: z.number().min(0).max(23).default(8),
+      endHour: z.number().min(1).max(23).default(20),
       dailyLimit: z.number().min(1).max(500).optional(),
       scheduledAt: z.string().optional(),
       funnelId: z.string().uuid().optional(),
@@ -73,6 +75,8 @@ export const campaignsRouter = router({
           target_value: input.targetValue ?? null,
           delay_seconds: input.delaySeconds,
           business_hours_only: input.businessHoursOnly,
+          start_hour: input.startHour,
+          end_hour: input.endHour,
           daily_limit: input.dailyLimit ?? null,
           scheduled_at: input.scheduledAt ?? null,
           funnel_id: input.funnelId ?? null,
@@ -111,7 +115,10 @@ export const campaignsRouter = router({
         .eq('channel_type', 'whatsapp')
 
       if (campaign.target_type === 'tag') {
-        query = query.contains('tags', [campaign.target_value])
+        // target_value may be a JSON array (multi-tag) or a plain string (legacy)
+        let tags: string[]
+        try { tags = JSON.parse(campaign.target_value ?? '[]') } catch { tags = [campaign.target_value] }
+        query = query.overlaps('tags', tags)
       } else if (campaign.target_type === 'stage') {
         query = query.eq('kanban_stage', campaign.target_value)
       } else if (campaign.target_type === 'list') {
@@ -171,6 +178,8 @@ export const campaignsRouter = router({
       targetValue: z.string().optional(),
       delaySeconds: z.number().min(3).max(30),
       businessHoursOnly: z.boolean(),
+      startHour: z.number().min(0).max(23).default(8),
+      endHour: z.number().min(1).max(23).default(20),
       dailyLimit: z.number().min(1).max(500).optional(),
       funnelId: z.string().uuid().optional(),
       funnelStageId: z.string().uuid().optional(),
@@ -187,6 +196,8 @@ export const campaignsRouter = router({
           target_value: input.targetValue ?? null,
           delay_seconds: input.delaySeconds,
           business_hours_only: input.businessHoursOnly,
+          start_hour: input.startHour,
+          end_hour: input.endHour,
           daily_limit: input.dailyLimit ?? null,
           funnel_id: input.funnelId ?? null,
           funnel_stage_id: input.funnelStageId ?? null,

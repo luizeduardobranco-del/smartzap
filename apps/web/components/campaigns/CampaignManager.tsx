@@ -21,6 +21,8 @@ type Campaign = {
   target_value: string | null
   delay_seconds: number
   business_hours_only: boolean
+  start_hour: number | null
+  end_hour: number | null
   status: string
   total_contacts: number
   sent_count: number
@@ -41,6 +43,8 @@ const schema = z.object({
   targetValue: z.string().optional(),
   delaySeconds: z.number().min(3).max(30).default(5),
   businessHoursOnly: z.boolean().default(true),
+  startHour: z.number().min(0).max(23).default(8),
+  endHour: z.number().min(1).max(23).default(20),
   dailyLimit: z.number().min(1).max(500).optional(),
   funnelId: z.string().optional(),
   funnelStageId: z.string().optional(),
@@ -360,6 +364,8 @@ export function CampaignManager() {
             targetValue: editingCampaign.target_value ?? undefined,
             delaySeconds: editingCampaign.delay_seconds,
             businessHoursOnly: editingCampaign.business_hours_only,
+            startHour: editingCampaign.start_hour ?? 8,
+            endHour: editingCampaign.end_hour ?? 20,
             dailyLimit: (editingCampaign as any).daily_limit ?? undefined,
             funnelId: editingCampaign.funnel_id ?? undefined,
             funnelStageId: editingCampaign.funnel_stage_id ?? undefined,
@@ -397,16 +403,36 @@ function CampaignForm({
       targetType: 'with_conversation',
       delaySeconds: 5,
       businessHoursOnly: true,
+      startHour: 8,
+      endHour: 20,
       ...initialValues,
     },
   })
 
   const targetType = watch('targetType')
   const funnelId = watch('funnelId')
+  const businessHoursOnly = watch('businessHoursOnly')
   const { data: contactLists = [] } = trpc.contacts.getLists.useQuery()
   const { data: funnels = [] } = trpc.funnels.list.useQuery()
+  const { data: orgTags = [] } = trpc.crm.getOrgTags.useQuery()
   const message = watch('message') ?? ''
   const preview = message.replace(/\{\{nome\}\}/gi, 'João').replace(/\{\{name\}\}/gi, 'João')
+
+  // Multi-tag selection state (parsed from targetValue when targetType==='tag')
+  const [selectedTags, setSelectedTags] = useState<string[]>(() => {
+    if (initialValues?.targetType === 'tag' && initialValues?.targetValue) {
+      try { return JSON.parse(initialValues.targetValue) } catch { return [initialValues.targetValue] }
+    }
+    return []
+  })
+
+  function toggleTag(tag: string) {
+    const next = selectedTags.includes(tag)
+      ? selectedTags.filter((t) => t !== tag)
+      : [...selectedTags, tag]
+    setSelectedTags(next)
+    setValue('targetValue', next.length > 0 ? JSON.stringify(next) : undefined)
+  }
 
   const selectedFunnel = (funnels as any[]).find((f: any) => f.id === funnelId)
   const funnelStages = selectedFunnel?.funnel_stages
@@ -482,11 +508,38 @@ function CampaignForm({
               })}
             </div>
             {targetType === 'tag' && (
-              <input
-                {...register('targetValue')}
-                placeholder="Nome da tag"
-                className="mt-2 w-full rounded-lg border px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/30"
-              />
+              <div className="mt-2 rounded-xl border p-3 space-y-2">
+                <p className="text-xs font-medium text-slate-500">Selecione uma ou mais tags:</p>
+                {orgTags.length === 0 ? (
+                  <p className="text-xs text-muted-foreground">Nenhuma tag cadastrada ainda.</p>
+                ) : (
+                  <div className="flex flex-wrap gap-2 max-h-36 overflow-y-auto">
+                    {(orgTags as string[]).map((tag) => {
+                      const active = selectedTags.includes(tag)
+                      return (
+                        <button
+                          key={tag}
+                          type="button"
+                          onClick={() => toggleTag(tag)}
+                          className={`rounded-full border px-3 py-1 text-xs font-medium transition-all ${
+                            active
+                              ? 'bg-primary text-white border-primary shadow-sm'
+                              : 'border-slate-200 text-slate-600 hover:bg-slate-50'
+                          }`}
+                        >
+                          {active && <span className="mr-1">✓</span>}
+                          {tag}
+                        </button>
+                      )
+                    })}
+                  </div>
+                )}
+                {selectedTags.length > 0 && (
+                  <p className="text-xs text-primary font-medium">
+                    {selectedTags.length} tag{selectedTags.length > 1 ? 's' : ''} selecionada{selectedTags.length > 1 ? 's' : ''}
+                  </p>
+                )}
+              </div>
             )}
             {targetType === 'stage' && (
               <select
@@ -556,13 +609,42 @@ function CampaignForm({
                 <span>30s (mais seguro)</span>
               </div>
             </div>
-            <label className="flex items-center gap-3">
-              <input type="checkbox" {...register('businessHoursOnly')} className="h-4 w-4 rounded border" />
-              <div>
-                <p className="text-sm font-medium">Apenas horário comercial (8h–20h)</p>
-                <p className="text-xs text-muted-foreground">Reduz risco de bloqueio e denúncias</p>
-              </div>
-            </label>
+            <div className="space-y-3">
+              <label className="flex items-center gap-3">
+                <input type="checkbox" {...register('businessHoursOnly')} className="h-4 w-4 rounded border" />
+                <div>
+                  <p className="text-sm font-medium">Restringir horário de envio</p>
+                  <p className="text-xs text-muted-foreground">Reduz risco de bloqueio e denúncias</p>
+                </div>
+              </label>
+              {businessHoursOnly && (
+                <div className="ml-7 flex items-center gap-3">
+                  <div>
+                    <label className="mb-1 block text-xs font-medium text-slate-600">Início</label>
+                    <select
+                      {...register('startHour', { valueAsNumber: true })}
+                      className="rounded-lg border px-3 py-1.5 text-sm outline-none focus:ring-2 focus:ring-primary/30"
+                    >
+                      {Array.from({ length: 24 }, (_, i) => (
+                        <option key={i} value={i}>{String(i).padStart(2, '0')}:00</option>
+                      ))}
+                    </select>
+                  </div>
+                  <span className="text-sm text-slate-400 mt-4">até</span>
+                  <div>
+                    <label className="mb-1 block text-xs font-medium text-slate-600">Fim</label>
+                    <select
+                      {...register('endHour', { valueAsNumber: true })}
+                      className="rounded-lg border px-3 py-1.5 text-sm outline-none focus:ring-2 focus:ring-primary/30"
+                    >
+                      {Array.from({ length: 24 }, (_, i) => (
+                        <option key={i} value={i}>{String(i).padStart(2, '0')}:00</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+              )}
+            </div>
 
             {/* Daily limit */}
             <div className="border-t pt-3">

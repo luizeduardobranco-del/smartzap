@@ -31,6 +31,24 @@ export const crmRouter = router({
       return data ?? []
     }),
 
+  getOrgTags: protectedProcedure
+    .query(async ({ ctx }) => {
+      const { data: member } = await ctx.supabase
+        .from('organization_members')
+        .select('organization_id')
+        .eq('user_id', ctx.user.id)
+        .single()
+      if (!member) return []
+      const { data } = await ctx.supabase
+        .from('contacts')
+        .select('tags')
+        .eq('organization_id', member.organization_id)
+        .not('tags', 'is', null)
+      const all = (data ?? []).flatMap((c: any) => (c.tags ?? []) as string[])
+      const unique = [...new Set(all.filter((t: string) => t && !t.startsWith('_list:')))]
+      return unique.sort()
+    }),
+
   getContact: protectedProcedure
     .input(z.object({ contactId: z.string().uuid() }))
     .query(async ({ ctx, input }) => {
