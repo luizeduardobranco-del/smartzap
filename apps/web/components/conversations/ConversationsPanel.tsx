@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useRef, useEffect, useMemo } from 'react'
+import { useSearchParams } from 'next/navigation'
 import {
   MessageSquare, Loader2, Bot, UserCheck, ArrowLeft, Phone, CheckCheck,
   RefreshCw, Send, Lock, Tag, X, Plus, Check, GitBranch, ChevronDown, Filter, Bell,
@@ -519,10 +520,13 @@ function EmptyChat() {
 // ─── Main Panel ───────────────────────────────────────────────────────────────
 
 export function ConversationsPanel() {
+  const searchParams = useSearchParams()
   const [statusFilter, setStatusFilter] = useState('open')
   const [agentFilter, setAgentFilter] = useState<string>('')
   const [showAgentFilter, setShowAgentFilter] = useState(false)
-  const [selectedContactId, setSelectedContactId] = useState<string | null>(null)
+  const [selectedContactId, setSelectedContactId] = useState<string | null>(
+    searchParams.get('contactId')
+  )
   // Track read state: contactId → last_message_at timestamp when user read it (persisted in localStorage)
   const STORAGE_KEY = 'wz_read_at'
   const [readAtMap, setReadAtMap] = useState<Record<string, string>>(() => {
@@ -616,6 +620,20 @@ export function ConversationsPanel() {
       })
     }
   }, [grouped])
+
+  // When arriving via URL ?contactId=xxx, mark as read once conversations load
+  const urlContactId = searchParams.get('contactId')
+  useEffect(() => {
+    if (!urlContactId || grouped.length === 0) return
+    const conv = grouped.find((c) => (c as any).contact_id === urlContactId)
+    if (!conv) return
+    const lastAt = conv.last_message_at ?? new Date().toISOString()
+    setReadAtMap((prev) => {
+      const next = { ...prev, [urlContactId]: lastAt }
+      try { localStorage.setItem(STORAGE_KEY, JSON.stringify(next)) } catch {}
+      return next
+    })
+  }, [urlContactId, grouped])
 
   function selectContact(contactId: string) {
     setSelectedContactId(contactId)

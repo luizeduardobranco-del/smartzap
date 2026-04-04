@@ -73,7 +73,7 @@ export function HumanAttentionPanel() {
               return (
                 <li key={conv.id}>
                   <button
-                    onClick={() => router.push('/conversations')}
+                    onClick={() => router.push(`/conversations?contactId=${(conv as any).contact_id}`)}
                     className="flex w-full items-center gap-3 px-4 py-3 text-left hover:bg-orange-50 transition-colors"
                   >
                     {/* Avatar */}
