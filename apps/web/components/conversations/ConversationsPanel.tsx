@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect, useMemo } from 'react'
 import {
   MessageSquare, Loader2, Bot, UserCheck, ArrowLeft, Phone, CheckCheck,
-  RefreshCw, Send, Lock, Tag, X, Plus, Check, GitBranch, ChevronDown, Filter,
+  RefreshCw, Send, Lock, Tag, X, Plus, Check, GitBranch, ChevronDown, Filter, Bell,
 } from 'lucide-react'
 import { trpc } from '@/lib/trpc/client'
 
@@ -526,6 +526,9 @@ export function ConversationsPanel() {
   // Track which contact IDs have been "seen" (unread tracking)
   const [seenIds, setSeenIds] = useState<Set<string>>(new Set())
   const prevLastMsgAt = useRef<Map<string, string>>(new Map())
+  // Human-handoff alerts: contacts that just switched ai→human
+  const [humanAlerts, setHumanAlerts] = useState<{ contactId: string; name: string }[]>([])
+  const prevModeRef = useRef<Map<string, string>>(new Map())
 
   const { data: conversations = [], isLoading, refetch } = trpc.conversations.list.useQuery(
     { status: statusFilter, limit: 200, agentId: agentFilter || undefined },
@@ -569,6 +572,24 @@ export function ConversationsPanel() {
     }
   }, [grouped, selectedContactId])
 
+  // Detect ai → human mode transitions → fire alert toast
+  useEffect(() => {
+    const newAlerts: { contactId: string; name: string }[] = []
+    for (const conv of grouped) {
+      const cid = (conv as any).contact_id as string
+      const mode = (conv as any).mode as string
+      const prevMode = prevModeRef.current.get(cid)
+      if (prevMode === 'ai' && mode === 'human') {
+        const contact = (conv as any).contacts
+        newAlerts.push({ contactId: cid, name: contact?.name ?? contact?.phone ?? 'Contato' })
+      }
+      prevModeRef.current.set(cid, mode)
+    }
+    if (newAlerts.length > 0) {
+      setHumanAlerts((prev) => [...prev, ...newAlerts])
+    }
+  }, [grouped])
+
   function selectContact(contactId: string) {
     setSelectedContactId(contactId)
     setSeenIds((prev) => new Set([...prev, contactId]))
@@ -578,6 +599,42 @@ export function ConversationsPanel() {
 
   return (
     <div className="flex h-[calc(100vh-5rem)] md:h-[calc(100vh-4rem)] overflow-hidden rounded-xl border bg-white shadow-sm">
+
+      {/* Human-handoff toast notifications */}
+      {humanAlerts.length > 0 && (
+        <div className="fixed top-4 right-4 z-50 flex flex-col gap-2" style={{ maxWidth: 340 }}>
+          {humanAlerts.map((alert, i) => (
+            <div
+              key={`${alert.contactId}-${i}`}
+              className="flex items-start gap-3 rounded-xl border border-orange-200 bg-orange-50 px-4 py-3 shadow-lg animate-in slide-in-from-right-5"
+            >
+              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-orange-100">
+                <Bell className="h-4 w-4 text-orange-600" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-semibold text-orange-900">Atendimento solicitado</p>
+                <p className="text-xs text-orange-700 truncate">
+                  <strong>{alert.name}</strong> pediu para falar com um humano
+                </p>
+              </div>
+              <div className="flex gap-1 shrink-0">
+                <button
+                  onClick={() => { selectContact(alert.contactId); setHumanAlerts((p) => p.filter((_, j) => j !== i)) }}
+                  className="rounded-lg bg-orange-600 px-2.5 py-1 text-xs font-semibold text-white hover:bg-orange-700"
+                >
+                  Atender
+                </button>
+                <button
+                  onClick={() => setHumanAlerts((p) => p.filter((_, j) => j !== i))}
+                  className="rounded-lg p-1 text-orange-400 hover:text-orange-600 hover:bg-orange-100"
+                >
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
 
       {/* Left panel */}
       <div className={`flex flex-col border-r ${showChat ? 'hidden md:flex' : 'flex'} w-full md:w-80 lg:w-96 shrink-0`}>
@@ -678,7 +735,11 @@ export function ConversationsPanel() {
                       {channel?.type && (
                         <span className="absolute -bottom-0.5 -right-0.5 text-sm leading-none">{channelEmoji[channel.type] ?? '💬'}</span>
                       )}
-                      {/* Unread indicator */}
+                      {/* Human-mode indicator (orange) */}
+                      {!isAI && !isSelected && (
+                        <span className="absolute -top-0.5 -left-0.5 h-3 w-3 rounded-full bg-orange-500 border-2 border-white" />
+                      )}
+                      {/* Unread indicator (red) */}
                       {isUnread && !isSelected && (
                         <span className="absolute -top-0.5 -right-0.5 h-3 w-3 rounded-full bg-red-500 border-2 border-white" />
                       )}
@@ -694,10 +755,17 @@ export function ConversationsPanel() {
                         </span>
                       </div>
                       <div className="flex items-center gap-1 mt-0.5">
-                        <span className={`flex items-center gap-0.5 text-[10px] ${isAI ? 'text-purple-600' : 'text-blue-600'}`}>
-                          {isAI ? <Bot className="h-2.5 w-2.5" /> : <UserCheck className="h-2.5 w-2.5" />}
-                          {isAI ? 'IA' : 'Humano'}
-                        </span>
+                        {isAI ? (
+                          <span className="flex items-center gap-0.5 text-[10px] text-purple-600">
+                            <Bot className="h-2.5 w-2.5" />
+                            IA
+                          </span>
+                        ) : (
+                          <span className="flex items-center gap-0.5 rounded-full bg-orange-100 px-1.5 py-0.5 text-[10px] font-semibold text-orange-700">
+                            <Bell className="h-2.5 w-2.5" />
+                            Aguarda atendimento
+                          </span>
+                        )}
                         {agent?.name && <span className="truncate text-[10px] text-muted-foreground">· {agent.name}</span>}
                       </div>
                     </div>

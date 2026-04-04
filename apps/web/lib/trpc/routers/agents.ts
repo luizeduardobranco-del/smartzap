@@ -9,6 +9,7 @@ const agentPersonalitySchema = z.object({
   instructions: z.string().default(''),
   greeting: z.string().default(''),
   farewell: z.string().default(''),
+  humanHandoffTrigger: z.string().default(''),
 })
 
 const agentAiConfigSchema = z.object({

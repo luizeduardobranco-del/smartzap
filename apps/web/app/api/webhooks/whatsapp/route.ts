@@ -509,12 +509,39 @@ async function handleWebhook(payload: unknown) {
     .update({ credits_balance: org.credits_balance - creditCost })
     .eq('id', channel.organization_id)
 
-  // 14. If agent detected handoff trigger, switch to human mode
+  // 14. If agent detected handoff trigger, send handoff message + switch to human mode
   if (aiResult.shouldHandoffToHuman) {
+    const handoffMsg = ((agent.behavior_config as any)?.offHoursMessage ?? '').trim()
+    if (handoffMsg) {
+      try {
+        await sendAdapter.sendMessage({
+          channelType: 'whatsapp',
+          channelIdentifier: msg.channelIdentifier,
+          recipientExternalId: msg.senderExternalId,
+          contentType: 'text',
+          text: handoffMsg,
+        })
+        await supabase.from('messages').insert({
+          conversation_id: conversationId,
+          organization_id: channel.organization_id,
+          role: 'assistant',
+          content: handoffMsg,
+          content_type: 'text',
+          sender_type: 'human',
+        })
+        await supabase.from('conversations')
+          .update({ last_message_at: new Date().toISOString() })
+          .eq('id', conversationId)
+        console.log('[webhook] handoff message sent')
+      } catch (err) {
+        console.error('[webhook] failed to send handoff message:', err instanceof Error ? err.message : err)
+      }
+    }
     await supabase
       .from('conversations')
       .update({ mode: 'human' })
       .eq('id', conversationId)
+    console.log('[webhook] conversation switched to human mode')
   }
 }
 

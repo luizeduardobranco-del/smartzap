@@ -44,6 +44,7 @@ const schema = z.object({
   maxTokens: z.number().min(100).max(4000).default(1000),
   // behavior
   humanHandoff: z.boolean().default(false),
+  humanHandoffTrigger: z.string().optional(),
   offHoursMessage: z.string().optional(),
 })
 
@@ -92,6 +93,7 @@ export function AgentEditor({ agentId }: { agentId: string }) {
       temperature: (agent.ai_config as any)?.temperature ?? 0.7,
       maxTokens: (agent.ai_config as any)?.maxTokens ?? 1000,
       humanHandoff: (agent.behavior_config as any)?.humanHandoff ?? false,
+      humanHandoffTrigger: (agent.personality as any)?.humanHandoffTrigger ?? '',
       offHoursMessage: (agent.behavior_config as any)?.offHoursMessage ?? '',
     } : undefined,
   })
@@ -121,6 +123,7 @@ export function AgentEditor({ agentId }: { agentId: string }) {
         instructions: data.instructions ?? '',
         greeting: data.greeting ?? '',
         farewell: data.farewell ?? '',
+        humanHandoffTrigger: data.humanHandoffTrigger ?? '',
       },
       aiConfig: {
         provider: data.provider,
@@ -350,13 +353,29 @@ export function AgentEditor({ agentId }: { agentId: string }) {
                   </div>
                 </label>
                 {humanHandoff && (
-                  <div className="mt-3">
-                    <label className="mb-1.5 block text-sm font-medium">Mensagem ao transferir</label>
-                    <input
-                      {...register('offHoursMessage')}
-                      placeholder="Vou transferir para um de nossos atendentes..."
-                      className="w-full rounded-lg border px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-primary/30"
-                    />
+                  <div className="mt-3 space-y-3">
+                    <div>
+                      <label className="mb-1.5 block text-sm font-medium">Palavra-chave de transferência</label>
+                      <input
+                        {...register('humanHandoffTrigger')}
+                        placeholder="Ex: falar com atendente, quero falar com humano"
+                        className="w-full rounded-lg border px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-primary/30"
+                      />
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        Quando o cliente digitar esta frase, a conversa é transferida automaticamente para um atendente humano.
+                      </p>
+                    </div>
+                    <div>
+                      <label className="mb-1.5 block text-sm font-medium">Mensagem ao transferir</label>
+                      <input
+                        {...register('offHoursMessage')}
+                        placeholder="Ok! Vou te conectar com um atendente. Por favor, aguarde um momento."
+                        className="w-full rounded-lg border px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-primary/30"
+                      />
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        Mensagem enviada automaticamente ao cliente no momento da transferência.
+                      </p>
+                    </div>
                   </div>
                 )}
               </div>
