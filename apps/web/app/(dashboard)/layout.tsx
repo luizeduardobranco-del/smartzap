@@ -6,6 +6,7 @@ import { DashboardScroll } from '@/components/layout/DashboardScroll'
 import { GettingStarted } from '@/components/onboarding/GettingStarted'
 import { SupportChat } from '@/components/support/SupportChat'
 import { HumanAttentionPanel } from '@/components/conversations/HumanAttentionPanel'
+import { ChannelDisconnectedPanel } from '@/components/channels/ChannelDisconnectedPanel'
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
   const user = await getUser()
@@ -25,6 +26,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
       <GettingStarted />
       <SupportChat />
       <HumanAttentionPanel />
+      <ChannelDisconnectedPanel />
     </div>
   )
 }
