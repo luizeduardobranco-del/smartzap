@@ -3,7 +3,8 @@
 import { useState, useRef, useEffect } from 'react'
 import { trpc } from '@/lib/trpc/client'
 import {
-  X, Phone, MessageSquare, ArrowLeft, Loader2, Tag,
+  X, Phone, MessageSquare, ArrowLeft, Loader2,
+  Bot, UserCheck, CheckCheck, Send, Lock,
 } from 'lucide-react'
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -32,20 +33,66 @@ function getTagCls(tag: string) {
   return PRESET_TAGS.find((t) => t.label === tag)?.cls ?? 'bg-indigo-100 text-indigo-700 border-indigo-200'
 }
 
-// ─── Inline conversation ──────────────────────────────────────────────────────
+// ─── Inline conversation (com resposta, devolver IA, resolver) ────────────────
 
 function InlineConversation({ contactId, contactName, onBack, onClose }: {
   contactId: string; contactName: string; onBack: () => void; onClose: () => void
 }) {
+  const utils = trpc.useUtils()
   const bottomRef = useRef<HTMLDivElement>(null)
+  const textareaRef = useRef<HTMLTextAreaElement>(null)
+  const [text, setText] = useState('')
+  const [localMode, setLocalMode] = useState<'ai' | 'human' | null>(null)
+
   const { data, isLoading } = trpc.conversations.getContactThread.useQuery(
     { contactId },
-    { refetchInterval: 10000 }
+    { refetchInterval: 5000 }
   )
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [data?.messages])
+
+  const activeConv = data?.conversations.slice().reverse().find((c) => c.status !== 'resolved') ?? data?.conversations.at(-1)
+  const serverMode = data?.conversations.slice().reverse().find((c) => c.status !== 'resolved')?.mode
+  useEffect(() => { if (serverMode) setLocalMode(null) }, [serverMode])
+
+  const effectiveMode = localMode ?? activeConv?.mode ?? 'ai'
+  const isAI = effectiveMode === 'ai'
+  const isResolved = activeConv?.status === 'resolved'
+  const canType = !isAI && !isResolved && !!activeConv
+
+  const setMode = trpc.conversations.setMode.useMutation({
+    onSuccess: () => utils.conversations.getContactThread.invalidate({ contactId }),
+    onError: () => setLocalMode(null),
+  })
+  const resolve = trpc.conversations.resolve.useMutation({
+    onSuccess: () => utils.conversations.getContactThread.invalidate({ contactId }),
+  })
+  const sendMessage = trpc.conversations.sendMessage.useMutation({
+    onSuccess: () => {
+      utils.conversations.getContactThread.invalidate({ contactId })
+      setText('')
+      setTimeout(() => textareaRef.current?.focus(), 100)
+    },
+  })
+
+  function handleAssume() {
+    if (!activeConv) return
+    const newMode = isAI ? 'human' : 'ai'
+    setLocalMode(newMode)
+    setMode.mutate({ id: activeConv.id, mode: newMode })
+    if (newMode === 'human') setTimeout(() => textareaRef.current?.focus(), 100)
+  }
+
+  function handleSend() {
+    if (!text.trim() || !activeConv || !canType) return
+    sendMessage.mutate({ conversationId: activeConv.id, text: text.trim() })
+  }
+
+  function handleKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend() }
+  }
 
   const messages = data?.messages ?? []
   let lastDate = ''
@@ -58,6 +105,7 @@ function InlineConversation({ contactId, contactName, onBack, onClose }: {
 
   return (
     <div className="flex flex-col h-full">
+      {/* Header */}
       <div className="flex items-center gap-3 border-b px-4 py-3 shrink-0">
         <button onClick={onBack} className="rounded-lg p-1.5 hover:bg-slate-100">
           <ArrowLeft className="h-4 w-4 text-slate-500" />
@@ -67,15 +115,55 @@ function InlineConversation({ contactId, contactName, onBack, onClose }: {
         </div>
         <div className="flex-1 min-w-0">
           <p className="text-sm font-semibold truncate">{contactName}</p>
-          <p className="text-xs text-slate-400">
-            {data?.conversations.length ?? 0} conversa{(data?.conversations.length ?? 0) !== 1 ? 's' : ''}
+          <p className={`text-xs flex items-center gap-1 ${isAI ? 'text-purple-600' : 'text-blue-600'}`}>
+            {isAI ? <Bot className="h-3 w-3" /> : <UserCheck className="h-3 w-3" />}
+            {isAI ? 'IA respondendo' : 'Atendimento humano'}
           </p>
         </div>
         <button onClick={onClose} className="rounded-lg p-1.5 hover:bg-slate-100">
           <X className="h-4 w-4 text-slate-500" />
         </button>
       </div>
-      <div className="flex-1 overflow-y-auto p-4 space-y-1">
+
+      {/* Action buttons */}
+      {activeConv && !isResolved && (
+        <div className="flex items-center gap-2 border-b px-4 py-2 bg-slate-50 shrink-0">
+          <button
+            onClick={handleAssume}
+            disabled={setMode.isPending}
+            className={`flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors ${
+              isAI
+                ? 'text-purple-700 border-purple-200 hover:bg-purple-50'
+                : 'text-blue-700 border-blue-200 hover:bg-blue-50'
+            }`}
+          >
+            {setMode.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : isAI ? <Bot className="h-3.5 w-3.5" /> : <UserCheck className="h-3.5 w-3.5" />}
+            {isAI ? 'Assumir atendimento' : 'Devolver para IA'}
+          </button>
+          <button
+            onClick={() => resolve.mutate({ id: activeConv.id })}
+            disabled={resolve.isPending}
+            className="flex items-center gap-1.5 rounded-lg border border-green-200 px-3 py-1.5 text-xs font-medium text-green-700 hover:bg-green-50 transition-colors"
+          >
+            {resolve.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <CheckCheck className="h-3.5 w-3.5" />}
+            Resolver
+          </button>
+          {isResolved && (
+            <span className="rounded-full bg-green-100 px-3 py-1 text-xs font-medium text-green-700">Resolvida</span>
+          )}
+        </div>
+      )}
+
+      {/* Status banner */}
+      {activeConv && !isAI && !isResolved && (
+        <div className="flex items-center gap-2 bg-blue-50 border-b border-blue-100 px-4 py-2 text-xs text-blue-700 shrink-0">
+          <UserCheck className="h-3.5 w-3.5 shrink-0" />
+          Você assumiu esta conversa. A IA está pausada.
+        </div>
+      )}
+
+      {/* Messages */}
+      <div className="flex-1 overflow-y-auto p-4 space-y-1" style={{ background: 'hsl(var(--muted)/0.3)' }}>
         {isLoading && (
           <div className="flex items-center justify-center py-16">
             <Loader2 className="h-5 w-5 animate-spin text-primary" />
@@ -103,9 +191,9 @@ function InlineConversation({ contactId, contactName, onBack, onClose }: {
                   <span className="rounded-full bg-slate-100 px-3 py-0.5 text-xs text-slate-400">{msgDate}</span>
                 </div>
               )}
-              <div className={`flex ${isUser ? 'justify-start' : 'justify-end'}`}>
+              <div className={`flex ${isUser ? 'justify-start' : 'justify-end'} mb-1`}>
                 <div className={`max-w-[78%] rounded-2xl px-3 py-2 text-sm shadow-sm ${
-                  isUser ? 'bg-slate-100 text-slate-800 rounded-tl-sm' : 'bg-primary text-white rounded-tr-sm'
+                  isUser ? 'bg-white text-slate-800 rounded-tl-sm' : 'bg-primary text-white rounded-tr-sm'
                 }`}>
                   {!isUser && <p className="mb-0.5 text-xs font-medium opacity-75">{senderLabel}</p>}
                   <p className="whitespace-pre-wrap break-words">{msg.content}</p>
@@ -118,6 +206,38 @@ function InlineConversation({ contactId, contactName, onBack, onClose }: {
           )
         })}
         <div ref={bottomRef} />
+      </div>
+
+      {/* Reply input */}
+      <div className={`flex-shrink-0 flex items-end gap-2 border-t bg-white px-3 py-2 ${canType ? 'border-primary/30' : ''}`}>
+        {!canType && (
+          <div className="flex items-center pb-2">
+            <Lock className="h-4 w-4 text-muted-foreground/40" />
+          </div>
+        )}
+        <textarea
+          ref={textareaRef}
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+          onKeyDown={handleKeyDown}
+          disabled={!canType}
+          rows={2}
+          placeholder={
+            isResolved
+              ? 'Conversa encerrada.'
+              : isAI
+              ? 'Clique em "Assumir atendimento" para digitar...'
+              : 'Digite sua mensagem... (Enter envia · Shift+Enter quebra linha)'
+          }
+          className="flex-1 resize-none bg-transparent py-1.5 text-sm outline-none placeholder:text-muted-foreground/50 disabled:cursor-not-allowed"
+        />
+        <button
+          onClick={handleSend}
+          disabled={!canType || !text.trim() || sendMessage.isPending}
+          className="mb-1 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary text-white transition-colors hover:bg-primary/90 disabled:opacity-30 disabled:cursor-not-allowed"
+        >
+          {sendMessage.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+        </button>
       </div>
     </div>
   )
@@ -140,7 +260,6 @@ export function LeadDetailModal({ contactId, onClose }: {
   const [localTags, setLocalTags] = useState<string[]>([])
   const [localCrmStage, setLocalCrmStage] = useState<string>('new')
 
-  // Sync local state when contact loads
   useEffect(() => {
     if (contact) {
       setLocalTags(contact.tags ?? [])
@@ -196,7 +315,7 @@ export function LeadDetailModal({ contactId, onClose }: {
         }`}
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Inline conversation */}
+        {/* Inline conversation with full chat features */}
         {showConv && (
           <InlineConversation
             contactId={contactId}
@@ -272,7 +391,7 @@ export function LeadDetailModal({ contactId, onClose }: {
                 </div>
               )}
 
-              {/* CRM Stage */}
+              {/* Estágio no CRM */}
               <div>
                 <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-400">Estágio no CRM</p>
                 <div className="flex flex-wrap gap-2">
@@ -365,7 +484,7 @@ export function LeadDetailModal({ contactId, onClose }: {
               className="flex flex-1 items-center justify-center gap-1.5 rounded-lg bg-primary/10 px-4 py-2 text-sm font-medium text-primary hover:bg-primary/15 transition-colors"
             >
               <MessageSquare className="h-4 w-4" />
-              Ver conversa
+              Conversar / Atender
             </button>
           </div>
         </div>
