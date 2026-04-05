@@ -13,11 +13,14 @@ function getSupabase() {
 }
 
 export async function GET(req: NextRequest) {
-  // Vercel Cron sends Authorization: Bearer <CRON_SECRET>
-  const auth = req.headers.get('authorization')
-  const expected = `Bearer ${process.env.CRON_SECRET ?? ''}`
-  if (auth !== expected) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  // Vercel Cron sends Authorization: Bearer <CRON_SECRET> (Pro plan)
+  // On Hobby plan, accept requests without auth restriction
+  const cronSecret = (process.env.CRON_SECRET ?? '').trim()
+  if (cronSecret) {
+    const auth = req.headers.get('authorization')
+    if (auth !== `Bearer ${cronSecret}`) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
   }
 
   const supabase = getSupabase()
