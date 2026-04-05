@@ -290,7 +290,7 @@ export function StoriesManager() {
                   <div className="shrink-0">
                     {post.media_url ? (
                       <img
-                        src={post.media_url}
+                        src={(() => { try { const p = JSON.parse(post.media_url!); return Array.isArray(p) ? p[0] : post.media_url } catch { return post.media_url } })()}
                         alt={post.name}
                         className="h-16 w-10 rounded-lg object-cover border"
                         onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }}

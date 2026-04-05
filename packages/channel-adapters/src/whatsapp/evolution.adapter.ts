@@ -255,13 +255,14 @@ export class EvolutionWhatsAppAdapter implements ChannelAdapter {
     }
     if (options.caption) body.caption = options.caption
 
-    console.log('[sendStatus] ownerJid:', ownerJid, '| payload:', JSON.stringify(body))
+    console.log('[sendStatus] ownerJid:', ownerJid, '| type:', options.type, '| contentLength:', content.length, '| contentStart:', content.slice(0, 80))
 
     const url = `${this.apiUrl}/message/sendStatus/${this.instanceName}`
     try {
-      await axios.post(url, body, {
+      const resp = await axios.post(url, body, {
         headers: { apikey: this.apiKey, 'Content-Type': 'application/json' },
       })
+      console.log('[sendStatus] Evolution response:', resp.status, JSON.stringify(resp.data).slice(0, 200))
     } catch (e: any) {
       console.error('[sendStatus] Evolution error:', e?.response?.status, JSON.stringify(e?.response?.data))
       throw e
