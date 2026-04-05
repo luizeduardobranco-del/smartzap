@@ -1,6 +1,7 @@
 import { z } from 'zod'
 import { TRPCError } from '@trpc/server'
 import { router, protectedProcedure } from '../init'
+import { EvolutionWhatsAppAdapter } from '@zapagent/channel-adapters'
 
 async function getOrgId(ctx: { supabase: any; user: { id: string } }) {
   const { data: member } = await ctx.supabase
@@ -124,23 +125,66 @@ export const storiesRouter = router({
     .input(z.object({ id: z.string().uuid() }))
     .mutation(async ({ ctx, input }) => {
       const orgId = await getOrgId(ctx)
+
       const { data: post } = await ctx.supabase
         .from('story_posts')
-        .select('*')
+        .select('*, channels(id, credentials, type)')
         .eq('id', input.id)
         .eq('organization_id', orgId)
         .single()
       if (!post) throw new TRPCError({ code: 'NOT_FOUND' })
-
-      // Trigger via API route (keeps adapter logic server-side)
-      const res = await fetch(
-        `${process.env.NEXT_PUBLIC_APP_URL ?? ''}/api/stories/${input.id}/send`,
-        { method: 'POST', headers: { 'x-internal-secret': process.env.INTERNAL_SECRET ?? '' } }
-      )
-      if (!res.ok) {
-        const body = await res.json().catch(() => ({}))
-        throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: body.error ?? 'Falha ao enviar' })
+      if (!['draft', 'scheduled', 'failed'].includes(post.status)) {
+        throw new TRPCError({ code: 'BAD_REQUEST', message: 'Post já enviado' })
       }
-      return res.json()
+
+      const credentials = post.channels?.credentials as Record<string, string> | null
+      const instanceName = credentials?.instanceName
+      if (!instanceName) {
+        throw new TRPCError({ code: 'BAD_REQUEST', message: 'Canal sem instanceName configurado' })
+      }
+
+      if (post.channel_type === 'instagram') {
+        throw new TRPCError({ code: 'BAD_REQUEST', message: 'Integração Instagram pendente de aprovação' })
+      }
+
+      try {
+        const adapter = new EvolutionWhatsAppAdapter(
+          process.env.EVOLUTION_API_URL!,
+          process.env.EVOLUTION_API_KEY!,
+          instanceName
+        )
+        await adapter.sendStatus({
+          type: post.media_type as 'image' | 'video' | 'text',
+          content: post.media_url ?? post.caption ?? '',
+          caption: post.caption ?? undefined,
+          backgroundColor: post.background_color ?? '#000000',
+        })
+
+        await ctx.supabase
+          .from('story_posts')
+          .update({
+            status: post.repeat_days?.length ? 'scheduled' : 'sent',
+            sent_at: new Date().toISOString(),
+            error_message: null,
+          })
+          .eq('id', post.id)
+
+        return { success: true }
+      } catch (err: any) {
+        const evolutionReason =
+          err?.response?.data?.message ??
+          err?.response?.data?.error ??
+          (typeof err?.response?.data === 'string' ? err.response.data : null)
+        const message = evolutionReason
+          ? `Evolution API: ${JSON.stringify(evolutionReason)}`
+          : (err instanceof Error ? err.message : 'Falha ao enviar')
+
+        await ctx.supabase
+          .from('story_posts')
+          .update({ status: 'failed', error_message: message })
+          .eq('id', post.id)
+
+        throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message })
+      }
     }),
 })
