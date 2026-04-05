@@ -39,7 +39,7 @@ const schema = z.object({
   channelId:       z.string().min(1, 'Selecione um canal'),
   channelType:     z.enum(['whatsapp', 'instagram']),
   mediaType:       z.enum(['image', 'video', 'text']),
-  mediaUrl:        z.string().url('URL inválida').optional().or(z.literal('')),
+  mediaUrl:        z.string().optional().or(z.literal('')),
   caption:         z.string().optional(),
   backgroundColor: z.string().optional(),
   scheduledAt:     z.string().optional(),
@@ -67,6 +67,7 @@ const MEDIA_OPTIONS = [
 export function StoriesManager() {
   const [editing, setEditing] = useState<StoryPost | null>(null)
   const [creating, setCreating] = useState(false)
+  const [mutationError, setMutationError] = useState<string | null>(null)
   const [sendingId, setSendingId] = useState<string | null>(null)
   const [uploading, setUploading] = useState(false)
   const [uploadError, setUploadError] = useState<string | null>(null)
@@ -79,8 +80,14 @@ export function StoriesManager() {
 
   const whatsappChannels = channels.filter((c: any) => c.type === 'whatsapp' && c.status === 'connected')
 
-  const createMutation  = trpc.stories.create.useMutation({ onSuccess: () => { utils.stories.list.invalidate(); setCreating(false) } })
-  const updateMutation  = trpc.stories.update.useMutation({ onSuccess: () => { utils.stories.list.invalidate(); setEditing(null) } })
+  const createMutation  = trpc.stories.create.useMutation({
+    onSuccess: () => { utils.stories.list.invalidate(); setCreating(false); setMutationError(null) },
+    onError: (e) => setMutationError(e.message),
+  })
+  const updateMutation  = trpc.stories.update.useMutation({
+    onSuccess: () => { utils.stories.list.invalidate(); setEditing(null); setMutationError(null) },
+    onError: (e) => setMutationError(e.message),
+  })
   const deleteMutation  = trpc.stories.delete.useMutation({ onSuccess: () => utils.stories.list.invalidate() })
   const sendNowMutation = trpc.stories.sendNow.useMutation({
     onSuccess: () => { utils.stories.list.invalidate(); setSendingId(null) },
@@ -108,6 +115,7 @@ export function StoriesManager() {
     setCreating(true)
     setUploadedUrls([])
     setUploadError(null)
+    setMutationError(null)
   }
 
   function openEdit(post: StoryPost) {
@@ -611,6 +619,13 @@ export function StoriesManager() {
                   </div>
                 )}
               </div>
+
+              {/* Erro de criação/edição */}
+              {mutationError && (
+                <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-600">
+                  {mutationError}
+                </div>
+              )}
 
               {/* Submit */}
               <button
