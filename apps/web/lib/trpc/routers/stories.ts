@@ -153,12 +153,33 @@ export const storiesRouter = router({
           process.env.EVOLUTION_API_KEY!,
           instanceName
         )
-        await adapter.sendStatus({
-          type: post.media_type as 'image' | 'video' | 'text',
-          content: post.media_url ?? post.caption ?? '',
-          caption: post.caption ?? undefined,
-          backgroundColor: post.background_color ?? '#000000',
-        })
+        // Suporta múltiplos arquivos armazenados como JSON array
+        let mediaUrls: string[] = []
+        if (post.media_url) {
+          try {
+            const parsed = JSON.parse(post.media_url)
+            mediaUrls = Array.isArray(parsed) ? parsed : [post.media_url]
+          } catch {
+            mediaUrls = [post.media_url]
+          }
+        }
+
+        if (mediaUrls.length > 0) {
+          for (const url of mediaUrls) {
+            await adapter.sendStatus({
+              type: post.media_type as 'image' | 'video' | 'text',
+              content: url,
+              caption: post.caption ?? undefined,
+              backgroundColor: post.background_color ?? '#000000',
+            })
+          }
+        } else {
+          await adapter.sendStatus({
+            type: 'text',
+            content: post.caption ?? '',
+            backgroundColor: post.background_color ?? '#000000',
+          })
+        }
 
         await ctx.supabase
           .from('story_posts')
@@ -171,12 +192,9 @@ export const storiesRouter = router({
 
         return { success: true }
       } catch (err: any) {
-        const evolutionReason =
-          err?.response?.data?.message ??
-          err?.response?.data?.error ??
-          (typeof err?.response?.data === 'string' ? err.response.data : null)
-        const message = evolutionReason
-          ? `Evolution API: ${JSON.stringify(evolutionReason)}`
+        const responseData = err?.response?.data
+        const message = responseData
+          ? `Evolution [${err?.response?.status}]: ${JSON.stringify(responseData)}`
           : (err instanceof Error ? err.message : 'Falha ao enviar')
 
         await ctx.supabase

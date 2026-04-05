@@ -58,12 +58,35 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
         instanceName
       )
 
-      await adapter.sendStatus({
-        type: post.media_type as 'image' | 'video' | 'text',
-        content: post.media_url ?? post.caption ?? '',
-        caption: post.caption ?? undefined,
-        backgroundColor: post.background_color ?? '#000000',
-      })
+      // Suporta múltiplos arquivos armazenados como JSON array em media_url
+      let mediaUrls: string[] = []
+      if (post.media_url) {
+        try {
+          const parsed = JSON.parse(post.media_url)
+          mediaUrls = Array.isArray(parsed) ? parsed : [post.media_url]
+        } catch {
+          mediaUrls = [post.media_url]
+        }
+      }
+
+      // Envia um story para cada mídia
+      if (mediaUrls.length > 0) {
+        for (const url of mediaUrls) {
+          await adapter.sendStatus({
+            type: post.media_type as 'image' | 'video' | 'text',
+            content: url,
+            caption: post.caption ?? undefined,
+            backgroundColor: post.background_color ?? '#000000',
+          })
+        }
+      } else {
+        // Story de texto
+        await adapter.sendStatus({
+          type: 'text',
+          content: post.caption ?? '',
+          backgroundColor: post.background_color ?? '#000000',
+        })
+      }
 
       // Mark sent
       const isRepeating = !!post.repeat_days?.length
@@ -76,17 +99,18 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
           scheduled_at: isRepeating && post.repeat_time
             ? nextRepeatDate(post.repeat_days, post.repeat_time)
             : null,
-          // Clear media URL after send so storage file can be deleted
           media_url: isRepeating ? post.media_url : null,
         })
         .eq('id', postId)
 
-      // Delete file from storage (only for non-repeating posts)
+      // Limpa arquivos do Storage após envio (apenas posts não-repetitivos)
       if (!isRepeating) {
-        await deleteStorageFile(supabase, post.media_url)
+        for (const url of mediaUrls) {
+          await deleteStorageFile(supabase, url)
+        }
       }
 
-      return NextResponse.json({ success: true, postId })
+      return NextResponse.json({ success: true, postId, sent: mediaUrls.length || 1 })
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Send failed'
       await supabase

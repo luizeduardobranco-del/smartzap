@@ -10,7 +10,6 @@ import {
   RefreshCw, Eye, Pencil, Upload,
 } from 'lucide-react'
 import { trpc } from '@/lib/trpc/client'
-import { createSupabaseBrowserClient } from '@/lib/supabase/client'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -71,6 +70,7 @@ export function StoriesManager() {
   const [sendingId, setSendingId] = useState<string | null>(null)
   const [uploading, setUploading] = useState(false)
   const [uploadError, setUploadError] = useState<string | null>(null)
+  const [uploadedUrls, setUploadedUrls] = useState<string[]>([])
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const utils = trpc.useUtils()
@@ -106,9 +106,20 @@ export function StoriesManager() {
     reset(defaultValues)
     setEditing(null)
     setCreating(true)
+    setUploadedUrls([])
+    setUploadError(null)
   }
 
   function openEdit(post: StoryPost) {
+    // Reconstitui uploadedUrls a partir do media_url salvo (pode ser JSON array)
+    try {
+      const parsed = JSON.parse(post.media_url ?? '')
+      if (Array.isArray(parsed)) setUploadedUrls(parsed)
+      else setUploadedUrls(post.media_url ? [post.media_url] : [])
+    } catch {
+      setUploadedUrls(post.media_url ? [post.media_url] : [])
+    }
+    setUploadError(null)
     reset({
       name:            post.name,
       channelId:       post.channel_id,
@@ -126,12 +137,17 @@ export function StoriesManager() {
   }
 
   function onSubmit(values: FormData) {
+    // Se há múltiplos arquivos, serializa como JSON array; caso contrário usa a URL simples
+    const mediaUrl = uploadedUrls.length > 1
+      ? JSON.stringify(uploadedUrls)
+      : (uploadedUrls[0] ?? values.mediaUrl ?? undefined)
+
     const payload = {
       name:            values.name,
       channelId:       values.channelId,
       channelType:     values.channelType,
       mediaType:       values.mediaType,
-      mediaUrl:        values.mediaUrl || undefined,
+      mediaUrl:        mediaUrl || undefined,
       caption:         values.caption || undefined,
       backgroundColor: values.backgroundColor,
       scheduledAt:     values.scheduledAt ? new Date(values.scheduledAt).toISOString() : undefined,
@@ -146,34 +162,42 @@ export function StoriesManager() {
   }
 
   async function handleFileUpload(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0]
-    if (!file) return
+    const files = Array.from(e.target.files ?? [])
+    if (!files.length) return
 
     setUploading(true)
     setUploadError(null)
 
     try {
-      const supabase = createSupabaseBrowserClient()
-      const ext = file.name.split('.').pop()
-      const path = `stories/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`
+      const form = new FormData()
+      files.forEach(f => form.append('files', f))
 
-      const { error } = await supabase.storage
-        .from('story-media')
-        .upload(path, file, { upsert: false })
+      const res = await fetch('/api/stories/upload', { method: 'POST', body: form })
+      const json = await res.json()
 
-      if (error) throw error
+      if (!res.ok) throw new Error(json.error ?? 'Erro ao fazer upload')
 
-      const { data: { publicUrl } } = supabase.storage
-        .from('story-media')
-        .getPublicUrl(path)
+      const newUrls: string[] = json.urls ?? []
+      const allUrls = [...uploadedUrls, ...newUrls]
+      setUploadedUrls(allUrls)
+      // Primeiro arquivo vai para mediaUrl (compatibilidade); os demais ficam em uploadedUrls
+      setValue('mediaUrl', allUrls[0] ?? '', { shouldValidate: true })
 
-      setValue('mediaUrl', publicUrl, { shouldValidate: true })
+      if (json.errors?.length) {
+        setUploadError(`Aviso: ${json.errors.join('; ')}`)
+      }
     } catch (err: any) {
       setUploadError(err?.message ?? 'Erro ao fazer upload')
     } finally {
       setUploading(false)
       if (fileInputRef.current) fileInputRef.current.value = ''
     }
+  }
+
+  function removeUploadedUrl(url: string) {
+    const remaining = uploadedUrls.filter(u => u !== url)
+    setUploadedUrls(remaining)
+    setValue('mediaUrl', remaining[0] ?? '', { shouldValidate: true })
   }
 
   function handleSendNow(post: StoryPost) {
@@ -420,18 +444,51 @@ export function StoriesManager() {
                 />
               </div>
 
-              {/* Media URL + Upload */}
+              {/* Media upload + URL */}
               {mediaType !== 'text' && (
                 <div>
-                  <label className="mb-1 block text-xs font-medium text-gray-700">
-                    {mediaType === 'image' ? 'Imagem' : 'Vídeo'}
-                  </label>
+                  <div className="mb-1 flex items-center justify-between">
+                    <label className="text-xs font-medium text-gray-700">
+                      {mediaType === 'image' ? 'Imagens' : 'Vídeos'}
+                    </label>
+                    {uploadedUrls.length > 0 && (
+                      <span className="text-[11px] text-primary font-medium">
+                        {uploadedUrls.length} arquivo{uploadedUrls.length > 1 ? 's' : ''} — cada um vira 1 story
+                      </span>
+                    )}
+                  </div>
 
-                  {/* Upload button */}
+                  {/* Arquivos já carregados */}
+                  {uploadedUrls.length > 0 && (
+                    <div className="mb-2 flex flex-wrap gap-2">
+                      {uploadedUrls.map((url, idx) => (
+                        <div key={url} className="relative group">
+                          {mediaType === 'image' ? (
+                            <img src={url} alt={`arquivo ${idx + 1}`} className="h-14 w-10 rounded-lg object-cover border" />
+                          ) : (
+                            <div className="flex h-14 w-10 items-center justify-center rounded-lg border bg-gray-100 text-[10px] text-gray-500 font-medium">
+                              <Video className="h-4 w-4" />
+                            </div>
+                          )}
+                          <button
+                            type="button"
+                            onClick={() => removeUploadedUrl(url)}
+                            className="absolute -top-1 -right-1 hidden group-hover:flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-white"
+                          >
+                            <X className="h-2.5 w-2.5" />
+                          </button>
+                          <span className="absolute bottom-0.5 left-0 right-0 text-center text-[9px] text-white font-bold drop-shadow">{idx + 1}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Botão de upload */}
                   <input
                     ref={fileInputRef}
                     type="file"
                     accept={mediaType === 'image' ? 'image/*' : 'video/*'}
+                    multiple
                     className="hidden"
                     onChange={handleFileUpload}
                   />
@@ -439,30 +496,34 @@ export function StoriesManager() {
                     type="button"
                     onClick={() => fileInputRef.current?.click()}
                     disabled={uploading}
-                    className="mb-2 flex w-full items-center justify-center gap-2 rounded-lg border-2 border-dashed border-gray-200 py-3 text-sm text-gray-500 hover:border-primary/50 hover:text-primary disabled:opacity-60 transition-colors"
+                    className="flex w-full items-center justify-center gap-2 rounded-lg border-2 border-dashed border-gray-200 py-3 text-sm text-gray-500 hover:border-primary/50 hover:text-primary disabled:opacity-60 transition-colors"
                   >
                     {uploading
                       ? <><Loader2 className="h-4 w-4 animate-spin" /> Enviando...</>
-                      : <><Upload className="h-4 w-4" /> Enviar {mediaType === 'image' ? 'imagem' : 'vídeo'} do dispositivo</>
+                      : <><Upload className="h-4 w-4" /> {uploadedUrls.length > 0 ? 'Adicionar mais arquivos' : `Enviar ${mediaType === 'image' ? 'imagem(ns)' : 'vídeo(s)'} do dispositivo`}</>
                     }
                   </button>
 
                   {uploadError && (
-                    <p className="mb-2 text-xs text-red-500">{uploadError}</p>
+                    <p className="mt-1 text-xs text-amber-600">{uploadError}</p>
                   )}
 
-                  {/* URL fallback */}
-                  <div className="flex items-center gap-2 text-[11px] text-gray-400 mb-1">
-                    <div className="flex-1 h-px bg-gray-100" />
-                    <span>ou cole uma URL pública</span>
-                    <div className="flex-1 h-px bg-gray-100" />
-                  </div>
-                  <input
-                    {...register('mediaUrl')}
-                    className="w-full rounded-lg border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
-                    placeholder="https://..."
-                  />
-                  {errors.mediaUrl && <p className="mt-1 text-xs text-red-500">{errors.mediaUrl.message}</p>}
+                  {/* URL manual (fallback) */}
+                  {uploadedUrls.length === 0 && (
+                    <>
+                      <div className="my-2 flex items-center gap-2 text-[11px] text-gray-400">
+                        <div className="flex-1 h-px bg-gray-100" />
+                        <span>ou cole uma URL pública</span>
+                        <div className="flex-1 h-px bg-gray-100" />
+                      </div>
+                      <input
+                        {...register('mediaUrl')}
+                        className="w-full rounded-lg border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+                        placeholder="https://..."
+                      />
+                      {errors.mediaUrl && <p className="mt-1 text-xs text-red-500">{errors.mediaUrl.message}</p>}
+                    </>
+                  )}
                 </div>
               )}
 
