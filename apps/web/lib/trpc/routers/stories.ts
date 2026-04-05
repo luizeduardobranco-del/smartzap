@@ -125,22 +125,38 @@ export const storiesRouter = router({
     .input(z.object({ id: z.string().uuid() }))
     .mutation(async ({ ctx, input }) => {
       const orgId = await getOrgId(ctx)
+      console.log('[sendNow] orgId:', orgId, 'postId:', input.id)
 
-      const { data: post } = await ctx.supabase
+      // Busca o post sem join (join pode falhar se FK não estiver configurada no Supabase)
+      const { data: post, error: postError } = await ctx.supabase
         .from('story_posts')
-        .select('*, channels(id, credentials, type)')
+        .select('*')
         .eq('id', input.id)
         .eq('organization_id', orgId)
         .single()
-      if (!post) throw new TRPCError({ code: 'NOT_FOUND' })
+
+      console.log('[sendNow] post:', post?.id, 'status:', post?.status, 'channel_id:', post?.channel_id, 'error:', postError?.message)
+
+      if (!post) throw new TRPCError({ code: 'NOT_FOUND', message: `Post não encontrado: ${postError?.message}` })
       if (!['draft', 'scheduled', 'failed'].includes(post.status)) {
         throw new TRPCError({ code: 'BAD_REQUEST', message: 'Post já enviado' })
       }
 
-      const credentials = post.channels?.credentials as Record<string, string> | null
+      // Busca o canal separadamente
+      const { data: channel, error: channelError } = await ctx.supabase
+        .from('channels')
+        .select('id, credentials, type')
+        .eq('id', post.channel_id)
+        .single()
+
+      console.log('[sendNow] channel:', channel?.id, 'type:', channel?.type, 'error:', channelError?.message)
+
+      const credentials = channel?.credentials as Record<string, string> | null
       const instanceName = credentials?.instanceName
+      console.log('[sendNow] instanceName:', instanceName)
+
       if (!instanceName) {
-        throw new TRPCError({ code: 'BAD_REQUEST', message: 'Canal sem instanceName configurado' })
+        throw new TRPCError({ code: 'BAD_REQUEST', message: `Canal sem instanceName. channel_id=${post.channel_id} channel=${JSON.stringify(channel)} err=${channelError?.message}` })
       }
 
       if (post.channel_type === 'instagram') {
