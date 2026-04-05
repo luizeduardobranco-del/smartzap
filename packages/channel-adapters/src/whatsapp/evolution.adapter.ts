@@ -246,9 +246,9 @@ export class EvolutionWhatsAppAdapter implements ChannelAdapter {
     const body: Record<string, unknown> = {
       type: options.type,
       content,
-      statusJidList: [ownerJid],
+      allContacts: true,        // broadcast para todos os contatos
+      statusJidList: [ownerJid], // fallback para versões mais antigas
     }
-    // Only include optional fields when relevant
     if (options.type === 'text') {
       body.backgroundColor = options.backgroundColor ?? '#000000'
       body.font = 1
