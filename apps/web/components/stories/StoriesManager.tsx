@@ -95,7 +95,7 @@ export function StoriesManager() {
     onSuccess: (data, vars) => {
       utils.stories.list.invalidate()
       setSendingId(null)
-      setSendToast({ id: vars.id, ok: true, msg: `Story enviado com sucesso! (${data.sent ?? 1} mídia${(data.sent ?? 1) > 1 ? 's' : ''})` })
+      setSendToast({ id: vars.id, ok: true, msg: 'Story enviado com sucesso!' })
       setTimeout(() => setSendToast(null), 5000)
     },
     onError: (e, vars) => {
