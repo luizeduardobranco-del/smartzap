@@ -220,10 +220,14 @@ export class EvolutionWhatsAppAdapter implements ChannelAdapter {
       throw new Error('Não foi possível obter o JID do proprietário da instância. Verifique se o canal está conectado.')
     }
 
-    // Resolve media URL to base64 so Evolution API doesn't need to fetch it
-    // (Canva short links and similar redirects fail when fetched server-side)
+    // For URLs that need redirect resolution (Canva, etc.), convert to base64.
+    // Supabase Storage URLs are publicly accessible — send directly to avoid large payloads.
     let content = options.content
-    if ((options.type === 'image' || options.type === 'video') && content.startsWith('http')) {
+    const needsBase64 = (options.type === 'image' || options.type === 'video')
+      && content.startsWith('http')
+      && !content.includes('.supabase.co/storage/')
+
+    if (needsBase64) {
       try {
         const mediaRes = await axios.get(content, {
           responseType: 'arraybuffer',

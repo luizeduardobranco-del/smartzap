@@ -89,9 +89,21 @@ export function StoriesManager() {
     onError: (e) => setMutationError(e.message),
   })
   const deleteMutation  = trpc.stories.delete.useMutation({ onSuccess: () => utils.stories.list.invalidate() })
+  const [sendToast, setSendToast] = useState<{ id: string; ok: boolean; msg: string } | null>(null)
+
   const sendNowMutation = trpc.stories.sendNow.useMutation({
-    onSuccess: () => { utils.stories.list.invalidate(); setSendingId(null) },
-    onError:   () => { utils.stories.list.invalidate(); setSendingId(null) },
+    onSuccess: (data, vars) => {
+      utils.stories.list.invalidate()
+      setSendingId(null)
+      setSendToast({ id: vars.id, ok: true, msg: `Story enviado com sucesso! (${data.sent ?? 1} mídia${(data.sent ?? 1) > 1 ? 's' : ''})` })
+      setTimeout(() => setSendToast(null), 5000)
+    },
+    onError: (e, vars) => {
+      utils.stories.list.invalidate()
+      setSendingId(null)
+      setSendToast({ id: vars.id, ok: false, msg: e.message || 'Erro ao enviar story' })
+      setTimeout(() => setSendToast(null), 8000)
+    },
   })
 
   const defaultValues: FormData = {
@@ -221,6 +233,20 @@ export function StoriesManager() {
       {/* ── Left: list ── */}
       <div className="flex flex-col flex-1 min-w-0">
         {/* Header */}
+        {/* Toast de feedback do envio */}
+        {sendToast && (
+          <div className={`mb-4 flex items-center justify-between gap-3 rounded-lg border px-4 py-3 text-sm ${
+            sendToast.ok
+              ? 'border-green-200 bg-green-50 text-green-700'
+              : 'border-red-200 bg-red-50 text-red-700'
+          }`}>
+            <span>{sendToast.msg}</span>
+            <button onClick={() => setSendToast(null)} className="shrink-0 opacity-60 hover:opacity-100">
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+        )}
+
         <div className="mb-5 flex items-center justify-between">
           <div>
             <h1 className="text-xl font-semibold text-gray-900">Stories</h1>
@@ -306,7 +332,7 @@ export function StoriesManager() {
                     )}
                     {post.sent_at && (
                       <p className="mt-1 text-xs text-gray-400">
-                        Enviado: {new Date(post.sent_at).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })}
+                        Último envio: {new Date(post.sent_at).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })}
                       </p>
                     )}
                     {post.error_message && (
