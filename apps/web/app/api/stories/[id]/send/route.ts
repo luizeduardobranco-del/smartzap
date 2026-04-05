@@ -9,6 +9,17 @@ function getSupabase() {
   )
 }
 
+/** Deletes a file from Supabase Storage if the URL belongs to this project's storage. */
+async function deleteStorageFile(supabase: ReturnType<typeof getSupabase>, mediaUrl: string | null) {
+  if (!mediaUrl) return
+  const storageBase = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/story-media/`
+  if (!mediaUrl.startsWith(storageBase)) return
+  const filePath = mediaUrl.slice(storageBase.length)
+  const { error } = await supabase.storage.from('story-media').remove([filePath])
+  if (error) console.warn('[sendStory] storage cleanup failed:', error.message)
+  else console.log('[sendStory] storage file deleted:', filePath)
+}
+
 export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
   // Protect from external calls
   const secret = req.headers.get('x-internal-secret')
@@ -55,18 +66,25 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
       })
 
       // Mark sent
+      const isRepeating = !!post.repeat_days?.length
       await supabase
         .from('story_posts')
         .update({
-          status: post.repeat_days?.length ? 'scheduled' : 'sent',
+          status: isRepeating ? 'scheduled' : 'sent',
           sent_at: new Date().toISOString(),
           error_message: null,
-          // Advance next scheduled_at if repeating
-          scheduled_at: post.repeat_days?.length && post.repeat_time
+          scheduled_at: isRepeating && post.repeat_time
             ? nextRepeatDate(post.repeat_days, post.repeat_time)
             : null,
+          // Clear media URL after send so storage file can be deleted
+          media_url: isRepeating ? post.media_url : null,
         })
         .eq('id', postId)
+
+      // Delete file from storage (only for non-repeating posts)
+      if (!isRepeating) {
+        await deleteStorageFile(supabase, post.media_url)
+      }
 
       return NextResponse.json({ success: true, postId })
     } catch (err) {

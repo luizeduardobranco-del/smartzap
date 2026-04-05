@@ -197,22 +197,71 @@ export class EvolutionWhatsAppAdapter implements ChannelAdapter {
     caption?: string
     backgroundColor?: string // for text stories
   }): Promise<void> {
+    // Fetch owner JID — required by Evolution API v2 (statusJidList min length 1)
+    let ownerJid: string | null = null
+    try {
+      const info = await axios.get(
+        `${this.apiUrl}/instance/fetchInstances?instanceName=${this.instanceName}`,
+        { headers: { apikey: this.apiKey } }
+      )
+      const inst = Array.isArray(info.data) ? info.data[0] : info.data
+      console.log('[sendStatus] fetchInstances raw:', JSON.stringify(inst))
+      const raw = inst?.instance?.owner ?? inst?.ownerJid ?? inst?.instance?.ownerJid
+      if (raw) {
+        // Normalize: "5511999999999:0@s.whatsapp.net" → "5511999999999@s.whatsapp.net"
+        const phone = raw.split('@')[0].split(':')[0]
+        ownerJid = `${phone}@s.whatsapp.net`
+      }
+    } catch (e: any) {
+      console.error('[sendStatus] fetchInstances failed:', e?.message)
+    }
+
+    if (!ownerJid) {
+      throw new Error('Não foi possível obter o JID do proprietário da instância. Verifique se o canal está conectado.')
+    }
+
+    // Resolve media URL to base64 so Evolution API doesn't need to fetch it
+    // (Canva short links and similar redirects fail when fetched server-side)
+    let content = options.content
+    if ((options.type === 'image' || options.type === 'video') && content.startsWith('http')) {
+      try {
+        const mediaRes = await axios.get(content, {
+          responseType: 'arraybuffer',
+          maxRedirects: 10,
+          timeout: 30_000,
+        })
+        const mimeType = mediaRes.headers['content-type'] ?? (options.type === 'video' ? 'video/mp4' : 'image/jpeg')
+        const base64 = Buffer.from(mediaRes.data).toString('base64')
+        content = `data:${mimeType};base64,${base64}`
+        console.log('[sendStatus] media resolved to base64, mime:', mimeType, 'size:', base64.length)
+      } catch (e: any) {
+        console.warn('[sendStatus] failed to resolve media URL, falling back to original URL:', e?.message)
+      }
+    }
+
+    const body: Record<string, unknown> = {
+      type: options.type,
+      content,
+      statusJidList: [ownerJid],
+    }
+    // Only include optional fields when relevant
+    if (options.type === 'text') {
+      body.backgroundColor = options.backgroundColor ?? '#000000'
+      body.font = 1
+    }
+    if (options.caption) body.caption = options.caption
+
+    console.log('[sendStatus] ownerJid:', ownerJid, '| payload:', JSON.stringify(body))
+
     const url = `${this.apiUrl}/message/sendStatus/${this.instanceName}`
-    await axios.post(
-      url,
-      {
-        statusMessage: {
-          type: options.type,
-          content: options.content,
-          caption: options.caption ?? '',
-          backgroundColor: options.backgroundColor ?? '#000000',
-          font: 1,
-          allContacts: true,
-          statusJidList: [],
-        },
-      },
-      { headers: { apikey: this.apiKey, 'Content-Type': 'application/json' } }
-    )
+    try {
+      await axios.post(url, body, {
+        headers: { apikey: this.apiKey, 'Content-Type': 'application/json' },
+      })
+    } catch (e: any) {
+      console.error('[sendStatus] Evolution error:', e?.response?.status, JSON.stringify(e?.response?.data))
+      throw e
+    }
   }
 
   async getConnectedPhone(): Promise<string | null> {

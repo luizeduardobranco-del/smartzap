@@ -1,15 +1,16 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { useForm, Controller } from 'react-hook-form'
 import { z } from 'zod'
 import { zodResolver } from '@hookform/resolvers/zod'
 import {
   Plus, Trash2, Loader2, X, Send, Clock, CheckCircle2, AlertCircle,
   Image as ImageIcon, Type, Video, Instagram, Smartphone, CalendarDays,
-  RefreshCw, Eye, Pencil,
+  RefreshCw, Eye, Pencil, Upload,
 } from 'lucide-react'
 import { trpc } from '@/lib/trpc/client'
+import { createSupabaseBrowserClient } from '@/lib/supabase/client'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -68,6 +69,9 @@ export function StoriesManager() {
   const [editing, setEditing] = useState<StoryPost | null>(null)
   const [creating, setCreating] = useState(false)
   const [sendingId, setSendingId] = useState<string | null>(null)
+  const [uploading, setUploading] = useState(false)
+  const [uploadError, setUploadError] = useState<string | null>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   const utils = trpc.useUtils()
   const { data: posts = [], isLoading } = trpc.stories.list.useQuery()
@@ -89,7 +93,7 @@ export function StoriesManager() {
     scheduledAt: '', repeatDays: [], repeatTime: '09:00',
   }
 
-  const { register, handleSubmit, control, watch, reset, formState: { errors } } = useForm<FormData>({
+  const { register, handleSubmit, control, watch, reset, setValue, formState: { errors } } = useForm<FormData>({
     resolver: zodResolver(schema),
     defaultValues,
   })
@@ -138,6 +142,37 @@ export function StoriesManager() {
       updateMutation.mutate({ id: editing.id, ...payload })
     } else {
       createMutation.mutate(payload)
+    }
+  }
+
+  async function handleFileUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    setUploading(true)
+    setUploadError(null)
+
+    try {
+      const supabase = createSupabaseBrowserClient()
+      const ext = file.name.split('.').pop()
+      const path = `stories/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`
+
+      const { error } = await supabase.storage
+        .from('story-media')
+        .upload(path, file, { upsert: false })
+
+      if (error) throw error
+
+      const { data: { publicUrl } } = supabase.storage
+        .from('story-media')
+        .getPublicUrl(path)
+
+      setValue('mediaUrl', publicUrl, { shouldValidate: true })
+    } catch (err: any) {
+      setUploadError(err?.message ?? 'Erro ao fazer upload')
+    } finally {
+      setUploading(false)
+      if (fileInputRef.current) fileInputRef.current.value = ''
     }
   }
 
@@ -348,7 +383,7 @@ export function StoriesManager() {
                     <option value="">Selecione...</option>
                     {whatsappChannels.map((ch: any) => (
                       <option key={ch.id} value={ch.id}>
-                        {ch.agents?.[0]?.name ?? ch.credentials?.instanceName ?? ch.id}
+                        {(ch as any).agents?.name ?? ch.credentials?.instanceName ?? ch.id}
                       </option>
                     ))}
                   </select>
@@ -385,19 +420,49 @@ export function StoriesManager() {
                 />
               </div>
 
-              {/* Media URL */}
+              {/* Media URL + Upload */}
               {mediaType !== 'text' && (
                 <div>
                   <label className="mb-1 block text-xs font-medium text-gray-700">
-                    URL da {mediaType === 'image' ? 'imagem' : 'vídeo'}
+                    {mediaType === 'image' ? 'Imagem' : 'Vídeo'}
                   </label>
+
+                  {/* Upload button */}
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept={mediaType === 'image' ? 'image/*' : 'video/*'}
+                    className="hidden"
+                    onChange={handleFileUpload}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={uploading}
+                    className="mb-2 flex w-full items-center justify-center gap-2 rounded-lg border-2 border-dashed border-gray-200 py-3 text-sm text-gray-500 hover:border-primary/50 hover:text-primary disabled:opacity-60 transition-colors"
+                  >
+                    {uploading
+                      ? <><Loader2 className="h-4 w-4 animate-spin" /> Enviando...</>
+                      : <><Upload className="h-4 w-4" /> Enviar {mediaType === 'image' ? 'imagem' : 'vídeo'} do dispositivo</>
+                    }
+                  </button>
+
+                  {uploadError && (
+                    <p className="mb-2 text-xs text-red-500">{uploadError}</p>
+                  )}
+
+                  {/* URL fallback */}
+                  <div className="flex items-center gap-2 text-[11px] text-gray-400 mb-1">
+                    <div className="flex-1 h-px bg-gray-100" />
+                    <span>ou cole uma URL pública</span>
+                    <div className="flex-1 h-px bg-gray-100" />
+                  </div>
                   <input
                     {...register('mediaUrl')}
                     className="w-full rounded-lg border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
                     placeholder="https://..."
                   />
                   {errors.mediaUrl && <p className="mt-1 text-xs text-red-500">{errors.mediaUrl.message}</p>}
-                  <p className="mt-1 text-[11px] text-gray-400">Use o link público da imagem exportada do Canva</p>
                 </div>
               )}
 
