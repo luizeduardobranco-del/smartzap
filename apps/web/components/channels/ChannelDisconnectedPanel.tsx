@@ -2,7 +2,7 @@
 
 import { useState, useRef } from 'react'
 import { useRouter } from 'next/navigation'
-import { WifiOff, ChevronDown, ChevronUp, GripVertical, RefreshCw } from 'lucide-react'
+import { WifiOff, ChevronDown, ChevronUp, GripVertical, RefreshCw, X } from 'lucide-react'
 import { trpc } from '@/lib/trpc/client'
 
 const channelLabel: Record<string, string> = {
@@ -20,15 +20,27 @@ const channelEmoji: Record<string, string> = {
 export function ChannelDisconnectedPanel() {
   const router = useRouter()
   const [open, setOpen] = useState(true)
+  const [dismissed, setDismissed] = useState(false)
   const [pos, setPos] = useState({ right: 20, bottom: 20 })
   const dragRef = useRef<{ startX: number; startY: number; startRight: number; startBottom: number } | null>(null)
   const wasDragRef = useRef(false)
 
   const { data: channels = [] } = trpc.channels.list.useQuery(undefined, {
     refetchInterval: 15000,
+    onSuccess: () => {
+      // Re-show panel if new disconnection detected after dismiss
+      setDismissed(false)
+    },
   })
 
-  const disconnected = channels.filter((c: any) => c.status === 'disconnected')
+  // Deduplicate by id and filter disconnected only
+  const seen = new Set<string>()
+  const disconnected = (channels as any[]).filter((c) => {
+    if (c.status !== 'disconnected') return false
+    if (seen.has(c.id)) return false
+    seen.add(c.id)
+    return true
+  })
 
   function handleDragMouseDown(e: React.MouseEvent) {
     e.preventDefault()
@@ -53,6 +65,8 @@ export function ChannelDisconnectedPanel() {
 
     function onUp() {
       dragRef.current = null
+      // Reset after mouseup so next click works normally
+      setTimeout(() => { wasDragRef.current = false }, 0)
       window.removeEventListener('mousemove', onMove)
       window.removeEventListener('mouseup', onUp)
     }
@@ -61,14 +75,14 @@ export function ChannelDisconnectedPanel() {
     window.addEventListener('mouseup', onUp)
   }
 
-  if (disconnected.length === 0) return null
+  if (disconnected.length === 0 || dismissed) return null
 
   return (
     <div
       className="fixed z-40 flex flex-col-reverse"
       style={{ right: pos.right, bottom: pos.bottom, maxWidth: 320 }}
     >
-      {/* Toggle button */}
+      {/* Toggle bar */}
       <div className="flex items-center self-end rounded-2xl bg-red-500 shadow-lg overflow-hidden">
         {/* Drag handle */}
         <div
@@ -79,9 +93,10 @@ export function ChannelDisconnectedPanel() {
           <GripVertical className="h-4 w-4" />
         </div>
 
+        {/* Collapse toggle */}
         <button
-          onClick={() => !wasDragRef.current && setOpen((v) => !v)}
-          className="flex items-center gap-2 pr-4 py-2.5 text-white hover:text-white/90 transition-colors"
+          onClick={() => setOpen((v) => !v)}
+          className="flex items-center gap-2 px-3 py-2.5 text-white hover:text-white/90 transition-colors"
         >
           <div className="relative">
             <WifiOff className="h-4 w-4" />
@@ -89,12 +104,23 @@ export function ChannelDisconnectedPanel() {
               {disconnected.length}
             </span>
           </div>
-          <span className="text-sm font-semibold">Canal desconectado</span>
+          <span className="text-sm font-semibold">
+            {disconnected.length === 1 ? 'Canal desconectado' : `${disconnected.length} canais desconectados`}
+          </span>
           {open ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronUp className="h-3.5 w-3.5" />}
+        </button>
+
+        {/* Close / dismiss */}
+        <button
+          onClick={() => setDismissed(true)}
+          title="Fechar"
+          className="flex items-center justify-center px-3 py-2.5 text-white/70 hover:text-white transition-colors border-l border-red-400"
+        >
+          <X className="h-4 w-4" />
         </button>
       </div>
 
-      {/* Panel */}
+      {/* Expandable panel */}
       {open && (
         <div className="mb-2 w-80 rounded-2xl border border-red-200 bg-white shadow-xl overflow-hidden">
           {/* Header */}
@@ -117,7 +143,7 @@ export function ChannelDisconnectedPanel() {
               return (
                 <li key={ch.id}>
                   <button
-                    onClick={() => !wasDragRef.current && router.push(`/agents/${agentId}`)}
+                    onClick={() => router.push(`/agents/${agentId}`)}
                     className="flex w-full items-center gap-3 px-4 py-3 text-left hover:bg-red-50 transition-colors"
                   >
                     <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-red-100 text-lg">
