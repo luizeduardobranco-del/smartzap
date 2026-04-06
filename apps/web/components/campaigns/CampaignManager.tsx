@@ -119,11 +119,15 @@ export function CampaignManager() {
   })
   const { data: channels = [] } = trpc.channels.list.useQuery()
 
+  const [formError, setFormError] = useState<string | null>(null)
+
   const create = trpc.campaigns.create.useMutation({
-    onSuccess: () => { utils.campaigns.list.invalidate(); setShowForm(false) },
+    onSuccess: () => { utils.campaigns.list.invalidate(); setShowForm(false); setFormError(null) },
+    onError: (err) => setFormError(err.message),
   })
   const update = trpc.campaigns.update.useMutation({
-    onSuccess: () => { utils.campaigns.list.invalidate(); setEditingCampaign(null) },
+    onSuccess: () => { utils.campaigns.list.invalidate(); setEditingCampaign(null); setFormError(null) },
+    onError: (err) => setFormError(err.message),
   })
   const start = trpc.campaigns.start.useMutation({
     onSuccess: (_, vars) => { utils.campaigns.list.invalidate(); setActiveCampaignId(vars.id) },
@@ -343,9 +347,10 @@ export function CampaignManager() {
       {showForm && (
         <CampaignForm
           channels={whatsappChannels}
-          onClose={() => setShowForm(false)}
-          onSave={(data) => create.mutate(data)}
+          onClose={() => { setShowForm(false); setFormError(null) }}
+          onSave={(data) => { setFormError(null); create.mutate(data) }}
           isSaving={create.isPending}
+          error={formError}
         />
       )}
 
@@ -353,9 +358,10 @@ export function CampaignManager() {
       {editingCampaign && (
         <CampaignForm
           channels={whatsappChannels}
-          onClose={() => setEditingCampaign(null)}
-          onSave={(data) => update.mutate({ id: editingCampaign.id, ...data })}
+          onClose={() => { setEditingCampaign(null); setFormError(null) }}
+          onSave={(data) => { setFormError(null); update.mutate({ id: editingCampaign.id, ...data }) }}
           isSaving={update.isPending}
+          error={formError}
           initialValues={{
             name: editingCampaign.name,
             channelId: editingCampaign.channel_id,
@@ -388,6 +394,7 @@ function CampaignForm({
   initialValues,
   title = 'Nova campanha',
   submitLabel = 'Criar campanha',
+  error,
 }: {
   channels: any[]
   onClose: () => void
@@ -396,6 +403,7 @@ function CampaignForm({
   initialValues?: Partial<FormData>
   title?: string
   submitLabel?: string
+  error?: string | null
 }) {
   const { register, handleSubmit, watch, setValue, formState: { errors } } = useForm<FormData>({
     resolver: zodResolver(schema),
@@ -705,6 +713,13 @@ function CampaignForm({
               </div>
             )}
           </div>
+
+          {error && (
+            <div className="flex items-start gap-2 rounded-lg border border-red-200 bg-red-50 p-3">
+              <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-red-500" />
+              <p className="text-sm text-red-700">{error}</p>
+            </div>
+          )}
 
           <div className="flex justify-end gap-2 pt-1">
             <button type="button" onClick={onClose} className="rounded-lg border px-4 py-2 text-sm hover:bg-muted">Cancelar</button>

@@ -56,13 +56,32 @@ export async function getAdminStats() {
   }
 }
 
+export async function getOrgSettings(userId: string): Promise<{ hasAffiliates?: boolean } | null> {
+  const supabase = getServiceClient()
+  const { data: member } = await supabase
+    .from('organization_members')
+    .select('organization_id')
+    .eq('user_id', userId)
+    .single()
+  if (!member) return null
+  const { data: org } = await supabase
+    .from('organizations')
+    .select('settings')
+    .eq('id', member.organization_id)
+    .single()
+  const settings = org?.settings as { enabled_modules?: string[] } | null
+  return {
+    hasAffiliates: !!(settings?.enabled_modules?.includes('affiliates')),
+  }
+}
+
 export async function getAllOrgs() {
   const supabase = getServiceClient()
   const { data } = await supabase
     .from('organizations')
     .select(`
       id, name, slug, subscription_status, credits_balance,
-      created_at, trial_ends_at,
+      created_at, trial_ends_at, settings,
       stripe_subscription_id, stripe_customer_id,
       asaas_subscription_id, asaas_customer_id,
       plan_id,

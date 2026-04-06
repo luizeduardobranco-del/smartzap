@@ -64,29 +64,31 @@ export const campaignsRouter = router({
     }))
     .mutation(async ({ ctx, input }) => {
       const orgId = await getOrgId(ctx)
-      const { data, error } = await ctx.supabase
+      const basePayload = {
+        organization_id: orgId,
+        name: input.name,
+        message: input.message,
+        channel_id: input.channelId,
+        target_type: input.targetType,
+        target_value: input.targetValue ?? null,
+        delay_seconds: input.delaySeconds,
+        business_hours_only: input.businessHoursOnly,
+        daily_limit: input.dailyLimit ?? null,
+        scheduled_at: input.scheduledAt ?? null,
+        funnel_id: input.funnelId ?? null,
+        funnel_stage_id: input.funnelStageId ?? null,
+        status: 'draft',
+      }
+      let result = await ctx.supabase
         .from('campaigns')
-        .insert({
-          organization_id: orgId,
-          name: input.name,
-          message: input.message,
-          channel_id: input.channelId,
-          target_type: input.targetType,
-          target_value: input.targetValue ?? null,
-          delay_seconds: input.delaySeconds,
-          business_hours_only: input.businessHoursOnly,
-          start_hour: input.startHour,
-          end_hour: input.endHour,
-          daily_limit: input.dailyLimit ?? null,
-          scheduled_at: input.scheduledAt ?? null,
-          funnel_id: input.funnelId ?? null,
-          funnel_stage_id: input.funnelStageId ?? null,
-          status: 'draft',
-        })
+        .insert({ ...basePayload, start_hour: input.startHour, end_hour: input.endHour })
         .select()
         .single()
-      if (error) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: error.message })
-      return data
+      if (result.error?.message?.includes('does not exist')) {
+        result = await ctx.supabase.from('campaigns').insert(basePayload).select().single()
+      }
+      if (result.error) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: result.error.message })
+      return result.data
     }),
 
   start: protectedProcedure
@@ -186,26 +188,33 @@ export const campaignsRouter = router({
     }))
     .mutation(async ({ ctx, input }) => {
       const orgId = await getOrgId(ctx)
-      const { error } = await ctx.supabase
+      const baseUpdate = {
+        name: input.name,
+        message: input.message,
+        channel_id: input.channelId,
+        target_type: input.targetType,
+        target_value: input.targetValue ?? null,
+        delay_seconds: input.delaySeconds,
+        business_hours_only: input.businessHoursOnly,
+        daily_limit: input.dailyLimit ?? null,
+        funnel_id: input.funnelId ?? null,
+        funnel_stage_id: input.funnelStageId ?? null,
+      }
+      let result = await ctx.supabase
         .from('campaigns')
-        .update({
-          name: input.name,
-          message: input.message,
-          channel_id: input.channelId,
-          target_type: input.targetType,
-          target_value: input.targetValue ?? null,
-          delay_seconds: input.delaySeconds,
-          business_hours_only: input.businessHoursOnly,
-          start_hour: input.startHour,
-          end_hour: input.endHour,
-          daily_limit: input.dailyLimit ?? null,
-          funnel_id: input.funnelId ?? null,
-          funnel_stage_id: input.funnelStageId ?? null,
-        })
+        .update({ ...baseUpdate, start_hour: input.startHour, end_hour: input.endHour })
         .eq('id', input.id)
         .eq('organization_id', orgId)
         .in('status', ['draft', 'paused'])
-      if (error) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: error.message })
+      if (result.error?.message?.includes('does not exist')) {
+        result = await ctx.supabase
+          .from('campaigns')
+          .update(baseUpdate)
+          .eq('id', input.id)
+          .eq('organization_id', orgId)
+          .in('status', ['draft', 'paused'])
+      }
+      if (result.error) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: result.error.message })
       return { success: true }
     }),
 

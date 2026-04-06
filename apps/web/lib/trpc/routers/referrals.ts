@@ -21,6 +21,20 @@ async function getOrgId(ctx: { supabase: any; user: { id: string } }) {
   return member.organization_id as string
 }
 
+async function requireAffiliatesModule(ctx: { supabase: any; user: { id: string } }) {
+  const orgId = await getOrgId(ctx)
+  const { data: org } = await ctx.supabase
+    .from('organizations')
+    .select('settings')
+    .eq('id', orgId)
+    .single()
+  const settings = org?.settings as { enabled_modules?: string[] } | null
+  if (!settings?.enabled_modules?.includes('affiliates')) {
+    throw new TRPCError({ code: 'FORBIDDEN', message: 'Módulo de afiliados não habilitado para esta organização.' })
+  }
+  return orgId
+}
+
 function generateCode(name: string): string {
   const base = name
     .toUpperCase()
@@ -36,7 +50,7 @@ export const referralsRouter = router({
   // ─── Obter ou criar código de indicação ─────────────────────────────────────
 
   getMyCode: protectedProcedure.query(async ({ ctx }) => {
-    const orgId = await getOrgId(ctx)
+    const orgId = await requireAffiliatesModule(ctx)
     const db = getServiceClient()
 
     // Check if code exists
@@ -70,6 +84,7 @@ export const referralsRouter = router({
   // ─── Estatísticas de indicações ─────────────────────────────────────────────
 
   getStats: protectedProcedure.query(async ({ ctx }) => {
+    await requireAffiliatesModule(ctx)
     const db = getServiceClient()
 
     const { data: referralCode } = await db

@@ -54,6 +54,7 @@ type LimitsState = {
   hasGoogleMapsSearch: boolean
   hasCustomBranding: boolean
   hasApiAccess: boolean
+  hasAffiliates: boolean
   no_billing_block: boolean
 }
 
@@ -66,6 +67,7 @@ const FEATURE_GROUPS: { label: string; features: { key: keyof LimitsState; label
       { key: 'hasCrm', label: 'CRM Kanban', description: 'Gestão de pipeline de vendas' },
       { key: 'hasCampaigns', label: 'Campanhas', description: 'Disparo de mensagens em massa' },
       { key: 'hasKnowledgeBase', label: 'Base de conhecimento', description: 'Texto, FAQ, URL e imagens de produtos' },
+      { key: 'hasAffiliates', label: 'Programa de Afiliados', description: 'Links de indicação e acompanhamento de comissões' },
     ],
   },
   {
@@ -115,6 +117,7 @@ export function PlanEditClient({ plan }: Props) {
     hasGoogleMapsSearch: plan.limits?.hasGoogleMapsSearch ?? false,
     hasCustomBranding: plan.limits?.hasCustomBranding ?? false,
     hasApiAccess: plan.limits?.hasApiAccess ?? false,
+    hasAffiliates: (plan.limits as any)?.hasAffiliates ?? false,
     no_billing_block: (plan.limits as any)?.no_billing_block ?? false,
   })
 
@@ -141,6 +144,7 @@ export function PlanEditClient({ plan }: Props) {
         hasGoogleMapsSearch: limits.hasGoogleMapsSearch,
         hasCustomBranding: limits.hasCustomBranding,
         hasApiAccess: limits.hasApiAccess,
+        hasAffiliates: limits.hasAffiliates,
         no_billing_block: limits.no_billing_block,
       },
     }

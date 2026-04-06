@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { X, Loader2, Ban, CheckCircle, CreditCard, Users, Calendar, Coins, Link, AlertTriangle } from 'lucide-react'
+import { X, Loader2, Ban, CheckCircle, CreditCard, Users, Calendar, Coins, Link, AlertTriangle, ToggleLeft, ToggleRight } from 'lucide-react'
 
 interface Plan {
   id: string
@@ -21,7 +21,12 @@ interface Org {
   asaas_subscription_id: string | null
   asaas_customer_id: string | null
   plans: Plan | Plan[] | null
+  settings?: { enabled_modules?: string[] } | null
 }
+
+const ALL_MODULES = [
+  { key: 'affiliates', label: 'Programa de Afiliados', description: 'Gerar links de indicação e acompanhar comissões.' },
+]
 
 interface Props {
   org: Org
@@ -82,6 +87,9 @@ function OrgDetailDrawer({
   const [loading, setLoading] = useState<string | null>(null)
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
   const [showCancelConfirm, setShowCancelConfirm] = useState(false)
+  const [enabledModules, setEnabledModules] = useState<string[]>(
+    org.settings?.enabled_modules ?? []
+  )
 
   async function patchOrg(updates: Record<string, any>) {
     const res = await fetch('/api/admin/orgs', {
@@ -117,6 +125,22 @@ function OrgDetailDrawer({
       setTimeout(() => window.location.reload(), 1000)
     } else {
       setMessage({ type: 'error', text: 'Erro ao adicionar créditos.' })
+    }
+  }
+
+  async function handleToggleModule(moduleKey: string) {
+    const isEnabled = enabledModules.includes(moduleKey)
+    const next = isEnabled
+      ? enabledModules.filter((m) => m !== moduleKey)
+      : [...enabledModules, moduleKey]
+    setEnabledModules(next)
+    setLoading(`module_${moduleKey}`)
+    const currentSettings = org.settings ?? {}
+    const ok = await patchOrg({ settings: { ...currentSettings, enabled_modules: next } })
+    setLoading(null)
+    if (!ok) {
+      setEnabledModules(enabledModules) // revert
+      setMessage({ type: 'error', text: 'Erro ao atualizar módulo.' })
     }
   }
 
@@ -320,6 +344,42 @@ function OrgDetailDrawer({
                 {loading === 'credits' && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
                 Adicionar
               </button>
+            </div>
+          </div>
+
+          {/* Modules */}
+          <div className="rounded-xl border bg-white p-4 space-y-3">
+            <p className="text-sm font-semibold">Módulos</p>
+            <p className="text-xs text-muted-foreground">Habilite funcionalidades extras por organização.</p>
+            <div className="space-y-2">
+              {ALL_MODULES.map((mod) => {
+                const isOn = enabledModules.includes(mod.key)
+                const isLoading = loading === `module_${mod.key}`
+                return (
+                  <div key={mod.key} className="flex items-center justify-between gap-3 rounded-lg border px-3 py-2.5">
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium">{mod.label}</p>
+                      <p className="text-xs text-muted-foreground">{mod.description}</p>
+                    </div>
+                    <button
+                      onClick={() => handleToggleModule(mod.key)}
+                      disabled={isLoading}
+                      className={`shrink-0 flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold transition-colors ${
+                        isOn ? 'bg-green-100 text-green-700 hover:bg-green-200' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
+                      } disabled:opacity-50`}
+                    >
+                      {isLoading ? (
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      ) : isOn ? (
+                        <ToggleRight className="h-3.5 w-3.5" />
+                      ) : (
+                        <ToggleLeft className="h-3.5 w-3.5" />
+                      )}
+                      {isOn ? 'Ativo' : 'Inativo'}
+                    </button>
+                  </div>
+                )
+              })}
             </div>
           </div>
 

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { WifiOff, ChevronDown, ChevronUp, GripVertical, RefreshCw, X } from 'lucide-react'
 import { trpc } from '@/lib/trpc/client'
@@ -27,11 +27,15 @@ export function ChannelDisconnectedPanel() {
 
   const { data: channels = [] } = trpc.channels.list.useQuery(undefined, {
     refetchInterval: 15000,
-    onSuccess: () => {
-      // Re-show panel if new disconnection detected after dismiss
-      setDismissed(false)
-    },
   })
+
+  // Re-show panel if new disconnection detected after dismiss
+  const prevCountRef = useRef(0)
+  useEffect(() => {
+    const disconnectedCount = (channels as any[]).filter((c) => c.status === 'disconnected').length
+    if (disconnectedCount > prevCountRef.current) setDismissed(false)
+    prevCountRef.current = disconnectedCount
+  }, [channels])
 
   // Deduplicate by id and filter disconnected only
   const seen = new Set<string>()

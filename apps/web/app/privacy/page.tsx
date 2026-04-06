@@ -18,9 +18,18 @@ export default function PrivacyPage() {
           <section>
             <h2 className="text-xl font-semibold text-slate-900">1. Quem somos</h2>
             <p>
-              White Zap é uma plataforma SaaS de agentes de inteligência artificial para atendimento automatizado
-              via WhatsApp, Instagram e sites, desenvolvida e operada pela White ERP
-              (<strong>atendente.whiteerp.com</strong>).
+              WHITE ZAP é uma plataforma SaaS de agentes de inteligência artificial para atendimento automatizado
+              via WhatsApp, Instagram e sites, desenvolvida e operada pela{' '}
+              <strong>White Trackers Rastreadores LTDA</strong> e <strong>Marques Rastreadores LTDA</strong>,
+              sob as marcas White Trackers, White ERP e WHITE ZAP.
+            </p>
+            <p className="mt-2">
+              <strong>Responsável:</strong> Luiz Eduardo Branco<br />
+              <strong>E-mail do desenvolvedor:</strong>{' '}
+              <a href="mailto:Luizeduardobranco@gmail.com" className="text-blue-600 hover:underline">
+                Luizeduardobranco@gmail.com
+              </a><br />
+              <strong>Site:</strong> <a href="https://atendente.whiteerp.com" className="text-blue-600 hover:underline">atendente.whiteerp.com</a>
             </p>
           </section>
 
@@ -76,7 +85,7 @@ export default function PrivacyPage() {
               <li>Portabilidade dos dados.</li>
               <li>Ser informado sobre o uso dos seus dados.</li>
             </ul>
-            <p>Para exercer esses direitos, entre em contato: <strong>contato@whiteerp.com</strong></p>
+            <p>Para exercer esses direitos, entre em contato: <strong>Luizeduardobranco@gmail.com</strong></p>
           </section>
 
           <section>
@@ -107,7 +116,9 @@ export default function PrivacyPage() {
             <h2 className="text-xl font-semibold text-slate-900">10. Contato</h2>
             <p>
               Dúvidas sobre privacidade? Fale conosco:<br />
-              <strong>E-mail:</strong> contato@whiteerp.com<br />
+              <strong>Responsável:</strong> Luiz Eduardo Branco<br />
+              <strong>E-mail:</strong> Luizeduardobranco@gmail.com<br />
+              <strong>Empresas:</strong> White Trackers Rastreadores LTDA / Marques Rastreadores LTDA<br />
               <strong>Site:</strong> atendente.whiteerp.com
             </p>
           </section>

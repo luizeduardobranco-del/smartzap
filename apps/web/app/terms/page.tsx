@@ -75,9 +75,11 @@ export default function TermsPage() {
           <section>
             <h2 className="text-xl font-semibold text-slate-900">7. Propriedade intelectual</h2>
             <p>
-              O White Zap e todos os seus componentes (marca, código, design, documentação) são propriedade
-              da White ERP. O uso da plataforma não transfere qualquer direito de propriedade intelectual.
-              Seus dados e conteúdos permanecem de sua propriedade.
+              O WHITE ZAP e todos os seus componentes (marcas, código, design, documentação) são propriedade
+              de <strong>White Trackers Rastreadores LTDA</strong> e <strong>Marques Rastreadores LTDA</strong>,
+              sob responsabilidade de Luiz Eduardo Branco (Luizeduardobranco@gmail.com), titulares das marcas
+              White Trackers, White ERP e WHITE ZAP. O uso da plataforma não transfere qualquer direito de
+              propriedade intelectual. Seus dados e conteúdos permanecem de sua propriedade.
             </p>
           </section>
 
@@ -110,7 +112,9 @@ export default function TermsPage() {
             <h2 className="text-xl font-semibold text-slate-900">11. Contato</h2>
             <p>
               Dúvidas sobre estes termos:<br />
-              <strong>E-mail:</strong> contato@whiteerp.com<br />
+              <strong>Responsável:</strong> Luiz Eduardo Branco<br />
+              <strong>E-mail:</strong> Luizeduardobranco@gmail.com<br />
+              <strong>Empresas:</strong> White Trackers Rastreadores LTDA / Marques Rastreadores LTDA<br />
               <strong>Site:</strong> atendente.whiteerp.com
             </p>
           </section>

@@ -216,6 +216,13 @@ async function handleWebhook(payload: unknown) {
           if (transcribed?.trim()) {
             effectiveText = transcribed.trim()
             console.log('[webhook] audio transcribed:', effectiveText!.slice(0, 100))
+            // Save transcription back to message so operators can read it in the UI
+            if (savedMsg?.id) {
+              await supabase
+                .from('messages')
+                .update({ content: effectiveText })
+                .eq('id', savedMsg.id)
+            }
           }
         } else {
           console.warn('[webhook] Whisper error:', tr.status)

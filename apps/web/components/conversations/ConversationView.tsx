@@ -2,7 +2,7 @@
 
 import { useRef, useEffect, useState } from 'react'
 import Link from 'next/link'
-import { ArrowLeft, Bot, UserCheck, CheckCheck, Loader2, Phone, Send, Lock, Tag, X, Plus, Check } from 'lucide-react'
+import { ArrowLeft, Bot, UserCheck, CheckCheck, Loader2, Phone, Send, Lock, Tag, X, Plus, Check, Mic, Image as ImageIcon, FileText } from 'lucide-react'
 import { trpc } from '@/lib/trpc/client'
 
 const PRESET_TAGS = [
@@ -364,7 +364,43 @@ export function ConversationView({ contactId, onClose }: { contactId: string; on
                         ? 'rounded-tl-sm bg-muted text-foreground'
                         : 'rounded-tr-sm bg-primary text-white'
                     }`}>
-                      <p className="text-sm leading-relaxed whitespace-pre-wrap">{msg.content}</p>
+                      {/* Audio message */}
+                      {msg.content_type === 'audio' ? (
+                        <div className="space-y-1.5">
+                          <div className="flex items-center gap-2">
+                            <div className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full ${isUser ? 'bg-primary/10' : 'bg-white/20'}`}>
+                              <Mic className={`h-3.5 w-3.5 ${isUser ? 'text-primary' : 'text-white'}`} />
+                            </div>
+                            <span className={`text-xs font-medium ${isUser ? 'text-muted-foreground' : 'text-white/80'}`}>Áudio</span>
+                          </div>
+                          {msg.content && msg.content !== '[mídia]' ? (
+                            <p className="text-sm leading-relaxed whitespace-pre-wrap italic opacity-90">"{msg.content}"</p>
+                          ) : (
+                            <p className={`text-xs italic ${isUser ? 'text-muted-foreground' : 'text-white/60'}`}>Áudio não transcrito</p>
+                          )}
+                        </div>
+                      ) : msg.content_type === 'image' ? (
+                        <div className="space-y-1.5">
+                          {msg.media_url ? (
+                            <img src={msg.media_url} alt="Imagem" className="max-w-full rounded-lg max-h-48 object-cover" />
+                          ) : (
+                            <div className="flex items-center gap-2">
+                              <ImageIcon className="h-4 w-4 opacity-70" />
+                              <span className="text-xs opacity-70">Imagem</span>
+                            </div>
+                          )}
+                          {msg.content && msg.content !== '[mídia]' && (
+                            <p className="text-sm leading-relaxed whitespace-pre-wrap">{msg.content}</p>
+                          )}
+                        </div>
+                      ) : msg.content_type === 'document' ? (
+                        <div className="flex items-center gap-2">
+                          <FileText className="h-4 w-4 opacity-70" />
+                          <span className="text-sm">{msg.content !== '[mídia]' ? msg.content : 'Documento'}</span>
+                        </div>
+                      ) : (
+                        <p className="text-sm leading-relaxed whitespace-pre-wrap">{msg.content}</p>
+                      )}
                       <div className={`mt-1 flex items-center gap-1 ${isUser ? 'justify-start' : 'justify-end'}`}>
                         <span className={`text-[10px] ${isUser ? 'text-muted-foreground' : 'text-white/70'}`}>
                           {timeStr(msg.created_at)}

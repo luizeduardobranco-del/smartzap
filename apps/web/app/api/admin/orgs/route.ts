@@ -57,7 +57,7 @@ export async function PATCH(req: NextRequest) {
 
   if (!id) return NextResponse.json({ error: 'id é obrigatório.' }, { status: 400 })
 
-  const allowedFields = ['plan_id', 'credits_balance', 'subscription_status', 'name', 'slug']
+  const allowedFields = ['plan_id', 'credits_balance', 'subscription_status', 'name', 'slug', 'settings']
   const filteredUpdates: Record<string, any> = {}
   for (const key of allowedFields) {
     if (key in updates) {

@@ -10,30 +10,35 @@ import {
   Kanban, Send, Users, ShieldCheck, ChevronLeft, ChevronRight, Menu, X, GitBranch, Handshake, ImagePlay,
 } from 'lucide-react'
 
-const navItems = [
-  { href: '/agents',        label: 'Agentes',        icon: Bot },
-  { href: '/conversations', label: 'Conversas',       icon: MessageSquare },
-  { href: '/contacts',      label: 'Contatos',        icon: Users },
-  { href: '/crm',           label: 'CRM',             icon: Kanban },
-  { href: '/funnels',       label: 'Funis',           icon: GitBranch },
-  { href: '/automations',   label: 'Automações',      icon: Zap },
-  { href: '/campaigns',     label: 'Disparos',        icon: Send },
-  { href: '/stories',       label: 'Stories',         icon: ImagePlay },
-  { href: '/analytics',     label: 'Analytics',       icon: BarChart3 },
-  { href: '/credits',       label: 'Créditos',        icon: Coins },
-  { href: '/referrals',     label: 'Afiliados',       icon: Handshake },
-  { href: '/settings',      label: 'Configurações',   icon: Settings },
+const baseNavItems = [
+  { href: '/agents',        label: 'Agentes',        icon: Bot,        module: null },
+  { href: '/conversations', label: 'Conversas',       icon: MessageSquare, module: null },
+  { href: '/contacts',      label: 'Contatos',        icon: Users,      module: null },
+  { href: '/crm',           label: 'CRM',             icon: Kanban,     module: null },
+  { href: '/funnels',       label: 'Funis',           icon: GitBranch,  module: null },
+  { href: '/automations',   label: 'Automações',      icon: Zap,        module: null },
+  { href: '/campaigns',     label: 'Disparos',        icon: Send,       module: null },
+  { href: '/stories',       label: 'Stories',         icon: ImagePlay,  module: null },
+  { href: '/analytics',     label: 'Analytics',       icon: BarChart3,  module: null },
+  { href: '/credits',       label: 'Créditos',        icon: Coins,      module: null },
+  { href: '/referrals',     label: 'Afiliados',       icon: Handshake,  module: 'affiliates' },
+  { href: '/settings',      label: 'Configurações',   icon: Settings,   module: null },
 ]
 
 interface SidebarProps {
   user: User
   isAdmin?: boolean
+  enabledModules?: string[]
 }
 
-export function Sidebar({ user, isAdmin }: SidebarProps) {
+export function Sidebar({ user, isAdmin, enabledModules = [] }: SidebarProps) {
   const pathname = usePathname()
   const [collapsed, setCollapsed] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
+
+  const navItems = baseNavItems.filter(
+    (item) => item.module === null || enabledModules.includes(item.module)
+  )
 
   async function handleLogout() {
     await fetch('/api/auth/logout', { method: 'POST' })
