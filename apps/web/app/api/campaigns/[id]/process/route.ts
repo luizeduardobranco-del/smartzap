@@ -9,10 +9,6 @@ function getSupabase() {
   )
 }
 
-function sleep(ms: number) {
-  return new Promise((resolve) => setTimeout(resolve, ms))
-}
-
 function isBusinessHours(startHour = 8, endHour = 20) {
   const hour = parseInt(
     new Intl.DateTimeFormat('pt-BR', {
@@ -83,18 +79,33 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
       })
     }
 
-    // Get next pending message
-    const { data: nextMsg } = await supabase
+    // Recover stale 'processing' messages (stuck > 2 min — e.g. server crashed mid-send)
+    const staleThreshold = new Date(Date.now() - 2 * 60 * 1000).toISOString()
+    await supabase
       .from('campaign_messages')
-      .select('*')
+      .update({ status: 'pending' })
+      .eq('campaign_id', campaignId)
+      .eq('status', 'processing')
+      .lt('updated_at', staleThreshold)
+
+    // Get channel credentials early (needed before claiming)
+    const credentials = campaign.channels?.credentials as Record<string, string>
+    const instanceName = credentials?.instanceName
+    if (!instanceName) {
+      return NextResponse.json({ error: 'Canal sem instanceName configurado' }, { status: 400 })
+    }
+
+    // Find the next pending message (skip any already being processed)
+    const { data: candidate } = await supabase
+      .from('campaign_messages')
+      .select('id')
       .eq('campaign_id', campaignId)
       .eq('status', 'pending')
       .order('created_at', { ascending: true })
       .limit(1)
-      .single()
+      .maybeSingle()
 
-    console.log(`[campaign/process] nextMsg=${nextMsg?.id ?? 'null'}`)
-    if (!nextMsg) {
+    if (!candidate) {
       console.log(`[campaign/process] no pending messages for campaign ${campaignId}`)
       // No more pending — campaign complete
       const { data: counts } = await supabase
@@ -110,17 +121,25 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
       return NextResponse.json({ status: 'completed', sent, failed, done: true })
     }
 
-    // Get channel credentials
-    const credentials = campaign.channels?.credentials as Record<string, string>
-    const instanceName = credentials?.instanceName
-    if (!instanceName) {
-      return NextResponse.json({ error: 'Canal sem instanceName configurado' }, { status: 400 })
+    // Atomically claim the message — only succeeds if status is still 'pending'.
+    // If two concurrent requests race, only one will get a row back; the other gets null and exits.
+    const { data: nextMsg } = await supabase
+      .from('campaign_messages')
+      .update({ status: 'processing' })
+      .eq('id', candidate.id)
+      .eq('status', 'pending') // compare-and-swap guard
+      .select('*')
+      .single()
+
+    console.log(`[campaign/process] claimed=${nextMsg?.id ?? 'none (race lost)'}`)
+    if (!nextMsg) {
+      // Another concurrent request already claimed this message — skip safely
+      return NextResponse.json({ status: 'running', done: false, delay_ms: 500 })
     }
 
-    // Apply random jitter (±2s)
+    // Compute delay for the client to wait (server no longer sleeps — avoids Vercel timeout)
     const jitter = Math.floor(Math.random() * 4000) - 2000 // -2000 to +2000 ms
-    const delay = (campaign.delay_seconds * 1000) + jitter
-    await sleep(Math.max(delay, 3000)) // minimum 3s
+    const delayMs = Math.max((campaign.delay_seconds * 1000) + jitter, 3000)
 
     // Send message
     const text = personalizeMessage(campaign.message, nextMsg.contact_name ?? '')
@@ -274,7 +293,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
       .eq('campaign_id', campaignId)
     const sent = counts?.filter((m: any) => m.status === 'sent').length ?? 0
     const failed = counts?.filter((m: any) => m.status === 'failed').length ?? 0
-    const pending = counts?.filter((m: any) => m.status === 'pending').length ?? 0
+    const pending = counts?.filter((m: any) => m.status === 'pending' || m.status === 'processing').length ?? 0
 
     await supabase
       .from('campaigns')
@@ -289,6 +308,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
       done: false,
       lastContact: nextMsg.contact_name,
       success: !sendError,
+      delay_ms: delayMs,
     })
   } catch (err) {
     console.error('[campaign/process]', err)

@@ -93,8 +93,9 @@ function useProcessCampaign(campaignId: string | null, isRunning: boolean, onUpd
           const data = await res.json()
           onUpdate()
           if (data.done || !activeRef.current) break
-          // Wait for the delay before next request (server already slept, just small buffer)
-          await new Promise((r) => setTimeout(r, 500))
+          // Wait the configured delay (server no longer sleeps to avoid Vercel timeout)
+          const waitMs = typeof data.delay_ms === 'number' ? data.delay_ms : 5000
+          await new Promise((r) => setTimeout(r, waitMs))
         } catch {
           await new Promise((r) => setTimeout(r, 5000))
         }
