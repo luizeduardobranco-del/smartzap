@@ -16,8 +16,10 @@ import { onboardingRouter } from './routers/onboarding'
 import { couponsRouter } from './routers/coupons'
 import { referralsRouter } from './routers/referrals'
 import { storiesRouter } from './routers/stories'
+import { membersRouter } from './routers/members'
 
 export const appRouter = router({
+  members: membersRouter,
   agents: agentsRouter,
   knowledge: knowledgeRouter,
   channels: channelsRouter,

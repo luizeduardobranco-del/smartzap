@@ -3,11 +3,12 @@
 import { useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { useSearchParams } from 'next/navigation'
-import { Building2, Key, CreditCard, Eye, EyeOff, Loader2, CheckCircle, Plug, Calendar, Mail, Trash2, ShieldCheck } from 'lucide-react'
+import { Building2, Key, CreditCard, Eye, EyeOff, Loader2, CheckCircle, Plug, Calendar, Mail, Trash2, ShieldCheck, Users, Crown, UserCog, UserMinus, Send, Clock, X } from 'lucide-react'
 import { trpc } from '@/lib/trpc/client'
 
 const TABS = [
   { id: 'org', label: 'Organização', icon: Building2 },
+  { id: 'users', label: 'Usuários', icon: Users },
   { id: 'ai', label: 'Chaves de IA', icon: Key },
   { id: 'integrations', label: 'Integrações', icon: Plug },
   { id: 'billing', label: 'Plano & Créditos', icon: CreditCard },
@@ -71,11 +72,198 @@ export function SettingsPanel() {
         {/* Content */}
         <div className="flex-1 rounded-xl border bg-white p-6 shadow-sm">
           {tab === 'org' && <OrgTab org={org} />}
+          {tab === 'users' && <UsersTab />}
           {tab === 'ai' && <AIKeysTab org={org} />}
           {tab === 'integrations' && <IntegrationsTab />}
           {tab === 'billing' && <BillingTab org={org} />}
         </div>
       </div>
+    </div>
+  )
+}
+
+// ─── Users Tab ─────────────────────────────────────────────────────────────
+
+const ROLE_LABELS: Record<string, string> = {
+  owner: 'Proprietário',
+  admin: 'Administrador',
+  member: 'Membro',
+}
+
+function RoleBadge({ role }: { role: string }) {
+  const colors: Record<string, string> = {
+    owner: 'bg-purple-100 text-purple-700',
+    admin: 'bg-blue-100 text-blue-700',
+    member: 'bg-gray-100 text-gray-600',
+  }
+  return (
+    <span className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${colors[role] ?? colors.member}`}>
+      {ROLE_LABELS[role] ?? role}
+    </span>
+  )
+}
+
+function UsersTab() {
+  const utils = trpc.useUtils()
+  const { data, isLoading } = trpc.members.list.useQuery()
+  const invite = trpc.members.invite.useMutation({ onSuccess: () => { utils.members.list.invalidate(); setInviteEmail(''); setInviteRole('member') } })
+  const updateRole = trpc.members.updateRole.useMutation({ onSuccess: () => utils.members.list.invalidate() })
+  const remove = trpc.members.remove.useMutation({ onSuccess: () => utils.members.list.invalidate() })
+  const cancelInvite = trpc.members.cancelInvite.useMutation({ onSuccess: () => utils.members.list.invalidate() })
+
+  const [inviteEmail, setInviteEmail] = useState('')
+  const [inviteRole, setInviteRole] = useState<'member' | 'admin'>('member')
+  const [confirmRemove, setConfirmRemove] = useState<string | null>(null)
+
+  const canManage = data?.currentUserRole === 'owner' || data?.currentUserRole === 'admin'
+
+  if (isLoading) {
+    return (
+      <div className="flex h-48 items-center justify-center">
+        <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+      </div>
+    )
+  }
+
+  return (
+    <div className="space-y-6 max-w-lg">
+      <div>
+        <h2 className="font-semibold">Usuários da organização</h2>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Gerencie quem tem acesso à sua conta.
+        </p>
+      </div>
+
+      {/* Invite form */}
+      {canManage && (
+        <div className="rounded-xl border p-4 space-y-3">
+          <p className="text-sm font-medium">Convidar novo usuário</p>
+          <div className="flex gap-2">
+            <input
+              type="email"
+              placeholder="email@exemplo.com"
+              value={inviteEmail}
+              onChange={(e) => setInviteEmail(e.target.value)}
+              className="flex-1 rounded-lg border px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/30"
+            />
+            <select
+              value={inviteRole}
+              onChange={(e) => setInviteRole(e.target.value as 'member' | 'admin')}
+              className="rounded-lg border px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/30 bg-white"
+            >
+              <option value="member">Membro</option>
+              <option value="admin">Admin</option>
+            </select>
+          </div>
+          <button
+            disabled={!inviteEmail || invite.isPending}
+            onClick={() => invite.mutate({ email: inviteEmail, role: inviteRole })}
+            className="flex items-center gap-1.5 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-primary/90 disabled:opacity-60"
+          >
+            {invite.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+            Enviar convite
+          </button>
+          {invite.isSuccess && (
+            <p className="flex items-center gap-1 text-sm text-green-600">
+              <CheckCircle className="h-4 w-4" /> Convite enviado para {inviteEmail}
+            </p>
+          )}
+          {invite.error && <p className="text-sm text-red-500">{invite.error.message}</p>}
+        </div>
+      )}
+
+      {/* Members list */}
+      <div className="space-y-2">
+        {data?.members.map((m: any) => (
+          <div key={m.id} className="flex items-center justify-between rounded-xl border p-3.5">
+            <div className="flex items-center gap-3">
+              {m.avatar_url ? (
+                <img src={m.avatar_url} alt="" className="h-8 w-8 rounded-full object-cover" />
+              ) : (
+                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 text-sm font-semibold text-primary">
+                  {(m.name ?? m.email ?? '?')[0].toUpperCase()}
+                </div>
+              )}
+              <div>
+                <p className="text-sm font-medium">{m.name ?? m.email}</p>
+                {m.name && <p className="text-xs text-muted-foreground">{m.email}</p>}
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2">
+              {canManage && m.role !== 'owner' && !m.isCurrentUser ? (
+                <>
+                  <select
+                    value={m.role}
+                    onChange={(e) => updateRole.mutate({ memberId: m.id, role: e.target.value as 'member' | 'admin' })}
+                    className="rounded-lg border px-2 py-1 text-xs outline-none focus:ring-2 focus:ring-primary/30 bg-white"
+                  >
+                    <option value="member">Membro</option>
+                    <option value="admin">Admin</option>
+                  </select>
+                  {confirmRemove === m.id ? (
+                    <div className="flex items-center gap-1">
+                      <button
+                        onClick={() => { remove.mutate({ memberId: m.id }); setConfirmRemove(null) }}
+                        className="rounded-lg bg-red-500 px-2 py-1 text-xs text-white hover:bg-red-600"
+                      >
+                        Confirmar
+                      </button>
+                      <button onClick={() => setConfirmRemove(null)} className="rounded-lg border px-2 py-1 text-xs hover:bg-muted">
+                        Cancelar
+                      </button>
+                    </div>
+                  ) : (
+                    <button
+                      onClick={() => setConfirmRemove(m.id)}
+                      className="rounded-lg border border-red-200 p-1.5 text-red-500 hover:bg-red-50"
+                      title="Remover usuário"
+                    >
+                      <UserMinus className="h-3.5 w-3.5" />
+                    </button>
+                  )}
+                </>
+              ) : (
+                <RoleBadge role={m.role} />
+              )}
+              {m.isCurrentUser && (
+                <span className="text-xs text-muted-foreground">(você)</span>
+              )}
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Pending invites */}
+      {(data?.pendingInvites ?? []).length > 0 && (
+        <div className="space-y-2">
+          <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Convites pendentes</p>
+          {data?.pendingInvites.map((inv) => (
+            <div key={inv.id} className="flex items-center justify-between rounded-xl border border-dashed p-3.5">
+              <div className="flex items-center gap-3">
+                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-muted">
+                  <Clock className="h-4 w-4 text-muted-foreground" />
+                </div>
+                <div>
+                  <p className="text-sm font-medium">{inv.email}</p>
+                  <p className="text-xs text-muted-foreground">
+                    Expira em {new Date(inv.expires_at).toLocaleDateString('pt-BR')} · <RoleBadge role={inv.role} />
+                  </p>
+                </div>
+              </div>
+              {canManage && (
+                <button
+                  onClick={() => cancelInvite.mutate({ inviteId: inv.id })}
+                  className="rounded-lg border p-1.5 text-muted-foreground hover:bg-muted hover:text-red-500"
+                  title="Cancelar convite"
+                >
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   )
 }
