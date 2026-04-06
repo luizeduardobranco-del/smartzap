@@ -197,7 +197,7 @@ export const billingRouter = router({
         }
       }
 
-      const cycle = input.interval === 'monthly' ? 'MONTHLY' : 'ANNUAL'
+      const cycle = input.interval === 'monthly' ? 'MONTHLY' : 'YEARLY'
       const planLabel = input.planSlug === 'starter' ? 'Starter' : 'Pro'
       const intervalLabel = input.interval === 'monthly' ? 'Mensal' : 'Anual'
       const today = new Date().toISOString().split('T')[0]
