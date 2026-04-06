@@ -546,4 +546,65 @@ export const billingRouter = router({
 
     return { success: true }
   }),
+
+  // ── Asaas: list pending payments ─────────────────────────────────────────────
+  getAsaasPendingPayments: protectedProcedure.query(async ({ ctx }) => {
+    const orgId = await getOrgId(ctx)
+    const supabase = getServiceClient()
+
+    const { data: org } = await supabase
+      .from('organizations')
+      .select('asaas_customer_id')
+      .eq('id', orgId)
+      .single()
+
+    if (!org?.asaas_customer_id) return []
+
+    const result = await asaas<{
+      data: Array<{
+        id: string
+        value: number
+        netValue: number
+        dueDate: string
+        status: string
+        description: string
+        billingType: string
+        invoiceUrl: string
+        bankSlipUrl: string | null
+      }>
+    }>('GET', `/payments?customer=${org.asaas_customer_id}&status=PENDING,OVERDUE&limit=20`)
+
+    return (result.data ?? []).map((p) => ({
+      id: p.id,
+      value: p.value,
+      dueDate: p.dueDate,
+      status: p.status,
+      description: p.description,
+      billingType: p.billingType,
+      invoiceUrl: p.invoiceUrl,
+    }))
+  }),
+
+  // ── Asaas: cancel a single payment ───────────────────────────────────────────
+  cancelAsaasPayment: protectedProcedure
+    .input(z.object({ paymentId: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      const orgId = await getOrgId(ctx)
+      const supabase = getServiceClient()
+
+      // Verify payment belongs to this org's customer
+      const { data: org } = await supabase
+        .from('organizations')
+        .select('asaas_customer_id')
+        .eq('id', orgId)
+        .single()
+
+      if (!org?.asaas_customer_id) throw new TRPCError({ code: 'FORBIDDEN' })
+
+      const payment = await asaas<{ customer: string }>('GET', `/payments/${input.paymentId}`)
+      if (payment.customer !== org.asaas_customer_id) throw new TRPCError({ code: 'FORBIDDEN' })
+
+      await asaas('DELETE', `/payments/${input.paymentId}`)
+      return { success: true }
+    }),
 })

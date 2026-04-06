@@ -23,6 +23,7 @@ import {
 } from 'lucide-react'
 import Link from 'next/link'
 import { trpc } from '@/lib/trpc/client'
+import { PendingPayments } from './PendingPayments'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -704,6 +705,9 @@ export function PlansManager({ blocked }: { blocked?: boolean }) {
       <p className="text-center text-xs text-zinc-400">
         Aceita PIX e cartão de crédito. Cancele a qualquer momento sem multa. Preços em BRL.
       </p>
+
+      {/* Pending payments */}
+      <PendingPayments />
 
       {/* Credit packages */}
       {creditPackages.length > 0 && (
