@@ -220,14 +220,13 @@ export class EvolutionWhatsAppAdapter implements ChannelAdapter {
       throw new Error('Não foi possível obter o JID do proprietário da instância. Verifique se o canal está conectado.')
     }
 
-    // For URLs that need redirect resolution (Canva, etc.), convert to base64.
-    // Supabase Storage URLs are publicly accessible — send directly to avoid large payloads.
+    // Always convert image/video URLs to base64 — Evolution API may not be able
+    // to reach external URLs (Supabase storage, Canva, etc.) from its network.
     let content = options.content
-    const needsBase64 = (options.type === 'image' || options.type === 'video')
+    const isMediaUrl = (options.type === 'image' || options.type === 'video')
       && content.startsWith('http')
-      && !content.includes('.supabase.co/storage/')
 
-    if (needsBase64) {
+    if (isMediaUrl) {
       try {
         const mediaRes = await axios.get(content, {
           responseType: 'arraybuffer',
@@ -237,9 +236,9 @@ export class EvolutionWhatsAppAdapter implements ChannelAdapter {
         const mimeType = mediaRes.headers['content-type'] ?? (options.type === 'video' ? 'video/mp4' : 'image/jpeg')
         const base64 = Buffer.from(mediaRes.data).toString('base64')
         content = `data:${mimeType};base64,${base64}`
-        console.log('[sendStatus] media resolved to base64, mime:', mimeType, 'size:', base64.length)
+        console.log('[sendStatus] resolved to base64, mime:', mimeType, 'bytes:', base64.length)
       } catch (e: any) {
-        console.warn('[sendStatus] failed to resolve media URL, falling back to original URL:', e?.message)
+        console.warn('[sendStatus] base64 conversion failed, sending URL directly:', e?.message)
       }
     }
 
