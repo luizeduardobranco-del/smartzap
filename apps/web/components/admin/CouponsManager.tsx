@@ -13,6 +13,7 @@ const schema = z.object({
   type: z.enum(['percentage', 'fixed']),
   value: z.number().positive(),
   applicableTo: z.enum(['all', 'plan', 'credits']),
+  durationValue: z.enum(['forever', 'once', '3months', '6months', '12months']),
   maxUses: z.number().int().positive().optional(),
   validUntil: z.string().optional(),
 })
@@ -24,21 +25,34 @@ export function CouponsManager() {
   const utils = trpc.useUtils()
 
   const { data: coupons = [], isLoading } = trpc.coupons.list.useQuery()
-  const create = trpc.coupons.create.useMutation({ onSuccess: () => { utils.coupons.list.invalidate(); setShowForm(false) } })
+  const create = trpc.coupons.create.useMutation({
+    onSuccess: () => { utils.coupons.list.invalidate(); setShowForm(false); reset() },
+  })
   const toggle = trpc.coupons.toggle.useMutation({ onSuccess: () => utils.coupons.list.invalidate() })
   const del = trpc.coupons.delete.useMutation({ onSuccess: () => utils.coupons.list.invalidate() })
 
   const { register, handleSubmit, reset, formState: { errors } } = useForm<FormData>({
     resolver: zodResolver(schema),
-    defaultValues: { type: 'percentage', applicableTo: 'all' },
+    defaultValues: { type: 'percentage', applicableTo: 'all', durationValue: 'forever' },
   })
 
+  function parseDuration(dv: string): { duration: 'once' | 'forever' | 'months'; durationMonths?: number } {
+    if (dv === 'once') return { duration: 'once' }
+    if (dv === '3months') return { duration: 'months', durationMonths: 3 }
+    if (dv === '6months') return { duration: 'months', durationMonths: 6 }
+    if (dv === '12months') return { duration: 'months', durationMonths: 12 }
+    return { duration: 'forever' }
+  }
+
   function onSubmit(data: FormData) {
+    const { duration, durationMonths } = parseDuration(data.durationValue)
     create.mutate({
       ...data,
       code: data.code.toUpperCase(),
       maxUses: data.maxUses || undefined,
       validUntil: data.validUntil || undefined,
+      duration,
+      durationMonths,
     })
   }
 
@@ -83,6 +97,9 @@ export function CouponsManager() {
                   </span>
                   <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-600">
                     {c.applicable_to === 'all' ? 'Tudo' : c.applicable_to === 'plan' ? 'Planos' : 'Créditos'}
+                  </span>
+                  <span className="rounded-full bg-amber-50 px-2 py-0.5 text-xs text-amber-700 border border-amber-200">
+                    {c.duration === 'once' ? '1ª cobrança' : c.duration === 'months' && c.duration_months ? `${c.duration_months} meses` : 'Permanente'}
                   </span>
                 </div>
                 <p className="mt-0.5 text-xs text-muted-foreground">
@@ -158,6 +175,17 @@ export function CouponsManager() {
                 </div>
               </div>
 
+              <div>
+                <label className="mb-1 block text-sm font-medium">Duração do desconto</label>
+                <select {...register('durationValue')} className="w-full rounded-lg border px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/30">
+                  <option value="forever">Permanente (todos os ciclos)</option>
+                  <option value="once">Apenas na primeira cobrança</option>
+                  <option value="3months">3 meses</option>
+                  <option value="6months">6 meses</option>
+                  <option value="12months">12 meses</option>
+                </select>
+              </div>
+
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="mb-1 block text-sm font-medium">Máximo de usos</label>
@@ -169,6 +197,11 @@ export function CouponsManager() {
                 </div>
               </div>
 
+              {create.error && (
+                <p className="rounded-lg bg-red-50 border border-red-200 px-3 py-2 text-sm text-red-600">
+                  {create.error.message}
+                </p>
+              )}
               <div className="flex justify-end gap-2 pt-1">
                 <button type="button" onClick={() => { setShowForm(false); reset() }} className="rounded-lg border px-4 py-2 text-sm hover:bg-muted">Cancelar</button>
                 <button type="submit" disabled={create.isPending} className="flex items-center gap-1.5 rounded-lg bg-primary px-5 py-2 text-sm font-medium text-white hover:bg-primary/90 disabled:opacity-60">

@@ -2,6 +2,7 @@ import { z } from 'zod'
 import { TRPCError } from '@trpc/server'
 import { router, protectedProcedure } from '../init'
 import { createClient } from '@supabase/supabase-js'
+import { isPlatformAdmin } from '@/lib/admin'
 
 function getServiceClient() {
   return createClient(
@@ -11,20 +12,11 @@ function getServiceClient() {
   )
 }
 
-async function isAdmin(ctx: { supabase: any; user: { id: string } }) {
-  const { data } = await ctx.supabase
-    .from('platform_admins')
-    .select('user_id')
-    .eq('user_id', ctx.user.id)
-    .single()
-  return !!data
-}
-
 export const couponsRouter = router({
   // ─── Admin: gerenciar cupons ────────────────────────────────────────────────
 
   list: protectedProcedure.query(async ({ ctx }) => {
-    if (!(await isAdmin(ctx))) throw new TRPCError({ code: 'FORBIDDEN' })
+    if (!(await isPlatformAdmin(ctx.user.id))) throw new TRPCError({ code: 'FORBIDDEN' })
     const db = getServiceClient()
     const { data, error } = await db
       .from('coupons')
@@ -43,9 +35,11 @@ export const couponsRouter = router({
       applicableTo: z.enum(['all', 'plan', 'credits']).default('all'),
       maxUses: z.number().int().positive().optional(),
       validUntil: z.string().optional(),
+      duration: z.enum(['once', 'forever', 'months']).default('forever'),
+      durationMonths: z.number().int().min(1).max(24).optional(),
     }))
     .mutation(async ({ ctx, input }) => {
-      if (!(await isAdmin(ctx))) throw new TRPCError({ code: 'FORBIDDEN' })
+      if (!(await isPlatformAdmin(ctx.user.id))) throw new TRPCError({ code: 'FORBIDDEN' })
       const db = getServiceClient()
       const { data, error } = await db
         .from('coupons')
@@ -57,6 +51,8 @@ export const couponsRouter = router({
           applicable_to: input.applicableTo,
           max_uses: input.maxUses ?? null,
           valid_until: input.validUntil ?? null,
+          duration: input.duration,
+          duration_months: input.duration === 'months' ? (input.durationMonths ?? null) : null,
           created_by: ctx.user.id,
         })
         .select()
@@ -68,7 +64,7 @@ export const couponsRouter = router({
   toggle: protectedProcedure
     .input(z.object({ id: z.string().uuid(), active: z.boolean() }))
     .mutation(async ({ ctx, input }) => {
-      if (!(await isAdmin(ctx))) throw new TRPCError({ code: 'FORBIDDEN' })
+      if (!(await isPlatformAdmin(ctx.user.id))) throw new TRPCError({ code: 'FORBIDDEN' })
       const db = getServiceClient()
       const { error } = await db.from('coupons').update({ active: input.active }).eq('id', input.id)
       if (error) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: error.message })
@@ -78,7 +74,7 @@ export const couponsRouter = router({
   delete: protectedProcedure
     .input(z.object({ id: z.string().uuid() }))
     .mutation(async ({ ctx, input }) => {
-      if (!(await isAdmin(ctx))) throw new TRPCError({ code: 'FORBIDDEN' })
+      if (!(await isPlatformAdmin(ctx.user.id))) throw new TRPCError({ code: 'FORBIDDEN' })
       const db = getServiceClient()
       const { error } = await db.from('coupons').delete().eq('id', input.id)
       if (error) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: error.message })
