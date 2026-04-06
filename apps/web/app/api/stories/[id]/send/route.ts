@@ -136,6 +136,8 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
 // Calculate next occurrence of a repeat schedule
 function nextRepeatDate(repeatDays: number[], repeatTime: string): string {
   const [hh, mm] = repeatTime.split(':').map(Number)
+  // Use a lookahead window: consider "now" as 5 minutes ago so a story sent
+  // slightly after its scheduled time still picks the same day as next if applicable
   const now = new Date()
   const todayDay = now.getDay() // 0=Sun..6=Sat
 
@@ -146,9 +148,10 @@ function nextRepeatDate(repeatDays: number[], repeatTime: string): string {
   for (const day of sorted) {
     const diff = (day - todayDay + 7) % 7
     if (diff === 0) {
-      // Same day: check if the time is still in the future
+      // Same day: check if the time is still in the future (with 1-min buffer)
       const candidate = new Date()
       candidate.setHours(hh, mm, 0, 0)
+      candidate.setMinutes(candidate.getMinutes() + 1)
       if (candidate > now) { daysAhead = 0; break }
     } else if (diff < daysAhead) {
       daysAhead = diff
