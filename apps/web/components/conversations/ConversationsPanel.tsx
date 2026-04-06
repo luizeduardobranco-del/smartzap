@@ -540,8 +540,10 @@ export function ConversationsPanel() {
   })
   const prevModeRef = useRef<Map<string, string>>(new Map())
 
+  const listInput = { status: statusFilter, limit: 200, agentId: agentFilter || undefined }
+  const utils = trpc.useUtils()
   const { data: conversations = [], isLoading, refetch } = trpc.conversations.list.useQuery(
-    { status: statusFilter, limit: 200, agentId: agentFilter || undefined },
+    listInput,
     { refetchInterval: 10000 }
   )
 
@@ -615,18 +617,28 @@ export function ConversationsPanel() {
 
   const markRead = trpc.conversations.markRead.useMutation()
 
+  function doMarkRead(conv: (typeof conversations)[0] | undefined) {
+    if (!conv?.id) return
+    const now = new Date().toISOString()
+    // Optimistic update: immediately patch the cache so UI reflects read state
+    utils.conversations.list.setData(listInput, (old) =>
+      old?.map((c) => c.id === conv.id ? { ...c, operator_read_at: now } : c)
+    )
+    markRead.mutate({ conversationId: conv.id })
+  }
+
   // When arriving via URL ?contactId=xxx, mark as read once conversations load
   const urlContactId = searchParams.get('contactId')
   useEffect(() => {
     if (!urlContactId || grouped.length === 0) return
     const conv = grouped.find((c) => (c as any).contact_id === urlContactId)
-    if (conv?.id) markRead.mutate({ conversationId: conv.id })
-  }, [urlContactId, grouped])
+    doMarkRead(conv as any)
+  }, [urlContactId, grouped.length > 0])
 
   function selectContact(contactId: string) {
     setSelectedContactId(contactId)
     const conv = grouped.find((c) => (c as any).contact_id === contactId)
-    if (conv?.id) markRead.mutate({ conversationId: conv.id })
+    doMarkRead(conv as any)
   }
 
   const showChat = selectedContactId !== null
