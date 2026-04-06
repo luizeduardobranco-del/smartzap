@@ -2,6 +2,12 @@ import { z } from 'zod'
 import { TRPCError } from '@trpc/server'
 import { router, protectedProcedure } from '../init'
 import { createClient } from '@supabase/supabase-js'
+import { Resend } from 'resend'
+import { buildInviteEmail } from '@/lib/email/invite-template'
+
+function getResend() {
+  return new Resend(process.env.RESEND_API_KEY!)
+}
 
 function getServiceClient() {
   return createClient(
@@ -70,13 +76,13 @@ export const membersRouter = router({
       const member = await requireOwnerOrAdmin(ctx)
 
       // Check plan limit
-      const { data: org } = await ctx.supabase
+      const { data: planOrg } = await ctx.supabase
         .from('organizations')
         .select('plan_id, plans(limits)')
         .eq('id', member.organization_id)
         .single()
 
-      const limits = (org?.plans as any)?.limits ?? {}
+      const limits = (planOrg?.plans as any)?.limits ?? {}
       const maxMembers: number = limits.maxTeamMembers ?? 1
 
       if (maxMembers !== -1) {
@@ -103,22 +109,33 @@ export const membersRouter = router({
       // Upsert invite (renew if expired or re-inviting)
       const { data: existing } = await ctx.supabase
         .from('organization_invites')
-        .select('id')
+        .select('id, token')
         .eq('organization_id', member.organization_id)
         .eq('email', input.email)
         .single()
 
+      let inviteToken: string
+
       if (existing) {
+        // Regenerate token on re-invite
+        const newToken = Array.from(crypto.getRandomValues(new Uint8Array(32)))
+          .map((b) => b.toString(16).padStart(2, '0'))
+          .join('')
         await ctx.supabase
           .from('organization_invites')
           .update({
             role: input.role,
             invited_by: ctx.user.id,
             accepted_at: null,
+            token: newToken,
             expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
           })
           .eq('id', existing.id)
+        inviteToken = newToken
       } else {
+        const newToken = Array.from(crypto.getRandomValues(new Uint8Array(32)))
+          .map((b) => b.toString(16).padStart(2, '0'))
+          .join('')
         const { error } = await ctx.supabase
           .from('organization_invites')
           .insert({
@@ -126,16 +143,49 @@ export const membersRouter = router({
             email: input.email,
             role: input.role,
             invited_by: ctx.user.id,
+            token: newToken,
           })
         if (error) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: error.message })
+        inviteToken = newToken
       }
 
-      // Send invite email via Supabase Auth
+      // Fetch org and inviter name for email
+      const { data: emailOrg } = await ctx.supabase
+        .from('organizations')
+        .select('name')
+        .eq('id', member.organization_id)
+        .single()
+
       const service = getServiceClient()
-      const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://app.whitezap.com.br'
-      await service.auth.admin.inviteUserByEmail(input.email, {
-        redirectTo: `${appUrl}/invite/accept`,
+      const { data: inviterAuth } = await service.auth.admin.getUserById(ctx.user.id)
+      const inviterName = inviterAuth?.user?.user_metadata?.full_name
+        ?? inviterAuth?.user?.user_metadata?.name
+        ?? inviterAuth?.user?.email
+        ?? undefined
+
+      // Send branded email via Resend
+      const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://atendente.whiteerp.com'
+      const acceptUrl = `${appUrl}/invite/accept?token=${inviteToken}`
+      const { subject, html } = buildInviteEmail({
+        orgName: emailOrg?.name ?? 'sua organização',
+        inviterName,
+        acceptUrl,
       })
+
+      const resend = getResend()
+      const { error: emailError } = await resend.emails.send({
+        from: 'WHITE ZAP <noreply@whitezap.com.br>',
+        to: input.email,
+        subject,
+        html,
+      })
+
+      if (emailError) {
+        throw new TRPCError({
+          code: 'INTERNAL_SERVER_ERROR',
+          message: `Convite salvo, mas falha ao enviar email: ${emailError.message}`,
+        })
+      }
 
       return { success: true }
     }),
