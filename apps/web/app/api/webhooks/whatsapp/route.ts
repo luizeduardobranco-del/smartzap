@@ -169,7 +169,7 @@ async function handleWebhook(payload: unknown) {
       sender_type: 'contact',
       external_id: msg.externalId,
     })
-    .select('id')
+    .select('id, created_at')
     .single()
 
   await supabase
@@ -181,6 +181,53 @@ async function handleWebhook(payload: unknown) {
   if (conversationMode === 'human') { console.log('[webhook] mode=human, skipping AI'); return }
   if (!savedMsg) { console.log('[webhook] savedMsg null, skipping AI'); return }
   if (msg.contentType === 'document') { console.log('[webhook] document, skipping AI'); return }
+
+  // 6e. Debounce: wait 3s, then check if a newer message arrived from the same contact.
+  // This ensures consecutive messages are batched into a single AI response.
+  const DEBOUNCE_MS = 3000
+  await new Promise((r) => setTimeout(r, DEBOUNCE_MS))
+
+  const { data: newerMsgs } = await supabase
+    .from('messages')
+    .select('id')
+    .eq('conversation_id', conversationId)
+    .eq('role', 'user')
+    .gt('created_at', savedMsg.created_at)
+    .limit(1)
+
+  if (newerMsgs && newerMsgs.length > 0) {
+    console.log('[webhook] debounce: newer message arrived, aborting — later request will handle AI')
+    return
+  }
+
+  // All consecutive messages are now in DB. Find all unresponded user messages
+  // (since the last assistant message) and combine into a single context.
+  const { data: lastAssistant } = await supabase
+    .from('messages')
+    .select('created_at')
+    .eq('conversation_id', conversationId)
+    .eq('role', 'assistant')
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+
+  const { data: pendingUserMsgs } = await supabase
+    .from('messages')
+    .select('content, content_type, created_at')
+    .eq('conversation_id', conversationId)
+    .eq('role', 'user')
+    .neq('content_type', 'document')
+    .gt('created_at', lastAssistant?.created_at ?? '1970-01-01')
+    .order('created_at', { ascending: true })
+
+  const validPending = (pendingUserMsgs ?? []).filter((m) => m.content && m.content !== '[mídia]')
+  if (validPending.length > 1) {
+    // Multiple messages waiting — combine into single prompt
+    effectiveText = validPending.map((m) => m.content).join('\n')
+    console.log(`[webhook] debounce: batching ${validPending.length} messages → "${effectiveText.slice(0, 100)}"`)
+  } else {
+    console.log('[webhook] debounce: single message, proceeding normally')
+  }
 
   // Resolve AI keys early (needed for media processing)
   const orgSettings = org.settings as Record<string, Record<string, string>> | null
