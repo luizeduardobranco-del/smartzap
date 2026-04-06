@@ -174,7 +174,7 @@ export const membersRouter = router({
 
       const resend = getResend()
       const { error: emailError } = await resend.emails.send({
-        from: 'WHITE ZAP <noreply@whitezap.com.br>',
+        from: 'WHITE ZAP <contato@whiteerp.com>',
         to: input.email,
         subject,
         html,
