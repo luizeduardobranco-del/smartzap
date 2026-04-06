@@ -527,15 +527,7 @@ export function ConversationsPanel() {
   const [selectedContactId, setSelectedContactId] = useState<string | null>(
     searchParams.get('contactId')
   )
-  // Track read state: contactId → last_message_at timestamp when user read it (persisted in localStorage)
-  const STORAGE_KEY = 'wz_read_at'
-  const [readAtMap, setReadAtMap] = useState<Record<string, string>>(() => {
-    try {
-      return JSON.parse(localStorage.getItem(STORAGE_KEY) ?? '{}')
-    } catch {
-      return {}
-    }
-  })
+  // Read state is now tracked server-side via operator_read_at on each conversation
   const prevLastMsgAt = useRef<Map<string, string>>(new Map())
   // Human-handoff alerts: contacts that just switched ai→human (persisted in localStorage)
   const HANDOFF_KEY = 'wz_handoff_pending'
@@ -621,29 +613,20 @@ export function ConversationsPanel() {
     }
   }, [grouped])
 
+  const markRead = trpc.conversations.markRead.useMutation()
+
   // When arriving via URL ?contactId=xxx, mark as read once conversations load
   const urlContactId = searchParams.get('contactId')
   useEffect(() => {
     if (!urlContactId || grouped.length === 0) return
     const conv = grouped.find((c) => (c as any).contact_id === urlContactId)
-    if (!conv) return
-    const lastAt = conv.last_message_at ?? new Date().toISOString()
-    setReadAtMap((prev) => {
-      const next = { ...prev, [urlContactId]: lastAt }
-      try { localStorage.setItem(STORAGE_KEY, JSON.stringify(next)) } catch {}
-      return next
-    })
+    if (conv?.id) markRead.mutate({ conversationId: conv.id })
   }, [urlContactId, grouped])
 
   function selectContact(contactId: string) {
     setSelectedContactId(contactId)
     const conv = grouped.find((c) => (c as any).contact_id === contactId)
-    const lastAt = conv?.last_message_at ?? new Date().toISOString()
-    setReadAtMap((prev) => {
-      const next = { ...prev, [contactId]: lastAt }
-      try { localStorage.setItem(STORAGE_KEY, JSON.stringify(next)) } catch {}
-      return next
-    })
+    if (conv?.id) markRead.mutate({ conversationId: conv.id })
   }
 
   const showChat = selectedContactId !== null
@@ -784,7 +767,8 @@ export function ConversationsPanel() {
                 const contactId = conv.contact_id
                 const isSelected = selectedContactId === contactId
                 const lastMsgAt = conv.last_message_at ?? ''
-                const isUnread = !!lastMsgAt && lastMsgAt > (readAtMap[contactId] ?? '')
+                const readAt = (conv as any).operator_read_at ?? ''
+                const isUnread = !!lastMsgAt && (!readAt || new Date(lastMsgAt) > new Date(readAt))
 
                 return (
                   <button

@@ -22,7 +22,7 @@ export const conversationsRouter = router({
       let query = ctx.supabase
         .from('conversations')
         .select(`
-          id, status, mode, kanban_stage, last_message_at, created_at, contact_id,
+          id, status, mode, kanban_stage, last_message_at, operator_read_at, created_at, contact_id,
           contacts(id, name, phone, avatar_url, channel_type),
           agents(id, name),
           channels(id, type)
@@ -81,7 +81,7 @@ export const conversationsRouter = router({
       const convIds = conversations.map((c) => c.id)
       const { data: messages, error } = await ctx.supabase
         .from('messages')
-        .select('id, role, content, content_type, created_at, sender_type, ai_model, conversation_id')
+        .select('id, role, content, content_type, media_url, created_at, sender_type, ai_model, conversation_id')
         .in('conversation_id', convIds)
         .order('created_at', { ascending: true })
         .limit(input.limit)
@@ -175,6 +175,16 @@ export const conversationsRouter = router({
         text: input.text,
       })
 
+      return { success: true }
+    }),
+
+  markRead: protectedProcedure
+    .input(z.object({ conversationId: z.string().uuid() }))
+    .mutation(async ({ ctx, input }) => {
+      await ctx.supabase
+        .from('conversations')
+        .update({ operator_read_at: new Date().toISOString() })
+        .eq('id', input.conversationId)
       return { success: true }
     }),
 })
