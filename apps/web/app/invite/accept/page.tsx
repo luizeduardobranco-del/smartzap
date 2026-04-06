@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { Suspense, useEffect, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Loader2, CheckCircle, XCircle, Users } from 'lucide-react'
 import { createSupabaseBrowserClient } from '@/lib/supabase/client'
@@ -12,6 +12,18 @@ type InviteInfo = {
 }
 
 export default function InviteAcceptPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex min-h-screen items-center justify-center">
+        <Loader2 className="h-6 w-6 animate-spin text-primary" />
+      </div>
+    }>
+      <InviteAcceptContent />
+    </Suspense>
+  )
+}
+
+function InviteAcceptContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const token = searchParams?.get('token')
