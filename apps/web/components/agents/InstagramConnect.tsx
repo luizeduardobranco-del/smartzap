@@ -77,12 +77,8 @@ function NotConnectedState({
   onClearStatus: () => void
 }) {
   const errorMessage =
-    oauthStatus === 'no_page'
-      ? 'Nenhuma Página do Facebook encontrada. Certifique-se de que sua conta tem uma página.'
-      : oauthStatus === 'no_ig_account'
-      ? 'Nenhuma conta Instagram Business vinculada à sua página. Vincule no Gerenciador do Facebook.'
-      : oauthStatus === 'error'
-      ? 'Erro ao conectar. Tente novamente.'
+    oauthStatus === 'error' || oauthStatus === 'no_page' || oauthStatus === 'no_ig_account'
+      ? 'Erro ao conectar. Certifique-se de que sua conta é Business ou Creator e tente novamente.'
       : null
 
   return (
@@ -108,11 +104,11 @@ function NotConnectedState({
         className="flex items-center gap-2 rounded-lg bg-gradient-to-r from-purple-600 to-pink-600 px-6 py-2.5 text-sm font-medium text-white hover:opacity-90"
       >
         <Instagram className="h-4 w-4" />
-        Conectar com o Facebook
+        Conectar com o Instagram
       </a>
 
       <p className="mt-4 max-w-xs text-xs text-muted-foreground">
-        Você será redirecionado para o Facebook para autorizar o acesso ao Instagram Business.
+        Você será redirecionado para o Instagram. É necessário uma conta Business ou Creator.
       </p>
     </div>
   )

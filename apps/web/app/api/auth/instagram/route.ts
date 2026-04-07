@@ -1,11 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createSupabaseServerClient } from '@/lib/supabase/server'
 
+// Instagram Business Login — no Facebook Page required
+// Docs: https://developers.facebook.com/docs/instagram-platform/instagram-api-with-instagram-login
 const SCOPES = [
-  'instagram_basic',
-  'instagram_manage_messages',
-  'pages_show_list',
-  'pages_manage_metadata',
+  'instagram_business_basic',
+  'instagram_business_manage_messages',
+  'instagram_business_content_publish',
 ].join(',')
 
 export async function GET(req: NextRequest) {
@@ -35,5 +36,6 @@ export async function GET(req: NextRequest) {
     state: agentId,
   })
 
-  return NextResponse.redirect(`https://www.facebook.com/v21.0/dialog/oauth?${params}`)
+  // New Instagram Business Login — logs in with Instagram directly, no Facebook Page needed
+  return NextResponse.redirect(`https://www.instagram.com/oauth/authorize?${params}`)
 }

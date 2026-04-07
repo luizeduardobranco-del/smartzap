@@ -79,6 +79,7 @@ export function StoriesManager() {
   const { data: channels = [] } = trpc.channels.list.useQuery()
 
   const whatsappChannels = channels.filter((c: any) => c.type === 'whatsapp' && c.status === 'connected')
+  const instagramChannels = channels.filter((c: any) => c.type === 'instagram' && c.status === 'connected')
 
   const createMutation  = trpc.stories.create.useMutation({
     onSuccess: () => { utils.stories.list.invalidate(); setCreating(false); setMutationError(null) },
@@ -261,12 +262,6 @@ export function StoriesManager() {
           </button>
         </div>
 
-        {/* Channel banner — Instagram coming soon */}
-        <div className="mb-4 flex items-start gap-3 rounded-lg border border-purple-200 bg-purple-50 px-4 py-3 text-sm text-purple-700">
-          <Instagram className="h-4 w-4 mt-0.5 shrink-0" />
-          <span><strong>Instagram Stories</strong> — disponível assim que sua integração for aprovada pela Meta. Os posts já podem ser criados e agendados.</span>
-        </div>
-
         {/* Posts list */}
         {isLoading ? (
           <div className="flex flex-1 items-center justify-center text-gray-400">
@@ -342,7 +337,7 @@ export function StoriesManager() {
 
                   {/* Actions */}
                   <div className="flex items-center gap-1 shrink-0">
-                    {['draft', 'scheduled', 'failed'].includes(post.status) && post.channel_type === 'whatsapp' && (
+                    {['draft', 'scheduled', 'failed'].includes(post.status) && (
                       <button
                         onClick={() => handleSendNow(post)}
                         disabled={isSending}
@@ -408,7 +403,7 @@ export function StoriesManager() {
                     <div className="flex gap-2">
                       {[
                         { value: 'whatsapp', label: 'WhatsApp', icon: Smartphone },
-                        { value: 'instagram', label: 'Instagram', icon: Instagram, disabled: false },
+                        { value: 'instagram', label: 'Instagram', icon: Instagram },
                       ].map(opt => (
                         <button
                           key={opt.value}
@@ -420,9 +415,6 @@ export function StoriesManager() {
                         >
                           <opt.icon className="h-3.5 w-3.5" />
                           {opt.label}
-                          {opt.value === 'instagram' && (
-                            <span className="rounded bg-purple-100 px-1 py-0.5 text-[9px] font-semibold text-purple-600">Em breve</span>
-                          )}
                         </button>
                       ))}
                     </div>
@@ -448,6 +440,28 @@ export function StoriesManager() {
                   {errors.channelId && <p className="mt-1 text-xs text-red-500">{errors.channelId.message}</p>}
                   {whatsappChannels.length === 0 && (
                     <p className="mt-1 text-xs text-amber-600">Nenhum canal WhatsApp conectado.</p>
+                  )}
+                </div>
+              )}
+
+              {/* Instagram channel selector */}
+              {channelType === 'instagram' && (
+                <div>
+                  <label className="mb-1 block text-xs font-medium text-gray-700">Conta Instagram</label>
+                  <select
+                    {...register('channelId')}
+                    className="w-full rounded-lg border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+                  >
+                    <option value="">Selecione...</option>
+                    {instagramChannels.map((ch: any) => (
+                      <option key={ch.id} value={ch.id}>
+                        {ch.credentials?.username ?? ch.credentials?.igUserId ?? ch.id}
+                      </option>
+                    ))}
+                  </select>
+                  {errors.channelId && <p className="mt-1 text-xs text-red-500">{errors.channelId.message}</p>}
+                  {instagramChannels.length === 0 && (
+                    <p className="mt-1 text-xs text-amber-600">Nenhuma conta Instagram conectada. Conecte uma em Canais.</p>
                   )}
                 </div>
               )}
