@@ -1,7 +1,7 @@
 import { z } from 'zod'
 import { TRPCError } from '@trpc/server'
 import { router, protectedProcedure } from '../init'
-import { EvolutionWhatsAppAdapter } from '@zapagent/channel-adapters'
+import { EvolutionWhatsAppAdapter, MetaInstagramAdapter } from '@zapagent/channel-adapters'
 
 async function getOrgId(ctx: { supabase: any; user: { id: string } }) {
   const { data: member } = await ctx.supabase
@@ -152,15 +152,78 @@ export const storiesRouter = router({
       console.log('[sendNow] channel:', channel?.id, 'type:', channel?.type, 'error:', channelError?.message)
 
       const credentials = channel?.credentials as Record<string, string> | null
+
+      // ── Instagram ────────────────────────────────────────────────────────────
+      if (post.channel_type === 'instagram') {
+        const igUserId = credentials?.igUserId
+        const pageAccessToken = credentials?.pageAccessToken
+
+        if (!igUserId || !pageAccessToken) {
+          throw new TRPCError({
+            code: 'BAD_REQUEST',
+            message: `Canal Instagram sem igUserId ou pageAccessToken. channel_id=${post.channel_id}`,
+          })
+        }
+
+        try {
+          let mediaUrls: string[] = []
+          if (post.media_url) {
+            try {
+              const parsed = JSON.parse(post.media_url)
+              mediaUrls = Array.isArray(parsed) ? parsed : [post.media_url]
+            } catch {
+              mediaUrls = [post.media_url]
+            }
+          }
+
+          const caption = post.caption ?? undefined
+          const mediaType = (post.media_type as string | null)?.toUpperCase()
+
+          if (mediaUrls.length > 1) {
+            await MetaInstagramAdapter.publishCarousel(igUserId, pageAccessToken, { imageUrls: mediaUrls, caption })
+          } else if (mediaUrls.length === 1) {
+            const isVideo = mediaType === 'VIDEO' || mediaType === 'REELS'
+            await MetaInstagramAdapter.publishPost(igUserId, pageAccessToken, {
+              imageUrl: isVideo ? undefined : mediaUrls[0],
+              videoUrl: isVideo ? mediaUrls[0] : undefined,
+              caption,
+              mediaType: isVideo ? (mediaType as 'VIDEO' | 'REELS') : 'IMAGE',
+            })
+          } else {
+            throw new Error('Post Instagram sem mídia — publicação de texto puro não é suportada')
+          }
+
+          await ctx.supabase
+            .from('story_posts')
+            .update({
+              status: post.repeat_days?.length ? 'scheduled' : 'sent',
+              sent_at: new Date().toISOString(),
+              error_message: null,
+            })
+            .eq('id', post.id)
+
+          return { success: true }
+        } catch (err: any) {
+          const responseData = err?.response?.data
+          const message = responseData
+            ? `Instagram [${err?.response?.status}]: ${JSON.stringify(responseData)}`
+            : (err instanceof Error ? err.message : 'Falha ao publicar no Instagram')
+
+          await ctx.supabase
+            .from('story_posts')
+            .update({ status: 'failed', error_message: message })
+            .eq('id', post.id)
+
+          throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message })
+        }
+      }
+
+      // ── WhatsApp ─────────────────────────────────────────────────────────────
       const instanceName = credentials?.instanceName
       console.log('[sendNow] instanceName:', instanceName)
 
       if (!instanceName) {
         throw new TRPCError({ code: 'BAD_REQUEST', message: `Canal sem instanceName. channel_id=${post.channel_id} channel=${JSON.stringify(channel)} err=${channelError?.message}` })
-      }
-
-      if (post.channel_type === 'instagram') {
-        throw new TRPCError({ code: 'BAD_REQUEST', message: 'Integração Instagram pendente de aprovação' })
       }
 
       try {
@@ -169,7 +232,6 @@ export const storiesRouter = router({
           process.env.EVOLUTION_API_KEY!,
           instanceName
         )
-        // Suporta múltiplos arquivos armazenados como JSON array
         let mediaUrls: string[] = []
         if (post.media_url) {
           try {
