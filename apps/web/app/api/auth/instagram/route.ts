@@ -6,7 +6,6 @@ import { createSupabaseServerClient } from '@/lib/supabase/server'
 const SCOPES = [
   'instagram_business_basic',
   'instagram_business_manage_messages',
-  'instagram_business_content_publish',
 ].join(',')
 
 export async function GET(req: NextRequest) {
