@@ -34,8 +34,12 @@ export interface TrackerAlertPayload {
   trackerName: string
   /** Mensagem personalizada — se não fornecida, usa o template padrão */
   customMessage?: string
-  /** ID da organização WHITE ZAP — se omitido, usa a primeira org com canal conectado */
+  /** ID da organização WHITE ZAP — se omitido, tenta pelo slug */
   organizationId?: string
+  /** Slug da organização WHITE ZAP (ex.: "luizmarques-88e7ec83") */
+  organizationSlug?: string
+  /** Nome do agente que deve responder (resolvido dentro da organização) */
+  agentName?: string
 }
 
 const ALERT_EMOJI: Record<string, string> = {
@@ -131,7 +135,17 @@ export async function POST(request: NextRequest) {
 
   const supabase = getSupabase()
 
-  // ── 3. Encontra canal WhatsApp conectado ─────────────────────────────────────
+  // ── 3. Resolve a organização (id ou slug) e seu canal WhatsApp conectado ──────
+  let orgId = payload.organizationId || null
+  if (!orgId && payload.organizationSlug) {
+    const { data: org } = await supabase
+      .from('organizations').select('id').eq('slug', payload.organizationSlug).maybeSingle()
+    if (!org) {
+      return NextResponse.json({ error: `Organização não encontrada (slug: ${payload.organizationSlug})` }, { status: 404 })
+    }
+    orgId = org.id
+  }
+
   let channelQuery = supabase
     .from('channels')
     .select('id, organization_id, agent_id, credentials, type')
@@ -139,8 +153,8 @@ export async function POST(request: NextRequest) {
     .eq('status', 'connected')
     .limit(1)
 
-  if (payload.organizationId) {
-    channelQuery = channelQuery.eq('organization_id', payload.organizationId)
+  if (orgId) {
+    channelQuery = channelQuery.eq('organization_id', orgId)
   }
 
   const { data: channelRows, error: channelErr } = await channelQuery
@@ -155,6 +169,14 @@ export async function POST(request: NextRequest) {
   const channel = channelRows[0]
   const credentials = channel.credentials as Record<string, string>
   const organizationId = channel.organization_id
+
+  // Agente que responde: por nome (se informado) ou o agente padrão do canal
+  let agentId = channel.agent_id
+  if (payload.agentName) {
+    const { data: ag } = await supabase
+      .from('agents').select('id').eq('organization_id', organizationId).ilike('name', payload.agentName).maybeSingle()
+    if (ag) agentId = ag.id
+  }
 
   // ── 4. Upsert contato ────────────────────────────────────────────────────────
   let contactId: string
@@ -207,7 +229,7 @@ export async function POST(request: NextRequest) {
         organization_id: organizationId,
         contact_id: contactId,
         channel_id: channel.id,
-        agent_id: channel.agent_id,
+        agent_id: agentId,
         status: 'open',
         mode: 'ai',
         last_message_at: new Date().toISOString(),
