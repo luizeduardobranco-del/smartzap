@@ -1,0 +1,1366 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>WHITE ZAP — Templates de Campanha WhatsApp</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Segoe UI', Arial, sans-serif;
+    background: #0f172a;
+    color: #e2e8f0;
+    line-height: 1.6;
+  }
+
+  /* ── HEADER ── */
+  .header {
+    background: linear-gradient(160deg, #0c1a4e 0%, #0f2569 30%, #0f172a 100%);
+    border-bottom: 2px solid #2563eb;
+    padding: 40px 60px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .header-left h1 {
+    font-size: 2.2rem;
+    font-weight: 800;
+    color: #ffffff;
+    letter-spacing: -0.5px;
+  }
+  .header-left h1 span { color: #2563eb; }
+  .header-left p {
+    color: #94a3b8;
+    font-size: 0.95rem;
+    margin-top: 4px;
+  }
+  .header-badge {
+    background: #2563eb;
+    color: #ffffff;
+    font-weight: 700;
+    font-size: 0.8rem;
+    padding: 6px 14px;
+    border-radius: 20px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+  }
+
+  /* ── ÍNDICE ── */
+  .toc {
+    background: #1e293b;
+    border-left: 4px solid #2563eb;
+    margin: 30px 60px;
+    padding: 24px 30px;
+    border-radius: 0 8px 8px 0;
+  }
+  .toc h3 {
+    color: #2563eb;
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    margin-bottom: 14px;
+  }
+  .toc-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 8px;
+  }
+  .toc-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.88rem;
+    color: #94a3b8;
+  }
+  .toc-item span { font-size: 1rem; }
+
+  /* ── SEÇÕES ── */
+  .section {
+    margin: 40px 60px 10px;
+  }
+  .section-title {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 6px;
+  }
+  .section-title h2 {
+    font-size: 1.3rem;
+    font-weight: 700;
+    color: #ffffff;
+  }
+  .phase-badge {
+    font-size: 0.72rem;
+    font-weight: 700;
+    padding: 3px 10px;
+    border-radius: 12px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+  }
+  .phase-1 { background: #1d4ed8; color: #bfdbfe; }
+  .phase-2 { background: #7c3aed; color: #ede9fe; }
+  .phase-3 { background: #dc2626; color: #fee2e2; }
+  .phase-auto { background: #059669; color: #d1fae5; }
+  .phase-reativ { background: #d97706; color: #fef3c7; }
+
+  .section-desc {
+    color: #64748b;
+    font-size: 0.85rem;
+    margin-bottom: 20px;
+    margin-left: 2px;
+  }
+
+  /* ── CARDS DE CAMPANHA ── */
+  .campaigns-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(460px, 1fr));
+    gap: 20px;
+    margin: 0 60px;
+  }
+
+  .card {
+    background: #1e293b;
+    border: 1px solid #2d3748;
+    border-radius: 12px;
+    overflow: hidden;
+    transition: border-color 0.2s;
+  }
+  .card:hover { border-color: #2563eb; }
+
+  .card-header {
+    padding: 14px 20px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-bottom: 1px solid #2d3748;
+  }
+  .card-title {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .card-emoji { font-size: 1.3rem; }
+  .card-name {
+    font-weight: 700;
+    font-size: 0.95rem;
+    color: #ffffff;
+  }
+  .card-slug {
+    font-size: 0.72rem;
+    color: #60a5fa;
+    font-family: 'Courier New', monospace;
+    background: #0c1a4e;
+    padding: 2px 8px;
+    border-radius: 4px;
+    border: 1px solid #1e3a8a;
+  }
+
+  .card-body { padding: 0; }
+
+  /* ── MENSAGEM ── */
+  .msg-block {
+    padding: 16px 20px;
+    border-bottom: 1px solid #2d3748;
+  }
+  .msg-label {
+    font-size: 0.7rem;
+    font-weight: 700;
+    color: #64748b;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .copy-btn {
+    background: #2d3748;
+    color: #94a3b8;
+    border: none;
+    padding: 4px 10px;
+    border-radius: 6px;
+    font-size: 0.72rem;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-family: inherit;
+  }
+  .copy-btn:hover { background: #2563eb; color: #ffffff; font-weight: 700; }
+  .copy-btn.copied { background: #2563eb; color: #ffffff; font-weight: 700; }
+
+  .msg-text {
+    background: #0f172a;
+    border: 1px solid #2d3748;
+    border-radius: 8px;
+    padding: 14px 16px;
+    font-size: 0.88rem;
+    color: #d1d5db;
+    white-space: pre-wrap;
+    line-height: 1.7;
+    font-family: inherit;
+    max-height: 280px;
+    overflow-y: auto;
+  }
+  .msg-text::-webkit-scrollbar { width: 4px; }
+  .msg-text::-webkit-scrollbar-track { background: #1e293b; }
+  .msg-text::-webkit-scrollbar-thumb { background: #374151; border-radius: 2px; }
+
+  /* ── SETTINGS ── */
+  .settings-block {
+    padding: 14px 20px;
+  }
+  .settings-label {
+    font-size: 0.7rem;
+    font-weight: 700;
+    color: #64748b;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    margin-bottom: 10px;
+  }
+  .settings-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+  }
+  .setting-item {
+    background: #0f172a;
+    border: 1px solid #2d3748;
+    border-radius: 6px;
+    padding: 8px 12px;
+  }
+  .setting-key {
+    font-size: 0.68rem;
+    color: #64748b;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 2px;
+  }
+  .setting-val {
+    font-size: 0.85rem;
+    color: #e2e8f0;
+    font-weight: 600;
+  }
+  .setting-val.green { color: #60a5fa; }
+  .setting-val.blue { color: #60a5fa; }
+  .setting-val.yellow { color: #fbbf24; }
+  .setting-val.mono { font-family: 'Courier New', monospace; font-size: 0.8rem; color: #a78bfa; }
+
+  /* ── AUTOMAÇÕES ── */
+  .auto-card {
+    background: #1e293b;
+    border: 1px solid #2d3748;
+    border-radius: 12px;
+    margin: 0 60px 20px;
+    overflow: hidden;
+  }
+  .auto-header {
+    background: #0c1a4e;
+    border-bottom: 1px solid #1e3a8a;
+    padding: 12px 20px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .auto-title {
+    font-weight: 700;
+    color: #60a5fa;
+    font-size: 0.95rem;
+  }
+  .auto-trigger {
+    font-size: 0.72rem;
+    background: #1e3a8a;
+    color: #93c5fd;
+    padding: 2px 10px;
+    border-radius: 10px;
+  }
+  .auto-body { padding: 16px 20px; }
+  .keywords-wrap {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-bottom: 14px;
+  }
+  .kw-tag {
+    background: #1e293b;
+    border: 1px solid #334155;
+    color: #94a3b8;
+    font-size: 0.78rem;
+    padding: 3px 10px;
+    border-radius: 12px;
+    font-family: 'Courier New', monospace;
+  }
+
+  /* ── CHECKLIST ── */
+  .checklist {
+    background: #1e293b;
+    border: 1px solid #2d3748;
+    border-radius: 12px;
+    margin: 0 60px 40px;
+    overflow: hidden;
+  }
+  .checklist-header {
+    background: #1d4ed8;
+    padding: 14px 24px;
+    font-weight: 700;
+    color: #fff;
+    font-size: 1rem;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .checklist-body { padding: 20px 24px; }
+  .checklist-section { margin-bottom: 20px; }
+  .checklist-section h4 {
+    color: #60a5fa;
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 10px;
+  }
+  .check-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 8px 0;
+    border-bottom: 1px solid #1e293b;
+    font-size: 0.88rem;
+    color: #cbd5e1;
+  }
+  .check-item:last-child { border-bottom: none; }
+  .checkbox {
+    width: 18px;
+    height: 18px;
+    border: 2px solid #374151;
+    border-radius: 4px;
+    flex-shrink: 0;
+    margin-top: 2px;
+    cursor: pointer;
+    transition: all 0.2s;
+    background: transparent;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .checkbox:hover { border-color: #2563eb; }
+  .checkbox.checked { background: #2563eb; border-color: #2563eb; }
+  .checkbox.checked::after { content: '✓'; color: #ffffff; font-size: 12px; font-weight: 900; }
+
+  .order-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 8px;
+    margin-top: 8px;
+  }
+  .order-item {
+    background: #0f172a;
+    border: 1px solid #2d3748;
+    border-radius: 6px;
+    padding: 10px 14px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .order-day {
+    background: #1d4ed8;
+    color: #bfdbfe;
+    font-weight: 700;
+    font-size: 0.75rem;
+    padding: 2px 8px;
+    border-radius: 8px;
+    white-space: nowrap;
+  }
+  .order-camp { font-size: 0.8rem; color: #94a3b8; font-family: 'Courier New', monospace; }
+
+  /* ── DIVIDER ── */
+  .divider {
+    height: 1px;
+    background: linear-gradient(90deg, transparent, #2d3748, transparent);
+    margin: 10px 60px 30px;
+  }
+
+  /* ── FOOTER ── */
+  .footer {
+    background: #1e293b;
+    border-top: 1px solid #2d3748;
+    padding: 24px 60px;
+    text-align: center;
+    color: #475569;
+    font-size: 0.8rem;
+    margin-top: 40px;
+  }
+  .footer span { color: #2563eb; }
+
+  @media print {
+    body { background: #fff; color: #000; }
+    .copy-btn { display: none; }
+  }
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<div class="header">
+  <div class="header-left">
+    <h1>Zap<span>Agent</span></h1>
+    <p>Templates de Campanha WhatsApp — 8 Nichos · Março 2026</p>
+  </div>
+  <div class="header-badge">Pronto para usar</div>
+</div>
+
+<!-- ÍNDICE -->
+<div class="toc">
+  <h3>Índice de Campanhas</h3>
+  <div class="toc-grid">
+    <div class="toc-item"><span>🛡️</span> Proteção Veicular — Fase 1</div>
+    <div class="toc-item"><span>🦷</span> Dentistas — Fase 1</div>
+    <div class="toc-item"><span>🎨</span> Tatuadores — Fase 1</div>
+    <div class="toc-item"><span>🩺</span> Médicos — Fase 1</div>
+    <div class="toc-item"><span>⚖️</span> Advogados — Fase 1</div>
+    <div class="toc-item"><span>🚗</span> Rastreamento Veicular — Fase 1</div>
+    <div class="toc-item"><span>🍔</span> Lanchonetes — Fase 1</div>
+    <div class="toc-item"><span>🔧</span> Lojas de Peças — Fase 1</div>
+    <div class="toc-item"><span>↩️</span> Conversão — Interesse Direto</div>
+    <div class="toc-item"><span>1️⃣</span> Conversão — Faz Manual</div>
+    <div class="toc-item"><span>2️⃣</span> Conversão — Tem algo limitado</div>
+    <div class="toc-item"><span>3️⃣</span> Conversão — Já usa solução</div>
+    <div class="toc-item"><span>🦷</span> Conversão Nicho — Dentistas</div>
+    <div class="toc-item"><span>🛡️</span> Conversão Nicho — Proteção Veicular</div>
+    <div class="toc-item"><span>🎨</span> Conversão Nicho — Tatuadores</div>
+    <div class="toc-item"><span>⚖️</span> Conversão Nicho — Advogados</div>
+    <div class="toc-item"><span>⏰</span> Fechamento — Trial Expirando</div>
+    <div class="toc-item"><span>🔁</span> Reativação — Silenciosos</div>
+    <div class="toc-item"><span>🤖</span> 4 Automações de Resposta</div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════ -->
+<!-- FASE 1 -->
+<!-- ═══════════════════════════════════════════ -->
+
+<div class="section">
+  <div class="section-title">
+    <h2>Fase 1 — Aquecimento</h2>
+    <span class="phase-badge phase-1">8 campanhas · 1 por dia</span>
+  </div>
+  <p class="section-desc">Disparar para a lista completa de cada nicho. Objetivo: qualificar a base e identificar interessados. Sem venda direta.</p>
+</div>
+
+<div class="campaigns-grid">
+
+  <!-- PROTEÇÃO VEICULAR -->
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title">
+        <span class="card-emoji">🛡️</span>
+        <span class="card-name">Proteção Veicular</span>
+      </div>
+      <span class="card-slug">protecao-veicular-fase1</span>
+    </div>
+    <div class="card-body">
+      <div class="msg-block">
+        <div class="msg-label">
+          Mensagem
+          <button class="copy-btn" onclick="copyMsg(this)">Copiar</button>
+        </div>
+        <div class="msg-text">Oi {{nome}}! 👋
+
+Você trabalha com proteção veicular?
+
+Me responde uma coisa honesta:
+
+Quantos leads você perdeu essa semana porque demorou pra responder no WhatsApp?
+
+A maioria dos consultores perde 30 a 40% dos leads por isso.
+
+O cliente manda mensagem em 3 empresas.
+Quem responde primeiro fecha. 🏆
+
+Tenho uma solução que responde em segundos — mesmo quando você está em reunião ou dormindo.
+
+Curiosidade? Responde com *SIM* 👇</div>
+      </div>
+      <div class="settings-block">
+        <div class="settings-label">Configurações</div>
+        <div class="settings-grid">
+          <div class="setting-item"><div class="setting-key">Lista alvo</div><div class="setting-val mono">protecao-veicular</div></div>
+          <div class="setting-item"><div class="setting-key">Delay</div><div class="setting-val green">8 segundos</div></div>
+          <div class="setting-item"><div class="setting-key">Horário início</div><div class="setting-val blue">09:00</div></div>
+          <div class="setting-item"><div class="setting-key">Horário comercial</div><div class="setting-val green">Sim</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- DENTISTAS -->
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title">
+        <span class="card-emoji">🦷</span>
+        <span class="card-name">Dentistas</span>
+      </div>
+      <span class="card-slug">dentistas-fase1</span>
+    </div>
+    <div class="card-body">
+      <div class="msg-block">
+        <div class="msg-label">Mensagem <button class="copy-btn" onclick="copyMsg(this)">Copiar</button></div>
+        <div class="msg-text">Oi {{nome}}! 😊
+
+Você é dentista ou gerencia uma clínica odontológica?
+
+Pergunta rápida:
+
+Quantas consultas você perde por mês porque o paciente mandou mensagem fora do horário e não teve resposta?
+
+Ou porque ninguém confirmou e o paciente simplesmente não apareceu?
+
+Dado que levantamos com clínicas: em média 4 a 8 consultas desperdiçadas por mês por falta de confirmação.
+
+Isso é R$ 400 a R$ 2.000 jogados fora. 💸
+
+Seria útil resolver isso?
+Responde com *1* se sim 👇</div>
+      </div>
+      <div class="settings-block">
+        <div class="settings-label">Configurações</div>
+        <div class="settings-grid">
+          <div class="setting-item"><div class="setting-key">Lista alvo</div><div class="setting-val mono">dentistas</div></div>
+          <div class="setting-item"><div class="setting-key">Delay</div><div class="setting-val green">9 segundos</div></div>
+          <div class="setting-item"><div class="setting-key">Horário início</div><div class="setting-val blue">08:30</div></div>
+          <div class="setting-item"><div class="setting-key">Horário comercial</div><div class="setting-val green">Sim</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TATUADORES -->
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title">
+        <span class="card-emoji">🎨</span>
+        <span class="card-name">Tatuadores</span>
+      </div>
+      <span class="card-slug">tatuadores-fase1</span>
+    </div>
+    <div class="card-body">
+      <div class="msg-block">
+        <div class="msg-label">Mensagem <button class="copy-btn" onclick="copyMsg(this)">Copiar</button></div>
+        <div class="msg-text">{{nome}}, você é tatuador ou tem um estúdio? 🎨
+
+Me conta: quantas vezes por dia você responde alguma dessas mensagens?
+
+→ "Quanto custa?"
+→ "Tem vaga essa semana?"
+→ "Você faz aquarela?"
+→ "Qual o mínimo?"
+→ "Precisa de sinal?"
+
+Se a resposta for "muitas vezes" — você está perdendo tempo precioso que poderia usar desenhando ou tatuando.
+
+Tenho algo que responde tudo isso pra você.
+Automático. 24h. Sem você precisar pegar no celular. 📵
+
+Curiosidade? Me responde *SIM* 👇</div>
+      </div>
+      <div class="settings-block">
+        <div class="settings-label">Configurações</div>
+        <div class="settings-grid">
+          <div class="setting-item"><div class="setting-key">Lista alvo</div><div class="setting-val mono">tatuadores</div></div>
+          <div class="setting-item"><div class="setting-key">Delay</div><div class="setting-val green">8 segundos</div></div>
+          <div class="setting-item"><div class="setting-key">Horário início</div><div class="setting-val blue">14:00</div></div>
+          <div class="setting-item"><div class="setting-key">Horário comercial</div><div class="setting-val green">Sim</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MÉDICOS -->
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title">
+        <span class="card-emoji">🩺</span>
+        <span class="card-name">Médicos / Clínicas</span>
+      </div>
+      <span class="card-slug">medicos-fase1</span>
+    </div>
+    <div class="card-body">
+      <div class="msg-block">
+        <div class="msg-label">Mensagem <button class="copy-btn" onclick="copyMsg(this)">Copiar</button></div>
+        <div class="msg-text">Olá {{nome}}, tudo bem?
+
+Uma pergunta direta:
+
+Sua secretária (ou você) consegue responder todos os pacientes que mandam mensagem no WhatsApp hoje?
+
+O que ouço de médicos e clínicas por aí:
+
+*"A gente perde paciente toda semana porque não viu a mensagem a tempo."*
+
+Isso sem contar os pacientes que mandam mensagem às 22h com dúvidas que poderiam ser respondidas sem precisar de médico.
+
+Tenho uma solução usada por clínicas para triagem e agendamento automático no WhatsApp.
+
+Vale 5 minutos para eu te mostrar?
+Responde *SIM* 👇</div>
+      </div>
+      <div class="settings-block">
+        <div class="settings-label">Configurações</div>
+        <div class="settings-grid">
+          <div class="setting-item"><div class="setting-key">Lista alvo</div><div class="setting-val mono">medicos</div></div>
+          <div class="setting-item"><div class="setting-key">Delay</div><div class="setting-val green">10 segundos</div></div>
+          <div class="setting-item"><div class="setting-key">Horário início</div><div class="setting-val blue">09:00</div></div>
+          <div class="setting-item"><div class="setting-key">Horário comercial</div><div class="setting-val green">Sim</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ADVOGADOS -->
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title">
+        <span class="card-emoji">⚖️</span>
+        <span class="card-name">Advogados</span>
+      </div>
+      <span class="card-slug">advogados-fase1</span>
+    </div>
+    <div class="card-body">
+      <div class="msg-block">
+        <div class="msg-label">Mensagem <button class="copy-btn" onclick="copyMsg(this)">Copiar</button></div>
+        <div class="msg-text">{{nome}}, você é advogado(a)?
+
+Uma situação que ouço bastante:
+
+Cliente manda mensagem: *"Doutor, tenho uma dúvida sobre direito trabalhista..."*
+
+Você para o que está fazendo, responde com cuidado e atenção — e no final o cliente some ou fala que "vai pensar".
+
+Isso acontece com você?
+
+Tenho algo que faz a triagem e qualificação desses contatos antes de chegar até você.
+
+Para você só dedicar atenção a quem realmente quer contratar. 🎯
+
+Vale uma conversa rápida?
+Responde *SIM* 👇</div>
+      </div>
+      <div class="settings-block">
+        <div class="settings-label">Configurações</div>
+        <div class="settings-grid">
+          <div class="setting-item"><div class="setting-key">Lista alvo</div><div class="setting-val mono">advogados</div></div>
+          <div class="setting-item"><div class="setting-key">Delay</div><div class="setting-val green">12 segundos</div></div>
+          <div class="setting-item"><div class="setting-key">Horário início</div><div class="setting-val blue">13:00</div></div>
+          <div class="setting-item"><div class="setting-key">Horário comercial</div><div class="setting-val green">Sim</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- RASTREAMENTO -->
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title">
+        <span class="card-emoji">🚗</span>
+        <span class="card-name">Rastreamento Veicular</span>
+      </div>
+      <span class="card-slug">rastreamento-fase1</span>
+    </div>
+    <div class="card-body">
+      <div class="msg-block">
+        <div class="msg-label">Mensagem <button class="copy-btn" onclick="copyMsg(this)">Copiar</button></div>
+        <div class="msg-text">Oi {{nome}}! 👋
+
+Uma pergunta rápida pra quem trabalha com rastreamento veicular:
+
+Quantas vezes por dia seu time recebe mensagem de cliente perguntando *"onde está meu carro?"* ou *"meu rastreador parou, e agora?"*?
+
+Se a resposta for "muitas" — tenho algo que vai mudar o dia da sua equipe.
+
+Me responde com um número:
+
+1️⃣ Menos de 20 atendimentos/dia
+2️⃣ Entre 20 e 50/dia
+3️⃣ Mais de 50/dia 😅</div>
+      </div>
+      <div class="settings-block">
+        <div class="settings-label">Configurações</div>
+        <div class="settings-grid">
+          <div class="setting-item"><div class="setting-key">Lista alvo</div><div class="setting-val mono">rastreamento</div></div>
+          <div class="setting-item"><div class="setting-key">Delay</div><div class="setting-val green">8 segundos</div></div>
+          <div class="setting-item"><div class="setting-key">Horário início</div><div class="setting-val blue">09:30</div></div>
+          <div class="setting-item"><div class="setting-key">Horário comercial</div><div class="setting-val green">Sim</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- LANCHONETES -->
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title">
+        <span class="card-emoji">🍔</span>
+        <span class="card-name">Lanchonetes / Restaurantes</span>
+      </div>
+      <span class="card-slug">lanchonetes-fase1</span>
+    </div>
+    <div class="card-body">
+      <div class="msg-block">
+        <div class="msg-label">Mensagem <button class="copy-btn" onclick="copyMsg(this)">Copiar</button></div>
+        <div class="msg-text">{{nome}}, você tem lanchonete ou restaurante? 🍔
+
+Me conta: como você recebe pedido pelo WhatsApp hoje?
+
+1️⃣ Respondo na mão, um por um
+2️⃣ Tenho alguém só pra isso
+3️⃣ Já uso algum sistema
+
+Pergunto porque tenho clientes na área de food que estavam *perdendo pedido na hora do pico* — simplesmente porque não dava conta de responder.
+
+Resolvi isso com uma solução simples.
+
+Me responde com o número 👆</div>
+      </div>
+      <div class="settings-block">
+        <div class="settings-label">Configurações</div>
+        <div class="settings-grid">
+          <div class="setting-item"><div class="setting-key">Lista alvo</div><div class="setting-val mono">lanchonetes</div></div>
+          <div class="setting-item"><div class="setting-key">Delay</div><div class="setting-val green">8 segundos</div></div>
+          <div class="setting-item"><div class="setting-key">Horário início</div><div class="setting-val blue">09:00</div></div>
+          <div class="setting-item"><div class="setting-key">Horário comercial</div><div class="setting-val green">Sim</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- LOJAS DE PEÇAS -->
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title">
+        <span class="card-emoji">🔧</span>
+        <span class="card-name">Lojas de Peças</span>
+      </div>
+      <span class="card-slug">lojas-pecas-fase1</span>
+    </div>
+    <div class="card-body">
+      <div class="msg-block">
+        <div class="msg-label">Mensagem <button class="copy-btn" onclick="copyMsg(this)">Copiar</button></div>
+        <div class="msg-text">{{nome}}, você tem loja de peças automotivas? 🔧
+
+Quanto tempo sua equipe gasta por dia respondendo essas mensagens no WhatsApp?
+
+→ "Tem filtro de óleo pro Gol 2015?"
+→ "Qual o preço da correia do HB20?"
+→ "Vocês entregam?"
+→ "Qual o horário de vocês?"
+
+Se a resposta for *"muito tempo"* — esse tempo está sendo desperdiçado em algo que uma IA resolve em segundos.
+
+Vale eu te mostrar como?
+Responde *SIM* 👇</div>
+      </div>
+      <div class="settings-block">
+        <div class="settings-label">Configurações</div>
+        <div class="settings-grid">
+          <div class="setting-item"><div class="setting-key">Lista alvo</div><div class="setting-val mono">lojas-pecas</div></div>
+          <div class="setting-item"><div class="setting-key">Delay</div><div class="setting-val green">9 segundos</div></div>
+          <div class="setting-item"><div class="setting-key">Horário início</div><div class="setting-val blue">08:30</div></div>
+          <div class="setting-item"><div class="setting-key">Horário comercial</div><div class="setting-val green">Sim</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /campaigns-grid -->
+
+<div class="divider"></div>
+
+<!-- FASE 2 -->
+<div class="section">
+  <div class="section-title">
+    <h2>Fase 2 — Conversão</h2>
+    <span class="phase-badge phase-2">por tipo de resposta · dias 9–16</span>
+  </div>
+  <p class="section-desc">Disparar apenas para quem respondeu a Fase 1. Alvo = tag gerada pela automação. Criar uma campanha por variante.</p>
+</div>
+
+<div class="campaigns-grid">
+
+  <!-- INTERESSE DIRETO -->
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title"><span class="card-emoji">↩️</span><span class="card-name">Interesse Direto (SIM)</span></div>
+      <span class="card-slug">conversao-interesse-direto</span>
+    </div>
+    <div class="card-body">
+      <div class="msg-block">
+        <div class="msg-label">Mensagem <button class="copy-btn" onclick="copyMsg(this)">Copiar</button></div>
+        <div class="msg-text">{{nome}}, que ótimo! Vou direto ao ponto. 🚀
+
+Imagina ter um funcionário no seu WhatsApp que:
+
+✅ Responde clientes em segundos — 24h por dia
+✅ Busca centenas de leads na sua cidade pelo Google Maps
+✅ Nunca falta, nunca reclama e não pede aumento
+
+Isso é o *WHITE ZAP*.
+
+👉 Como funciona na prática:
+Você configura o agente com as informações do seu negócio.
+Ele aprende e começa a atender seus clientes sozinho.
+Você só entra quando for necessário.
+
+🎁 7 dias grátis, sem precisar de cartão.
+
+→ [LINK DO TRIAL]
+
+Qualquer dúvida pode me chamar aqui mesmo. 😊</div>
+      </div>
+      <div class="settings-block">
+        <div class="settings-label">Configurações</div>
+        <div class="settings-grid">
+          <div class="setting-item"><div class="setting-key">Alvo (tag)</div><div class="setting-val mono">respondeu-sim</div></div>
+          <div class="setting-item"><div class="setting-key">Delay</div><div class="setting-val green">12 segundos</div></div>
+          <div class="setting-item"><div class="setting-key">Horário início</div><div class="setting-val blue">10:00</div></div>
+          <div class="setting-item"><div class="setting-key">Horário comercial</div><div class="setting-val green">Sim</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- FAZ MANUAL -->
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title"><span class="card-emoji">1️⃣</span><span class="card-name">Faz Tudo Manual</span></div>
+      <span class="card-slug">conversao-manual</span>
+    </div>
+    <div class="card-body">
+      <div class="msg-block">
+        <div class="msg-label">Mensagem <button class="copy-btn" onclick="copyMsg(this)">Copiar</button></div>
+        <div class="msg-text">{{nome}}, entendo bem essa realidade. 😅
+
+Fazer tudo na mão cansa — e a gente sempre acaba atrasando alguma resposta.
+
+Deixa eu te mostrar o que muda com o WHITE ZAP:
+
+*Antes:*
+Cliente manda mensagem → você vê quando pode → responde → ele já foi pra concorrência
+
+*Depois:*
+Cliente manda mensagem → agente responde em 3 segundos → cliente fica, você fecha
+
+E o melhor: ele funciona mesmo quando você está dormindo, em reunião ou no fim de semana.
+
+🎁 Teste grátis por 7 dias → [LINK DO TRIAL]
+
+Quer que eu te explique como configurar em menos de 10 minutos?
+Responde *QUERO* 👇</div>
+      </div>
+      <div class="settings-block">
+        <div class="settings-label">Configurações</div>
+        <div class="settings-grid">
+          <div class="setting-item"><div class="setting-key">Alvo (tag)</div><div class="setting-val mono">respondeu-1</div></div>
+          <div class="setting-item"><div class="setting-key">Delay</div><div class="setting-val green">12 segundos</div></div>
+          <div class="setting-item"><div class="setting-key">Horário início</div><div class="setting-val blue">10:30</div></div>
+          <div class="setting-item"><div class="setting-key">Horário comercial</div><div class="setting-val green">Sim</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TEM ALGO LIMITADO -->
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title"><span class="card-emoji">2️⃣</span><span class="card-name">Tem Algo Limitado</span></div>
+      <span class="card-slug">conversao-limitado</span>
+    </div>
+    <div class="card-body">
+      <div class="msg-block">
+        <div class="msg-label">Mensagem <button class="copy-btn" onclick="copyMsg(this)">Copiar</button></div>
+        <div class="msg-text">{{nome}}, essa é a reclamação mais comum que ouço. 😤
+
+A maioria das ferramentas de automação de WhatsApp são *robôs burros* — respondem sempre a mesma coisa e travam na primeira pergunta diferente.
+
+O WHITE ZAP é diferente: é uma IA real que entende contexto, aprende com o seu negócio e responde como uma pessoa.
+
+E tem um diferencial que nenhuma outra ferramenta tem 👇
+
+Você consegue buscar centenas de leads no Google Maps por nicho — tatuadores, dentistas, academias, o que for — e o agente já começa a prospectar pra você.
+
+🎁 7 dias grátis para comparar com o que você usa hoje → [LINK DO TRIAL]
+
+Topa testar? Responde *QUERO* 👇</div>
+      </div>
+      <div class="settings-block">
+        <div class="settings-label">Configurações</div>
+        <div class="settings-grid">
+          <div class="setting-item"><div class="setting-key">Alvo (tag)</div><div class="setting-val mono">respondeu-2</div></div>
+          <div class="setting-item"><div class="setting-key">Delay</div><div class="setting-val green">10 segundos</div></div>
+          <div class="setting-item"><div class="setting-key">Horário início</div><div class="setting-val blue">10:00</div></div>
+          <div class="setting-item"><div class="setting-key">Horário comercial</div><div class="setting-val green">Sim</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- JÁ USA -->
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title"><span class="card-emoji">3️⃣</span><span class="card-name">Já Usa Solução</span></div>
+      <span class="card-slug">conversao-ja-usa</span>
+    </div>
+    <div class="card-body">
+      <div class="msg-block">
+        <div class="msg-label">Mensagem <button class="copy-btn" onclick="copyMsg(this)">Copiar</button></div>
+        <div class="msg-text">{{nome}}, ótimo — você já entende o valor da automação. 🙌
+
+Então deixa eu ir direto ao ponto:
+
+O WHITE ZAP provavelmente faz tudo que sua ferramenta atual faz, mais 3 coisas que ela não faz:
+
+1️⃣ *IA real* (não chatbot de fluxo fixo)
+2️⃣ *Busca de leads no Google Maps* integrada
+3️⃣ *Multi-canal*: WhatsApp + Instagram + widget no site
+
+Planos a partir de R$ 97/mês.
+
+Qual ferramenta você usa hoje?
+Me conta que faço uma comparação honesta pra você. 👊</div>
+      </div>
+      <div class="settings-block">
+        <div class="settings-label">Configurações</div>
+        <div class="settings-grid">
+          <div class="setting-item"><div class="setting-key">Alvo (tag)</div><div class="setting-val mono">respondeu-3</div></div>
+          <div class="setting-item"><div class="setting-key">Delay</div><div class="setting-val green">15 segundos</div></div>
+          <div class="setting-item"><div class="setting-key">Horário início</div><div class="setting-val blue">10:00</div></div>
+          <div class="setting-item"><div class="setting-key">Horário comercial</div><div class="setting-val green">Sim</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- CONVERSÃO NICHO DENTISTAS -->
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title"><span class="card-emoji">🦷</span><span class="card-name">Conversão Nicho — Dentistas</span></div>
+      <span class="card-slug">conversao-dentistas</span>
+    </div>
+    <div class="card-body">
+      <div class="msg-block">
+        <div class="msg-label">Mensagem <button class="copy-btn" onclick="copyMsg(this)">Copiar</button></div>
+        <div class="msg-text">{{nome}}, veja como o WHITE ZAP funciona na sua clínica. 🦷
+
+📅 Paciente pede horário às 23h
+→ Agente responde, verifica agenda e confirma
+
+⏰ 24h antes da consulta
+→ Agente envia lembrete e pede confirmação
+
+❌ Paciente cancela
+→ Agente já oferece o horário para o próximo da fila
+
+📋 Pós-consulta
+→ Agente envia orientações e pergunta se está tudo bem
+
+Tudo automático. Sua secretária foca no que precisa de atenção humana.
+
+🎁 7 dias grátis, sem cartão → [LINK DO TRIAL]
+
+Quer ver uma demo de 5 minutos ao vivo?
+Responde *SIM* 👇</div>
+      </div>
+      <div class="settings-block">
+        <div class="settings-label">Configurações</div>
+        <div class="settings-grid">
+          <div class="setting-item"><div class="setting-key">Alvo (tag)</div><div class="setting-val mono">respondeu-1</div></div>
+          <div class="setting-item"><div class="setting-key">Lista filtro</div><div class="setting-val mono">dentistas</div></div>
+          <div class="setting-item"><div class="setting-key">Delay</div><div class="setting-val green">10 segundos</div></div>
+          <div class="setting-item"><div class="setting-key">Horário início</div><div class="setting-val blue">17:00</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- CONVERSÃO NICHO PROTEÇÃO VEICULAR -->
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title"><span class="card-emoji">🛡️</span><span class="card-name">Conversão Nicho — Proteção Veicular</span></div>
+      <span class="card-slug">conversao-protecao-veicular</span>
+    </div>
+    <div class="card-body">
+      <div class="msg-block">
+        <div class="msg-label">Mensagem <button class="copy-btn" onclick="copyMsg(this)">Copiar</button></div>
+        <div class="msg-text">{{nome}}, aqui está o que acontece quando você instala o WHITE ZAP. 🚀
+
+Cliente manda: *"Quanto custa a proteção?"*
+
+Agente responde em 3 segundos:
+*"Oi! Temos planos a partir de R$ 89/mês. Para te passar um valor exato preciso de algumas informações. Qual o modelo e ano do seu veículo?"*
+
+Enquanto você fecha outro contrato, o agente já está qualificando o próximo lead.
+
+📊 Resultado médio de consultores que usam o WHITE ZAP:
+→ 40% a mais de leads respondidos no mesmo dia
+→ Zero lead perdido por demora na resposta
+
+🎁 7 dias grátis → [LINK DO TRIAL]
+
+Responde *QUERO* que te mando o acesso agora. 👇</div>
+      </div>
+      <div class="settings-block">
+        <div class="settings-label">Configurações</div>
+        <div class="settings-grid">
+          <div class="setting-item"><div class="setting-key">Alvo (tag)</div><div class="setting-val mono">respondeu-sim</div></div>
+          <div class="setting-item"><div class="setting-key">Lista filtro</div><div class="setting-val mono">protecao-veicular</div></div>
+          <div class="setting-item"><div class="setting-key">Delay</div><div class="setting-val green">12 segundos</div></div>
+          <div class="setting-item"><div class="setting-key">Horário início</div><div class="setting-val blue">10:00</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- CONVERSÃO NICHO TATUADORES -->
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title"><span class="card-emoji">🎨</span><span class="card-name">Conversão Nicho — Tatuadores</span></div>
+      <span class="card-slug">conversao-tatuadores</span>
+    </div>
+    <div class="card-body">
+      <div class="msg-block">
+        <div class="msg-label">Mensagem <button class="copy-btn" onclick="copyMsg(this)">Copiar</button></div>
+        <div class="msg-text">{{nome}}, olha o que muda no dia a dia do estúdio. 🎨
+
+Cliente manda às 2h da manhã:
+*"Oi! Faz fineline? Quanto fica uma de 10cm?"*
+
+*Sem WHITE ZAP:*
+Você vê de manhã, já tem 5 mensagens acumuladas, perdeu o pique de responder, cliente foi em outro estúdio. 😞
+
+*Com WHITE ZAP:*
+→ Agente responde na hora com seus preços
+→ Manda fotos do seu portfólio nesse estilo
+→ Verifica sua agenda e oferece horários
+→ Confirma o sinal via Pix
+
+Você acorda com a agenda fechada. ✅
+
+🎁 7 dias grátis → [LINK DO TRIAL]
+
+Topa testar? Responde *QUERO* 👇</div>
+      </div>
+      <div class="settings-block">
+        <div class="settings-label">Configurações</div>
+        <div class="settings-grid">
+          <div class="setting-item"><div class="setting-key">Alvo (tag)</div><div class="setting-val mono">respondeu-sim</div></div>
+          <div class="setting-item"><div class="setting-key">Lista filtro</div><div class="setting-val mono">tatuadores</div></div>
+          <div class="setting-item"><div class="setting-key">Delay</div><div class="setting-val green">10 segundos</div></div>
+          <div class="setting-item"><div class="setting-key">Horário início</div><div class="setting-val blue">15:00</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- CONVERSÃO NICHO ADVOGADOS -->
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title"><span class="card-emoji">⚖️</span><span class="card-name">Conversão Nicho — Advogados</span></div>
+      <span class="card-slug">conversao-advogados</span>
+    </div>
+    <div class="card-body">
+      <div class="msg-block">
+        <div class="msg-label">Mensagem <button class="copy-btn" onclick="copyMsg(this)">Copiar</button></div>
+        <div class="msg-text">{{nome}}, veja como o WHITE ZAP funciona no seu escritório. ⚖️
+
+📩 Cliente manda mensagem às 22h:
+"Doutor, preciso de ajuda com uma rescisão"
+→ Agente responde em 3 segundos, coleta nome, área do caso e agenda uma consulta para o dia seguinte
+
+📋 Durante o dia:
+→ Agente faz triagem: separa curiosos de quem quer contratar
+→ Você só recebe os contatos qualificados
+
+⏰ Consulta marcada:
+→ Agente envia lembrete automático 24h antes
+→ Zero não-comparecimento por esquecimento
+
+📊 Resultado: você foca em advogar.
+O agente foca em qualificar e agendar.
+
+🎁 7 dias grátis, sem cartão → [LINK DO TRIAL]
+
+Quer ver funcionando ao vivo em 5 minutos?
+Responde *SIM* 👇</div>
+      </div>
+      <div class="settings-block">
+        <div class="settings-label">Configurações</div>
+        <div class="settings-grid">
+          <div class="setting-item"><div class="setting-key">Alvo (tag)</div><div class="setting-val mono">respondeu-sim</div></div>
+          <div class="setting-item"><div class="setting-key">Lista filtro</div><div class="setting-val mono">advogados</div></div>
+          <div class="setting-item"><div class="setting-key">Delay</div><div class="setting-val green">10 segundos</div></div>
+          <div class="setting-item"><div class="setting-key">Horário início</div><div class="setting-val blue">14:00</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /fase2 grid -->
+
+<div class="divider"></div>
+
+<!-- FASE 3 + REATIVAÇÃO -->
+<div class="section">
+  <div class="section-title">
+    <h2>Fase 3 — Fechamento & Reativação</h2>
+    <span class="phase-badge phase-3">dias 21–30</span>
+  </div>
+  <p class="section-desc">Trial expirando e contatos silenciosos. Máxima urgência e oferta de desconto.</p>
+</div>
+
+<div class="campaigns-grid">
+
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title"><span class="card-emoji">⏰</span><span class="card-name">Fechamento — Trial Expirando</span></div>
+      <span class="card-slug">fechamento-trial</span>
+    </div>
+    <div class="card-body">
+      <div class="msg-block">
+        <div class="msg-label">Mensagem <button class="copy-btn" onclick="copyMsg(this)">Copiar</button></div>
+        <div class="msg-text">{{nome}}, seus 7 dias de teste acabam em 48h. ⏰
+
+Vi que você explorou o WHITE ZAP — e quero garantir que valeu o seu tempo.
+
+Resultado de quem assinou essa semana:
+
+*"Importei 60 leads de estúdios de tatuagem em SP em 3 minutos. No mesmo dia, 8 já tinham respondido o agente."*
+— Pedro, São Paulo
+
+🎁 Oferta exclusiva para quem está no trial:
+✅ Primeiro mês por *R$ 67,90* (30% off)
+✅ Válido somente até amanhã
+
+→ [LINK DO CHECKOUT COM DESCONTO]
+
+Qualquer dúvida é só responder aqui. 🤝</div>
+      </div>
+      <div class="settings-block">
+        <div class="settings-label">Configurações</div>
+        <div class="settings-grid">
+          <div class="setting-item"><div class="setting-key">Alvo (tag)</div><div class="setting-val mono">trial-ativo</div></div>
+          <div class="setting-item"><div class="setting-key">Delay</div><div class="setting-val green">20 segundos</div></div>
+          <div class="setting-item"><div class="setting-key">Horário início</div><div class="setting-val blue">14:00</div></div>
+          <div class="setting-item"><div class="setting-key">Agendar para</div><div class="setting-val yellow">Dia 12 do trial</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title"><span class="card-emoji">🔁</span><span class="card-name">Reativação — Silenciosos</span></div>
+      <span class="card-slug">reativacao-silenciosos</span>
+    </div>
+    <div class="card-body">
+      <div class="msg-block">
+        <div class="msg-label">Mensagem <button class="copy-btn" onclick="copyMsg(this)">Copiar</button></div>
+        <div class="msg-text">{{nome}}, semana passada te mandei uma mensagem sobre automação de WhatsApp com IA. 🤖
+
+Não sei se chegou ou se perdeu nas notificações.
+
+Deixa eu ser direto:
+
+Se você atende clientes pelo WhatsApp hoje — seja pra vender, tirar dúvida ou fechar pedido —
+
+Posso te mostrar como fazer isso no automático em menos de 10 minutos de configuração.
+
+Teste grátis. Sem cartão.
+
+Quer ver? Responde *SIM* 👇</div>
+      </div>
+      <div class="settings-block">
+        <div class="settings-label">Configurações</div>
+        <div class="settings-grid">
+          <div class="setting-item"><div class="setting-key">Alvo (tag)</div><div class="setting-val mono">disparo-fase1</div></div>
+          <div class="setting-item"><div class="setting-key">Excluir tag</div><div class="setting-val mono">respondeu-sim</div></div>
+          <div class="setting-item"><div class="setting-key">Delay</div><div class="setting-val green">25 segundos</div></div>
+          <div class="setting-item"><div class="setting-key">Horário início</div><div class="setting-val blue">10:00</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<div class="divider"></div>
+
+<!-- AUTOMAÇÕES -->
+<div class="section">
+  <div class="section-title">
+    <h2>Automações de Resposta</h2>
+    <span class="phase-badge phase-auto">configurar antes de disparar</span>
+  </div>
+  <p class="section-desc">Configurar em Automações → Nova Automação no WHITE ZAP. Essas automações respondem automaticamente às mensagens recebidas.</p>
+</div>
+
+<div class="auto-card">
+  <div class="auto-header">
+    <span class="auto-title">🤖 Automação 1 — Resposta ao SIM (ativa o trial)</span>
+    <span class="auto-trigger">Trigger: keyword</span>
+  </div>
+  <div class="auto-body">
+    <div class="settings-label" style="margin-bottom:10px;">Keywords (qualquer uma dessas):</div>
+    <div class="keywords-wrap">
+      <span class="kw-tag">sim</span><span class="kw-tag">quero</span><span class="kw-tag">topei</span>
+      <span class="kw-tag">pode ser</span><span class="kw-tag">claro</span><span class="kw-tag">vai</span>
+      <span class="kw-tag">bora</span><span class="kw-tag">manda</span><span class="kw-tag">quero ver</span>
+      <span class="kw-tag">com certeza</span><span class="kw-tag">show</span><span class="kw-tag">boa</span>
+    </div>
+    <div class="msg-label">Mensagem de resposta <button class="copy-btn" onclick="copyMsg(this)">Copiar</button></div>
+    <div class="msg-text" style="margin-top:8px;">Perfeito {{nome}}! 🚀
+
+Aqui está seu acesso gratuito por 7 dias:
+→ [LINK DO TRIAL]
+
+Em 5 minutos você já consegue:
+✅ Buscar leads na sua cidade pelo Google Maps
+✅ Configurar seu primeiro agente de IA
+✅ Conectar seu WhatsApp
+
+Qualquer dúvida, é só chamar aqui mesmo. 😊</div>
+    <div style="margin-top:12px; display:flex; gap:8px; align-items:center;">
+      <span class="settings-label" style="margin:0;">Ação adicional:</span>
+      <span class="kw-tag" style="color:#60a5fa; border-color:#1e3a8a;">add_tag: trial-ativo</span>
+    </div>
+  </div>
+</div>
+
+<div class="auto-card">
+  <div class="auto-header">
+    <span class="auto-title">💰 Automação 2 — Objeção de Preço</span>
+    <span class="auto-trigger">Trigger: keyword</span>
+  </div>
+  <div class="auto-body">
+    <div class="settings-label" style="margin-bottom:10px;">Keywords:</div>
+    <div class="keywords-wrap">
+      <span class="kw-tag">caro</span><span class="kw-tag">valor</span><span class="kw-tag">preço</span>
+      <span class="kw-tag">quanto custa</span><span class="kw-tag">quanto é</span><span class="kw-tag">não tenho</span>
+      <span class="kw-tag">sem dinheiro</span><span class="kw-tag">investimento</span>
+    </div>
+    <div class="msg-label">Mensagem de resposta <button class="copy-btn" onclick="copyMsg(this)">Copiar</button></div>
+    <div class="msg-text" style="margin-top:8px;">{{nome}}, entendo a preocupação. 💰
+
+Pensa assim: se o agente fechar *1 cliente por mês* pra você, ele já se paga.
+
+E o plano começa em *R$ 97/mês* — menos que uma hora de funcionário.
+
+Você tem *7 dias grátis* para testar sem gastar nada.
+Se não gostar, não cobra. Simples assim.
+
+Quer tentar? → [LINK DO TRIAL]</div>
+  </div>
+</div>
+
+<div class="auto-card">
+  <div class="auto-header">
+    <span class="auto-title">🌙 Automação 3 — Fora do Horário Comercial</span>
+    <span class="auto-trigger">Trigger: off_hours</span>
+  </div>
+  <div class="auto-body">
+    <div class="msg-label">Mensagem de resposta <button class="copy-btn" onclick="copyMsg(this)">Copiar</button></div>
+    <div class="msg-text" style="margin-top:8px;">Oi {{nome}}! Recebi sua mensagem. 😊
+
+Nosso horário de atendimento é de segunda a sexta, das 8h às 20h.
+
+Te respondo assim que possível amanhã cedo!</div>
+  </div>
+</div>
+
+<div class="auto-card">
+  <div class="auto-header">
+    <span class="auto-title">🙏 Automação 4 — Pedido de Indicação</span>
+    <span class="auto-trigger">Trigger: keyword</span>
+  </div>
+  <div class="auto-body">
+    <div class="settings-label" style="margin-bottom:10px;">Keywords:</div>
+    <div class="keywords-wrap">
+      <span class="kw-tag">indicar</span><span class="kw-tag">indicação</span>
+      <span class="kw-tag">recomendar</span><span class="kw-tag">amigo</span><span class="kw-tag">conhece alguém</span>
+    </div>
+    <div class="msg-label">Mensagem de resposta <button class="copy-btn" onclick="copyMsg(this)">Copiar</button></div>
+    <div class="msg-text" style="margin-top:8px;">{{nome}}, que incrível você pensar em indicar! 🙏
+
+Nossa política de indicação:
+
+👉 Você indica 1 amigo que assinar qualquer plano
+👉 Você ganha *500 créditos extras* na sua conta
+👉 Sem limite de indicações
+
+É só me passar o contato do seu amigo que eu cuido do resto. 😊</div>
+  </div>
+</div>
+
+<div class="divider"></div>
+
+<!-- CHECKLIST -->
+<div class="checklist">
+  <div class="checklist-header">✅ Checklist de Lançamento</div>
+  <div class="checklist-body">
+
+    <div class="checklist-section">
+      <h4>Antes de disparar</h4>
+      <div class="check-item"><div class="checkbox" onclick="toggleCheck(this)"></div>Criar as 8 listas no WHITE ZAP com os nomes exatos das campanhas</div>
+      <div class="check-item"><div class="checkbox" onclick="toggleCheck(this)"></div>Importar contatos segmentados em cada lista (máx. 500/batch)</div>
+      <div class="check-item"><div class="checkbox" onclick="toggleCheck(this)"></div>Substituir [LINK DO TRIAL] pelo link real da plataforma em todos os templates</div>
+      <div class="check-item"><div class="checkbox" onclick="toggleCheck(this)"></div>Substituir [LINK DO CHECKOUT COM DESCONTO] pelo link com 30% off</div>
+      <div class="check-item"><div class="checkbox" onclick="toggleCheck(this)"></div>Configurar as 4 automações de resposta</div>
+      <div class="check-item"><div class="checkbox" onclick="toggleCheck(this)"></div>Testar 1 disparo manual para o seu próprio número</div>
+      <div class="check-item"><div class="checkbox" onclick="toggleCheck(this)"></div>Confirmar que o número do WhatsApp está aquecido e conectado</div>
+    </div>
+
+    <div class="checklist-section">
+      <h4>Ordem de disparo — 1 campanha por dia</h4>
+      <div class="order-grid">
+        <div class="order-item"><span class="order-day">Dia 1</span><span class="order-camp">protecao-veicular-fase1</span></div>
+        <div class="order-item"><span class="order-day">Dia 2</span><span class="order-camp">tatuadores-fase1</span></div>
+        <div class="order-item"><span class="order-day">Dia 3</span><span class="order-camp">dentistas-fase1</span></div>
+        <div class="order-item"><span class="order-day">Dia 4</span><span class="order-camp">medicos-fase1</span></div>
+        <div class="order-item"><span class="order-day">Dia 5</span><span class="order-camp">advogados-fase1</span></div>
+        <div class="order-item"><span class="order-day">Dia 6</span><span class="order-camp">rastreamento-fase1</span></div>
+        <div class="order-item"><span class="order-day">Dia 7</span><span class="order-camp">lanchonetes-fase1</span></div>
+        <div class="order-item"><span class="order-day">Dia 8</span><span class="order-camp">lojas-pecas-fase1</span></div>
+        <div class="order-item"><span class="order-day">Dia 9–16</span><span class="order-camp">conversao-[nichos]</span></div>
+        <div class="order-item"><span class="order-day">Dia 17+</span><span class="order-camp">reativacao-silenciosos</span></div>
+        <div class="order-item"><span class="order-day">Dia 21+</span><span class="order-camp">fechamento-trial</span></div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- FOOTER -->
+<div class="footer">
+  Gerado pela Equipe de Marketing IA do <span>WHITE ZAP</span> —
+  Max · Leo · Luna · Diego · Ana · Carol &nbsp;|&nbsp;
+  <span>atendente.whiteerp.com</span> &nbsp;|&nbsp; Março 2026
+</div>
+
+<script>
+  function copyMsg(btn) {
+    const msgEl = btn.closest('.msg-block').querySelector('.msg-text') ||
+                  btn.closest('.auto-body').querySelector('.msg-text')
+    if (!msgEl) return
+    navigator.clipboard.writeText(msgEl.innerText).then(() => {
+      btn.textContent = '✓ Copiado!'
+      btn.classList.add('copied')
+      setTimeout(() => {
+        btn.textContent = 'Copiar'
+        btn.classList.remove('copied')
+      }, 2000)
+    })
+  }
+
+  function toggleCheck(el) {
+    el.classList.toggle('checked')
+  }
+</script>
+</body>
+</html>

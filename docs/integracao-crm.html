@@ -1,0 +1,618 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>WHITE ZAP — Integração com NossoCRM</title>
+  <style>
+    :root {
+      --blue-600: #2563eb;
+      --blue-700: #1d4ed8;
+      --blue-800: #1e40af;
+      --blue-50:  #eff6ff;
+      --blue-100: #dbeafe;
+      --blue-200: #bfdbfe;
+      --gray-50:  #f9fafb;
+      --gray-100: #f3f4f6;
+      --gray-200: #e5e7eb;
+      --gray-600: #4b5563;
+      --gray-700: #374151;
+      --gray-900: #111827;
+      --green-500: #22c55e;
+      --yellow-500: #eab308;
+      --red-500: #ef4444;
+      --white: #ffffff;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: var(--gray-50);
+      color: var(--gray-900);
+      line-height: 1.6;
+    }
+
+    /* HEADER */
+    header {
+      background: linear-gradient(135deg, var(--blue-800) 0%, var(--blue-600) 100%);
+      padding: 2rem 3rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      box-shadow: 0 4px 20px rgba(37,99,235,0.3);
+    }
+
+    .header-left {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+    }
+
+    .logo-badge {
+      background: rgba(255,255,255,0.15);
+      border: 1px solid rgba(255,255,255,0.3);
+      border-radius: 12px;
+      padding: 0.5rem 1rem;
+      color: white;
+      font-size: 1.4rem;
+      font-weight: 800;
+      letter-spacing: 1px;
+    }
+
+    header h1 {
+      color: white;
+      font-size: 1.5rem;
+      font-weight: 700;
+    }
+
+    header p {
+      color: var(--blue-200);
+      font-size: 0.875rem;
+      margin-top: 0.25rem;
+    }
+
+    .header-date {
+      text-align: right;
+      color: var(--blue-200);
+      font-size: 0.875rem;
+    }
+
+    .header-date strong {
+      display: block;
+      color: white;
+      font-size: 1rem;
+    }
+
+    /* MAIN */
+    main {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 2.5rem 2rem;
+    }
+
+    /* SECTION TITLE */
+    .section-title {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      margin-bottom: 1.25rem;
+      margin-top: 2.5rem;
+    }
+
+    .section-title .icon {
+      width: 36px;
+      height: 36px;
+      background: var(--blue-600);
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.1rem;
+    }
+
+    .section-title h2 {
+      font-size: 1.2rem;
+      font-weight: 700;
+      color: var(--gray-900);
+    }
+
+    /* CARDS GRID */
+    .cards-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 1.25rem;
+      margin-bottom: 2rem;
+    }
+
+    .card {
+      background: var(--white);
+      border-radius: 12px;
+      padding: 1.5rem;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.07);
+      border: 1px solid var(--gray-200);
+      transition: box-shadow 0.2s;
+    }
+
+    .card:hover {
+      box-shadow: 0 4px 16px rgba(37,99,235,0.12);
+    }
+
+    .card .card-icon {
+      font-size: 1.8rem;
+      margin-bottom: 0.75rem;
+    }
+
+    .card h3 {
+      font-size: 0.875rem;
+      font-weight: 600;
+      color: var(--gray-600);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 0.25rem;
+    }
+
+    .card .card-value {
+      font-size: 1.75rem;
+      font-weight: 800;
+      color: var(--blue-600);
+    }
+
+    .card .card-sub {
+      font-size: 0.8rem;
+      color: var(--gray-600);
+      margin-top: 0.25rem;
+    }
+
+    /* STATUS BADGE */
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      padding: 0.25rem 0.75rem;
+      border-radius: 999px;
+      font-size: 0.8rem;
+      font-weight: 600;
+    }
+
+    .badge-blue   { background: var(--blue-100);  color: var(--blue-700); }
+    .badge-green  { background: #dcfce7; color: #15803d; }
+    .badge-yellow { background: #fef9c3; color: #a16207; }
+    .badge-red    { background: #fee2e2; color: #b91c1c; }
+
+    /* TABLE */
+    .table-wrap {
+      background: var(--white);
+      border-radius: 12px;
+      border: 1px solid var(--gray-200);
+      overflow: hidden;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.07);
+      margin-bottom: 2rem;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    thead {
+      background: var(--blue-600);
+    }
+
+    thead th {
+      color: white;
+      padding: 0.875rem 1.25rem;
+      text-align: left;
+      font-size: 0.8rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    tbody tr {
+      border-bottom: 1px solid var(--gray-100);
+      transition: background 0.15s;
+    }
+
+    tbody tr:last-child { border-bottom: none; }
+    tbody tr:hover { background: var(--blue-50); }
+
+    tbody td {
+      padding: 0.875rem 1.25rem;
+      font-size: 0.9rem;
+      color: var(--gray-700);
+    }
+
+    /* PHASE TIMELINE */
+    .timeline {
+      display: flex;
+      flex-direction: column;
+      gap: 0;
+      background: var(--white);
+      border-radius: 12px;
+      border: 1px solid var(--gray-200);
+      overflow: hidden;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.07);
+      margin-bottom: 2rem;
+    }
+
+    .phase {
+      display: flex;
+      gap: 1.5rem;
+      padding: 1.25rem 1.5rem;
+      border-bottom: 1px solid var(--gray-100);
+      align-items: flex-start;
+    }
+
+    .phase:last-child { border-bottom: none; }
+
+    .phase-number {
+      min-width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      background: var(--blue-600);
+      color: white;
+      font-weight: 800;
+      font-size: 0.95rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      margin-top: 0.1rem;
+    }
+
+    .phase-number.done {
+      background: var(--green-500);
+    }
+
+    .phase-number.pending {
+      background: var(--gray-200);
+      color: var(--gray-600);
+    }
+
+    .phase-content h4 {
+      font-size: 1rem;
+      font-weight: 700;
+      color: var(--gray-900);
+      margin-bottom: 0.25rem;
+    }
+
+    .phase-content p {
+      font-size: 0.875rem;
+      color: var(--gray-600);
+    }
+
+    .phase-meta {
+      margin-left: auto;
+      text-align: right;
+      flex-shrink: 0;
+    }
+
+    .phase-meta .phase-date {
+      font-size: 0.8rem;
+      color: var(--gray-600);
+    }
+
+    /* SKILLS BOX */
+    .skills-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 1rem;
+      margin-bottom: 2rem;
+    }
+
+    .skill-card {
+      background: var(--white);
+      border: 1px solid var(--gray-200);
+      border-left: 4px solid var(--blue-600);
+      border-radius: 10px;
+      padding: 1.25rem;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+    }
+
+    .skill-card .skill-cmd {
+      font-family: 'Courier New', monospace;
+      background: var(--blue-50);
+      color: var(--blue-700);
+      padding: 0.2rem 0.6rem;
+      border-radius: 6px;
+      font-size: 0.875rem;
+      font-weight: 700;
+      margin-bottom: 0.6rem;
+      display: inline-block;
+    }
+
+    .skill-card h4 {
+      font-size: 0.95rem;
+      font-weight: 700;
+      color: var(--gray-900);
+      margin-bottom: 0.35rem;
+    }
+
+    .skill-card p {
+      font-size: 0.825rem;
+      color: var(--gray-600);
+    }
+
+    /* FOOTER */
+    footer {
+      background: var(--blue-800);
+      color: var(--blue-200);
+      text-align: center;
+      padding: 1.5rem;
+      font-size: 0.8rem;
+      margin-top: 3rem;
+    }
+
+    footer strong {
+      color: white;
+    }
+
+    /* INTRO BANNER */
+    .intro-banner {
+      background: linear-gradient(135deg, var(--blue-600), var(--blue-700));
+      border-radius: 14px;
+      padding: 1.75rem 2rem;
+      color: white;
+      margin-bottom: 2rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+    }
+
+    .intro-banner h2 {
+      font-size: 1.3rem;
+      font-weight: 800;
+      margin-bottom: 0.4rem;
+    }
+
+    .intro-banner p {
+      font-size: 0.9rem;
+      color: var(--blue-100);
+      max-width: 600px;
+    }
+
+    .intro-banner .intro-icon {
+      font-size: 3rem;
+      opacity: 0.8;
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <div class="header-left">
+      <div class="logo-badge">WHITE ZAP</div>
+      <div>
+        <h1>Integração WHITE ZAP × NossoCRM</h1>
+        <p>Plano de integração de sistemas e automação de rotinas via IA</p>
+      </div>
+    </div>
+    <div class="header-date">
+      <strong>09 de Abril de 2026</strong>
+      Início previsto: 10/04/2026
+    </div>
+  </header>
+
+  <main>
+
+    <!-- INTRO -->
+    <div class="intro-banner">
+      <div>
+        <h2>Integração em andamento</h2>
+        <p>O WHITE ZAP será integrado ao NossoCRM via MCP Server, permitindo que os agentes de IA gerenciem deals, contatos, atividades e relatórios diretamente pelo chat.</p>
+      </div>
+      <div class="intro-icon">🔗</div>
+    </div>
+
+    <!-- MÉTRICAS RÁPIDAS -->
+    <div class="section-title">
+      <div class="icon">📊</div>
+      <h2>Status da Infraestrutura</h2>
+    </div>
+
+    <div class="cards-grid">
+      <div class="card">
+        <div class="card-icon">🗄️</div>
+        <h3>Supabase NossoCRM</h3>
+        <div class="card-value">Ativo</div>
+        <div class="card-sub">Reativado em 09/04/2026</div>
+      </div>
+      <div class="card">
+        <div class="card-icon">🚀</div>
+        <h3>Deploy Vercel</h3>
+        <div class="card-value">READY</div>
+        <div class="card-sub">Código Gemini em produção</div>
+      </div>
+      <div class="card">
+        <div class="card-icon">🤖</div>
+        <h3>Modelo de IA</h3>
+        <div class="card-value">Gemini</div>
+        <div class="card-sub">gemini-2.5-flash-preview</div>
+      </div>
+      <div class="card">
+        <div class="card-icon">🔌</div>
+        <h3>MCP Server</h3>
+        <div class="card-value">Conectado</div>
+        <div class="card-sub">50+ ferramentas disponíveis</div>
+      </div>
+    </div>
+
+    <!-- FASES DA INTEGRAÇÃO -->
+    <div class="section-title">
+      <div class="icon">🗓️</div>
+      <h2>Fases da Integração</h2>
+    </div>
+
+    <div class="timeline">
+      <div class="phase">
+        <div class="phase-number done">✓</div>
+        <div class="phase-content">
+          <h4>Fase 1 — Reativação e Diagnóstico</h4>
+          <p>Reativação do Supabase (nossocrm), correção do deploy Vercel, migração para Google Gemini, configuração de flags de IA.</p>
+        </div>
+        <div class="phase-meta">
+          <span class="badge badge-green">Concluída</span>
+          <div class="phase-date">09/04/2026</div>
+        </div>
+      </div>
+      <div class="phase">
+        <div class="phase-number done">✓</div>
+        <div class="phase-content">
+          <h4>Fase 2 — Conexão MCP</h4>
+          <p>Configuração do MCP Server do NossoCRM no Claude Code. API Key gerada e configurada em <code>~/.mcp.json</code>.</p>
+        </div>
+        <div class="phase-meta">
+          <span class="badge badge-green">Concluída</span>
+          <div class="phase-date">09/04/2026</div>
+        </div>
+      </div>
+      <div class="phase">
+        <div class="phase-number done">✓</div>
+        <div class="phase-content">
+          <h4>Fase 3 — Skills de Rotina</h4>
+          <p>Criação de 4 skills no projeto WHITE ZAP: /pipeline, /followups, /tarefas e /relatorio.</p>
+        </div>
+        <div class="phase-meta">
+          <span class="badge badge-green">Concluída</span>
+          <div class="phase-date">09/04/2026</div>
+        </div>
+      </div>
+      <div class="phase">
+        <div class="phase-number">4</div>
+        <div class="phase-content">
+          <h4>Fase 4 — Integração WHITE ZAP × NossoCRM</h4>
+          <p>Conectar os agentes IA do WHITE ZAP ao NossoCRM. Ações via WhatsApp/Instagram disparam atualizações em deals e contatos.</p>
+        </div>
+        <div class="phase-meta">
+          <span class="badge badge-yellow">Amanhã</span>
+          <div class="phase-date">10/04/2026</div>
+        </div>
+      </div>
+      <div class="phase">
+        <div class="phase-number pending">5</div>
+        <div class="phase-content">
+          <h4>Fase 5 — Automações e Webhooks</h4>
+          <p>Criação de deal automático ao receber novo lead via WhatsApp. Atualização de estágio baseada em interações dos agentes.</p>
+        </div>
+        <div class="phase-meta">
+          <span class="badge badge-yellow">Pendente</span>
+          <div class="phase-date">A definir</div>
+        </div>
+      </div>
+      <div class="phase">
+        <div class="phase-number pending">6</div>
+        <div class="phase-content">
+          <h4>Fase 6 — Dashboard Unificado</h4>
+          <p>Painel único com métricas do WHITE ZAP + NossoCRM. Visibilidade total do funil de vendas e atendimento.</p>
+        </div>
+        <div class="phase-meta">
+          <span class="badge badge-yellow">Pendente</span>
+          <div class="phase-date">A definir</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SKILLS -->
+    <div class="section-title">
+      <div class="icon">⚡</div>
+      <h2>Skills de Rotina Criadas</h2>
+    </div>
+
+    <div class="skills-grid">
+      <div class="skill-card">
+        <div class="skill-cmd">/pipeline</div>
+        <h4>Pipeline Diário</h4>
+        <p>Revisão completa dos deals ativos, agrupados por estágio. Destaca negócios parados e sugere próximas ações.</p>
+      </div>
+      <div class="skill-card">
+        <div class="skill-cmd">/followups</div>
+        <h4>Follow-ups Pendentes</h4>
+        <p>Lista priorizada de contatos que precisam de retorno, separados por urgência: vencido, hoje e esta semana.</p>
+      </div>
+      <div class="skill-card">
+        <div class="skill-cmd">/tarefas</div>
+        <h4>Tarefas do Dia</h4>
+        <p>Visualiza e gerencia atividades do dia e tarefas vencidas. Permite criar novas tarefas diretamente pelo chat.</p>
+      </div>
+      <div class="skill-card">
+        <div class="skill-cmd">/relatorio</div>
+        <h4>Relatório Semanal</h4>
+        <p>Resumo executivo com métricas da semana: ganhos, perdas, taxa de conversão e 3 sugestões práticas.</p>
+      </div>
+    </div>
+
+    <!-- CONFIGURAÇÕES -->
+    <div class="section-title">
+      <div class="icon">⚙️</div>
+      <h2>Configurações Aplicadas</h2>
+    </div>
+
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Componente</th>
+            <th>Configuração</th>
+            <th>Valor</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Supabase</td>
+            <td>AI Provider</td>
+            <td>Google Gemini</td>
+            <td><span class="badge badge-green">✓ Ativo</span></td>
+          </tr>
+          <tr>
+            <td>Supabase</td>
+            <td>Modelo</td>
+            <td>gemini-2.5-flash-preview-04-17</td>
+            <td><span class="badge badge-green">✓ Ativo</span></td>
+          </tr>
+          <tr>
+            <td>Supabase</td>
+            <td>ai_board_generate_structure</td>
+            <td>enabled: true</td>
+            <td><span class="badge badge-green">✓ Ativo</span></td>
+          </tr>
+          <tr>
+            <td>Supabase</td>
+            <td>ai_chat_agent</td>
+            <td>enabled: true</td>
+            <td><span class="badge badge-green">✓ Ativo</span></td>
+          </tr>
+          <tr>
+            <td>Vercel</td>
+            <td>Install Command</td>
+            <td>pnpm install --no-frozen-lockfile</td>
+            <td><span class="badge badge-green">✓ Aplicado</span></td>
+          </tr>
+          <tr>
+            <td>Claude Code</td>
+            <td>MCP Server</td>
+            <td>nossocrm-six-rose.vercel.app/api/mcp</td>
+            <td><span class="badge badge-green">✓ Configurado</span></td>
+          </tr>
+          <tr>
+            <td>WHITE ZAP</td>
+            <td>Skills</td>
+            <td>.claude/commands/ (4 skills)</td>
+            <td><span class="badge badge-green">✓ Criadas</span></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+  </main>
+
+  <footer>
+    <strong>WHITE ZAP</strong> — Plataforma de Agentes IA &nbsp;|&nbsp;
+    Gerado em 09/04/2026 &nbsp;|&nbsp;
+    Integração WHITE ZAP × NossoCRM
+  </footer>
+
+</body>
+</html>

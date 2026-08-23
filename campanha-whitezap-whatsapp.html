@@ -1,0 +1,876 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Campanha WHITE ZAP — WhatsApp | Guia de Execução</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: 'Segoe UI', Arial, sans-serif;
+      font-size: 14px;
+      color: #1e293b;
+      background: #f8fafc;
+      padding: 40px 20px;
+    }
+
+    .page {
+      max-width: 900px;
+      margin: 0 auto;
+      background: #fff;
+      border-radius: 12px;
+      box-shadow: 0 2px 20px rgba(0,0,0,0.08);
+      overflow: hidden;
+    }
+
+    /* ── CAPA ── */
+    .cover {
+      background: linear-gradient(135deg, #0c1a4e 0%, #1e3a8a 40%, #2563eb 100%);
+      color: #fff;
+      padding: 60px 48px 48px;
+      position: relative;
+      overflow: hidden;
+    }
+    .cover::after {
+      content: '';
+      position: absolute;
+      right: -60px;
+      top: -60px;
+      width: 300px;
+      height: 300px;
+      border-radius: 50%;
+      background: rgba(255,255,255,0.04);
+    }
+    .cover::before {
+      content: '';
+      position: absolute;
+      right: 60px;
+      bottom: -80px;
+      width: 200px;
+      height: 200px;
+      border-radius: 50%;
+      background: rgba(255,255,255,0.04);
+    }
+    .cover .badge {
+      display: inline-block;
+      background: rgba(255,255,255,0.15);
+      border: 1px solid rgba(255,255,255,0.3);
+      color: #bfdbfe;
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      padding: 4px 14px;
+      border-radius: 20px;
+      margin-bottom: 20px;
+    }
+    .cover h1 {
+      font-size: 34px;
+      font-weight: 800;
+      line-height: 1.2;
+      margin-bottom: 12px;
+    }
+    .cover h1 span { color: #93c5fd; }
+    .cover p {
+      font-size: 15px;
+      color: #bfdbfe;
+      max-width: 520px;
+      line-height: 1.6;
+    }
+    .cover-meta {
+      margin-top: 36px;
+      display: flex;
+      gap: 32px;
+      flex-wrap: wrap;
+    }
+    .cover-meta-item { font-size: 12px; color: rgba(255,255,255,0.55); }
+    .cover-meta-item strong { display: block; font-size: 15px; color: #fff; margin-bottom: 2px; }
+
+    /* ── CONTEÚDO ── */
+    .content { padding: 48px; }
+
+    h2 {
+      font-size: 18px;
+      font-weight: 700;
+      color: #0f172a;
+      margin: 44px 0 16px;
+      padding-bottom: 10px;
+      border-bottom: 2px solid #e2e8f0;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    h2:first-child { margin-top: 0; }
+    .section-icon {
+      font-size: 18px;
+      line-height: 1;
+    }
+
+    h3 {
+      font-size: 14px;
+      font-weight: 700;
+      color: #1e3a8a;
+      margin: 22px 0 8px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    p {
+      color: #475569;
+      line-height: 1.7;
+      margin-bottom: 10px;
+    }
+
+    /* ── CALLOUTS ── */
+    .callout {
+      background: #eff6ff;
+      border-left: 4px solid #2563eb;
+      border-radius: 0 8px 8px 0;
+      padding: 14px 18px;
+      margin: 14px 0;
+      color: #1e40af;
+      font-size: 13px;
+      line-height: 1.6;
+    }
+    .callout strong { color: #1e3a8a; display: block; margin-bottom: 2px; }
+    .callout-warn {
+      background: #fefce8;
+      border-left-color: #ca8a04;
+      color: #854d0e;
+    }
+    .callout-green {
+      background: #f0fdf4;
+      border-left-color: #16a34a;
+      color: #166534;
+    }
+    .callout-red {
+      background: #fff1f2;
+      border-left-color: #e11d48;
+      color: #9f1239;
+    }
+
+    /* ── SEMANA ── */
+    .week {
+      border: 1px solid #e2e8f0;
+      border-radius: 10px;
+      overflow: hidden;
+      margin: 16px 0;
+    }
+    .week-header {
+      padding: 14px 20px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .week-header.s1 { background: #eff6ff; border-bottom: 1px solid #bfdbfe; }
+    .week-header.s2 { background: #f0fdf4; border-bottom: 1px solid #bbf7d0; }
+    .week-header .week-num {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+    .week-header.s1 .week-num { color: #1d4ed8; }
+    .week-header.s2 .week-num { color: #15803d; }
+    .week-header h3 {
+      margin: 0;
+      font-size: 14px;
+      text-transform: none;
+      letter-spacing: 0;
+    }
+    .week-header.s1 h3 { color: #1e3a8a; }
+    .week-header.s2 h3 { color: #14532d; }
+    .week-header p { margin: 0; font-size: 12px; color: #64748b; }
+    .week-body { padding: 20px; }
+
+    /* ── DIA DE DISPARO ── */
+    .day-block {
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      margin-bottom: 14px;
+      overflow: hidden;
+    }
+    .day-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 16px;
+      background: #f8fafc;
+      border-bottom: 1px solid #e2e8f0;
+    }
+    .day-badge {
+      background: #2563eb;
+      color: #fff;
+      font-size: 10px;
+      font-weight: 700;
+      padding: 2px 8px;
+      border-radius: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .day-badge.green { background: #16a34a; }
+    .day-title {
+      font-size: 13px;
+      font-weight: 600;
+      color: #0f172a;
+    }
+    .day-channel {
+      margin-left: auto;
+      font-size: 11px;
+      color: #64748b;
+      background: #f1f5f9;
+      padding: 2px 8px;
+      border-radius: 6px;
+    }
+    .day-body { padding: 14px 16px; }
+    .msg-box {
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      padding: 14px 16px;
+      font-size: 13px;
+      color: #334155;
+      line-height: 1.7;
+      white-space: pre-wrap;
+      font-family: inherit;
+      position: relative;
+    }
+    .msg-box .copy-label {
+      position: absolute;
+      top: 10px;
+      right: 12px;
+      font-size: 10px;
+      color: #94a3b8;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    /* ── CANAL TABLE ── */
+    .channel-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 12px;
+      margin: 16px 0;
+    }
+    .channel-card {
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      padding: 16px;
+    }
+    .channel-card .ch-icon { font-size: 22px; margin-bottom: 8px; }
+    .channel-card h4 { font-size: 13px; font-weight: 700; color: #0f172a; margin-bottom: 4px; }
+    .channel-card p { font-size: 12px; color: #64748b; margin: 0; line-height: 1.5; }
+    .channel-card .ch-tag {
+      display: inline-block;
+      margin-top: 8px;
+      font-size: 10px;
+      font-weight: 600;
+      padding: 2px 8px;
+      border-radius: 8px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .ch-tag.blue { background: #dbeafe; color: #1d4ed8; }
+    .ch-tag.green { background: #dcfce7; color: #15803d; }
+    .ch-tag.orange { background: #ffedd5; color: #c2410c; }
+    .ch-tag.purple { background: #f3e8ff; color: #7e22ce; }
+
+    /* ── OKR TABLE ── */
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+      margin: 12px 0;
+    }
+    th {
+      background: #f1f5f9;
+      color: #475569;
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      padding: 9px 12px;
+      text-align: left;
+      border-bottom: 1px solid #e2e8f0;
+    }
+    td {
+      padding: 10px 12px;
+      border-bottom: 1px solid #f1f5f9;
+      color: #334155;
+      vertical-align: top;
+    }
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background: #fafafa; }
+    .kpi-meta { color: #2563eb; font-weight: 700; }
+    .kpi-stretch { color: #16a34a; font-weight: 700; }
+    .kpi-min { color: #f59e0b; font-weight: 700; }
+
+    /* ── EQUIPE ── */
+    .team-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+      margin: 16px 0;
+    }
+    .team-card {
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      padding: 14px;
+      text-align: center;
+    }
+    .team-card .avatar { font-size: 28px; margin-bottom: 6px; }
+    .team-card h4 { font-size: 13px; font-weight: 700; color: #0f172a; }
+    .team-card p { font-size: 11px; color: #64748b; margin: 2px 0 0; }
+
+    /* ── DESIGN ASSETS ── */
+    .asset-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 12px;
+      margin: 16px 0;
+    }
+    .asset-card {
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      padding: 16px;
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+    }
+    .asset-card .asset-icon {
+      font-size: 24px;
+      flex-shrink: 0;
+      margin-top: 2px;
+    }
+    .asset-card h4 { font-size: 13px; font-weight: 700; color: #0f172a; margin-bottom: 3px; }
+    .asset-card p { font-size: 12px; color: #64748b; margin: 0 0 8px; line-height: 1.4; }
+    .asset-card a {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 12px;
+      font-weight: 600;
+      color: #2563eb;
+      text-decoration: none;
+    }
+    .asset-card a:hover { text-decoration: underline; }
+
+    /* ── ALERTA ── */
+    .alert-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+      margin: 14px 0;
+    }
+    .alert-card {
+      border: 1px solid #fecdd3;
+      background: #fff1f2;
+      border-radius: 8px;
+      padding: 14px;
+    }
+    .alert-card .alert-icon { font-size: 20px; margin-bottom: 6px; }
+    .alert-card h4 { font-size: 12px; font-weight: 700; color: #9f1239; margin-bottom: 4px; }
+    .alert-card p { font-size: 11px; color: #be123c; margin: 0; line-height: 1.5; }
+
+    /* ── FOOTER ── */
+    .footer {
+      background: #f8fafc;
+      border-top: 1px solid #e2e8f0;
+      padding: 20px 48px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 11px;
+      color: #94a3b8;
+    }
+    .footer strong { color: #475569; }
+
+    @media (max-width: 640px) {
+      .content { padding: 24px; }
+      .cover { padding: 36px 24px 30px; }
+      .cover h1 { font-size: 24px; }
+      .team-grid, .channel-grid, .asset-grid, .alert-grid { grid-template-columns: 1fr; }
+      .footer { flex-direction: column; gap: 4px; padding: 16px 24px; }
+    }
+  </style>
+</head>
+<body>
+<div class="page">
+
+  <!-- CAPA -->
+  <div class="cover">
+    <div class="badge">📣 Plano de Execução</div>
+    <h1>Campanha <span>WHITE ZAP</span><br>WhatsApp — Captação</h1>
+    <p>Guia completo de mensagens, cronograma de disparos, canais e métricas para a campanha de 2 semanas de divulgação e captação de clientes.</p>
+    <div class="cover-meta">
+      <div class="cover-meta-item"><strong>2 semanas</strong>Duração</div>
+      <div class="cover-meta-item"><strong>8 disparos</strong>Mensagens planejadas</div>
+      <div class="cover-meta-item"><strong>4 canais</strong>WhatsApp, Status, Meta Ads, Remarketing</div>
+      <div class="cover-meta-item"><strong>80 cadastros</strong>Meta de conversão</div>
+    </div>
+  </div>
+
+  <div class="content">
+
+    <!-- OBJETIVO -->
+    <h2><span class="section-icon">🎯</span> Objetivo da Campanha</h2>
+    <p>Captar leads qualificados e converter para trial gratuito do WHITE ZAP, plataforma SaaS de agentes de IA para atendimento automatizado via WhatsApp, Instagram e site.</p>
+
+    <div class="callout">
+      <strong>Público-alvo</strong>
+      Donos de negócio, gestores comerciais e empreendedores que usam WhatsApp como principal canal de vendas e atendimento — e ainda respondem tudo manualmente.
+    </div>
+
+    <div class="callout callout-green">
+      <strong>Proposta de valor central</strong>
+      Criar um agente de IA no WhatsApp em 5 minutos, sem código, que atende 24h por dia — começando de graça.
+    </div>
+
+    <!-- EQUIPE -->
+    <h2><span class="section-icon">👥</span> Equipe de Marketing</h2>
+    <div class="team-grid">
+      <div class="team-card">
+        <div class="avatar">🧠</div>
+        <h4>Max</h4>
+        <p>Estrategista-Chefe<br>Planejamento e OKRs</p>
+      </div>
+      <div class="team-card">
+        <div class="avatar">✍️</div>
+        <h4>Leo</h4>
+        <p>Copywriter & SEO<br>Textos e mensagens</p>
+      </div>
+      <div class="team-card">
+        <div class="avatar">🎨</div>
+        <h4>Luna</h4>
+        <p>Designer<br>Criativos e artes</p>
+      </div>
+      <div class="team-card">
+        <div class="avatar">📱</div>
+        <h4>Diego</h4>
+        <p>Gestor de Tráfego<br>Meta Ads e remarketing</p>
+      </div>
+      <div class="team-card">
+        <div class="avatar">📊</div>
+        <h4>Ana</h4>
+        <p>Analista de Dados<br>Métricas e relatórios</p>
+      </div>
+      <div class="team-card">
+        <div class="avatar">💬</div>
+        <h4>Carol</h4>
+        <p>Customer Success<br>Ativação e retenção</p>
+      </div>
+    </div>
+
+    <!-- CANAIS -->
+    <h2><span class="section-icon">📡</span> Distribuição por Canal</h2>
+    <div class="channel-grid">
+      <div class="channel-card">
+        <div class="ch-icon">💬</div>
+        <h4>Disparo WhatsApp — Lista</h4>
+        <p>Mensagens diretas para lista de contatos. Dias 1, 8 e 14. Formato: texto + imagem flyer.</p>
+        <span class="ch-tag blue">Orgânico</span>
+      </div>
+      <div class="channel-card">
+        <div class="ch-icon">🟢</div>
+        <h4>WhatsApp Status</h4>
+        <p>Stories verticais publicados no Status. Dias 3 e 10. Formato: imagem story 9:16.</p>
+        <span class="ch-tag green">Orgânico</span>
+      </div>
+      <div class="channel-card">
+        <div class="ch-icon">🎯</div>
+        <h4>Meta Ads — Tráfego Pago</h4>
+        <p>Anúncios com Abordagem 3 (curiosidade) na semana 1. Formato: post quadrado 1:1.</p>
+        <span class="ch-tag orange">Pago</span>
+      </div>
+      <div class="channel-card">
+        <div class="ch-icon">🔁</div>
+        <h4>Remarketing Meta</h4>
+        <p>Público morno semana 2 com Abordagem 2 (prova). Formato: carrossel de benefícios.</p>
+        <span class="ch-tag purple">Pago</span>
+      </div>
+    </div>
+
+    <!-- SEMANA 1 -->
+    <h2><span class="section-icon">📅</span> Cronograma de Mensagens</h2>
+
+    <div class="week">
+      <div class="week-header s1">
+        <div>
+          <div class="week-num">Semana 1 — Dias 1 ao 7</div>
+          <h3>Despertar — Abordagem Curiosidade</h3>
+          <p>Público frio. Objetivo: gerar interesse e cliques.</p>
+        </div>
+      </div>
+      <div class="week-body">
+
+        <div class="day-block">
+          <div class="day-header">
+            <span class="day-badge">Dia 1</span>
+            <span class="day-title">Abertura da Campanha</span>
+            <span class="day-channel">💬 Lista WhatsApp + 📱 Meta Ads</span>
+          </div>
+          <div class="day-body">
+            <div class="msg-box"><span class="copy-label">copiar</span>E se você pudesse atender 100 clientes ao mesmo tempo no WhatsApp sem contratar ninguém?
+
+Com o WHITE ZAP você cria um agente de IA em menos de 5 minutos. Ele responde, qualifica e encaminha — enquanto você foca no que importa.
+
+✅ Comece grátis: atendente.whiteerp.com</div>
+          </div>
+        </div>
+
+        <div class="day-block">
+          <div class="day-header">
+            <span class="day-badge">Dia 3</span>
+            <span class="day-title">Dado de Impacto</span>
+            <span class="day-channel">🟢 WhatsApp Status</span>
+          </div>
+          <div class="day-body">
+            <div class="msg-box"><span class="copy-label">copiar</span>68% dos clientes desistem da compra quando não são respondidos em até 5 minutos.
+
+O WHITE ZAP coloca um agente de IA no seu WhatsApp que nunca dorme, nunca esquece e nunca fica de mau humor.
+
+5 minutos pra configurar. Zero linhas de código.
+
+👉 atendente.whiteerp.com</div>
+          </div>
+        </div>
+
+        <div class="day-block">
+          <div class="day-header">
+            <span class="day-badge">Dia 5</span>
+            <span class="day-title">Segmentado — Donos de Negócio</span>
+            <span class="day-channel">💬 Lista WhatsApp</span>
+          </div>
+          <div class="day-body">
+            <div class="msg-box"><span class="copy-label">copiar</span>Quanto tempo você perde todo dia respondendo sempre as mesmas perguntas no WhatsApp?
+
+Automatize 80% desses atendimentos sem perder o toque humano.
+
+É exatamente isso que o WHITE ZAP faz.
+
+🎁 Grátis pra começar: atendente.whiteerp.com</div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- SEMANA 2 -->
+    <div class="week">
+      <div class="week-header s2">
+        <div>
+          <div class="week-num">Semana 2 — Dias 8 ao 14</div>
+          <h3>Converter — Abordagem Resultado + Prova</h3>
+          <p>Público morno. Objetivo: remover objeções e converter para trial.</p>
+        </div>
+      </div>
+      <div class="week-body">
+
+        <div class="day-block">
+          <div class="day-header">
+            <span class="day-badge day-badge green">Dia 8</span>
+            <span class="day-title">Prova Social</span>
+            <span class="day-channel">💬 Lista WhatsApp</span>
+          </div>
+          <div class="day-body">
+            <div class="msg-box"><span class="copy-label">copiar</span>Empresas que usam o WHITE ZAP respondem 3x mais rápido e nunca perdem um lead por falta de atendimento.
+
+Seu agente de IA aprende sobre seu negócio e conversa com seus clientes como se fosse você.
+
+Planos a partir do gratuito. Cancele quando quiser.
+
+🤖 Crie seu agente: atendente.whiteerp.com</div>
+          </div>
+        </div>
+
+        <div class="day-block">
+          <div class="day-header">
+            <span class="day-badge day-badge green">Dia 10</span>
+            <span class="day-title">Quebra de Objeção — "É difícil?"</span>
+            <span class="day-channel">🟢 WhatsApp Status + 🔁 Remarketing</span>
+          </div>
+          <div class="day-body">
+            <div class="msg-box"><span class="copy-label">copiar</span>Sem programação. Sem técnico. Sem dor de cabeça.
+
+Em 5 minutos você conecta o WHITE ZAP ao seu WhatsApp e seu agente já começa a atender.
+
+Você ensina o que ele precisa saber — e ele faz o resto.
+
+✅ atendente.whiteerp.com</div>
+          </div>
+        </div>
+
+        <div class="day-block">
+          <div class="day-header">
+            <span class="day-badge day-badge green">Dia 12</span>
+            <span class="day-title">Quebra de Objeção — "É caro?"</span>
+            <span class="day-channel">💬 Lista WhatsApp</span>
+          </div>
+          <div class="day-body">
+            <div class="msg-box"><span class="copy-label">copiar</span>Plano gratuito com agente de IA, base de conhecimento e atendimento automatizado.
+
+Sem cartão de crédito. Sem prazo mínimo. O WHITE ZAP cresce com o seu negócio.
+
+🚀 atendente.whiteerp.com</div>
+          </div>
+        </div>
+
+        <div class="day-block">
+          <div class="day-header">
+            <span class="day-badge day-badge green">Dia 14</span>
+            <span class="day-title">Fechamento com Urgência</span>
+            <span class="day-channel">💬 Lista WhatsApp + 🔁 Remarketing</span>
+          </div>
+          <div class="day-body">
+            <div class="msg-box"><span class="copy-label">copiar</span>Você ainda responde tudo manualmente no WhatsApp?
+
+Cada mensagem sem resposta é uma venda perdida.
+
+O WHITE ZAP trabalha por você 24/7 — e você começa de graça hoje.
+
+⏳ Não deixa pra amanhã: atendente.whiteerp.com</div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- DESIGNS -->
+    <h2><span class="section-icon">🎨</span> Criativos — Designs Canva</h2>
+    <p>Designs salvos na conta Canva para edição. Adicione o logo WHITE ZAP no canto da peça (pequeno, como identificador de marca) e ajuste os textos conforme cada mensagem acima.</p>
+
+    <div class="asset-grid">
+      <div class="asset-card">
+        <div class="asset-icon">📋</div>
+        <div>
+          <h4>Flyer — Disparo WhatsApp</h4>
+          <p>Opção 2 (aprovada). Para disparos em lista — dias 1, 8 e 14.</p>
+          <a href="https://www.canva.com/d/2s1Qip8SJY6asEq" target="_blank">✏️ Editar no Canva</a>
+        </div>
+      </div>
+      <div class="asset-card">
+        <div class="asset-icon">📋</div>
+        <div>
+          <h4>Flyer — Variação</h4>
+          <p>Opção 3 (aprovada). Alternativa de layout para testes A/B.</p>
+          <a href="https://www.canva.com/d/Mf-EKoUMHq_hErv" target="_blank">✏️ Editar no Canva</a>
+        </div>
+      </div>
+      <div class="asset-card">
+        <div class="asset-icon">📱</div>
+        <div>
+          <h4>Story — WhatsApp Status</h4>
+          <p>Formato 9:16. Para Status — dias 3 e 10. Aguardando aprovação do design.</p>
+          <a href="#" style="color:#94a3b8; cursor:default;">⏳ Pendente aprovação</a>
+        </div>
+      </div>
+      <div class="asset-card">
+        <div class="asset-icon">🟦</div>
+        <div>
+          <h4>Post Quadrado — Meta Ads</h4>
+          <p>Formato 1:1. Para anúncios pagos semana 1. Aguardando aprovação do design.</p>
+          <a href="#" style="color:#94a3b8; cursor:default;">⏳ Pendente aprovação</a>
+        </div>
+      </div>
+    </div>
+
+    <div class="callout callout-warn">
+      <strong>Instrução para edição dos designs</strong>
+      O logo WHITE ZAP deve ficar posicionado na extremidade da peça (canto inferior direito ou superior esquerdo), pequeno e discreto — apenas como identificador de marca. O foco visual deve ser o texto e a mensagem principal.
+    </div>
+
+    <!-- OKRs -->
+    <h2><span class="section-icon">📈</span> OKRs e Métricas</h2>
+
+    <h3>Objetivo 1 — Geração de Leads</h3>
+    <table>
+      <thead>
+        <tr>
+          <th>KPI</th>
+          <th>Meta Semana 1</th>
+          <th>Meta Semana 2</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Cliques no link</td>
+          <td class="kpi-meta">150</td>
+          <td class="kpi-meta">250</td>
+        </tr>
+        <tr>
+          <td>Taxa de abertura da mensagem</td>
+          <td class="kpi-meta">≥ 60%</td>
+          <td class="kpi-meta">≥ 55%</td>
+        </tr>
+        <tr>
+          <td>CTR (clique / entregues)</td>
+          <td class="kpi-meta">≥ 8%</td>
+          <td class="kpi-meta">≥ 10%</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h3>Objetivo 2 — Ativação (Trial Gratuito)</h3>
+    <table>
+      <thead>
+        <tr>
+          <th>KPI</th>
+          <th>Meta Total (2 semanas)</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Cadastros no trial</td>
+          <td class="kpi-meta">80</td>
+        </tr>
+        <tr>
+          <td>Taxa de conversão (clique → cadastro)</td>
+          <td class="kpi-meta">≥ 25%</td>
+        </tr>
+        <tr>
+          <td>Agentes criados no trial</td>
+          <td class="kpi-meta">≥ 50</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h3>Objetivo 3 — Engajamento dos Trials</h3>
+    <table>
+      <thead>
+        <tr>
+          <th>KPI</th>
+          <th>Meta</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Trials que conectaram WhatsApp</td>
+          <td class="kpi-meta">≥ 60%</td>
+        </tr>
+        <tr>
+          <td>Trials ativos após 7 dias</td>
+          <td class="kpi-meta">≥ 40%</td>
+        </tr>
+        <tr>
+          <td>NPS da semana 2</td>
+          <td class="kpi-meta">≥ 8.0</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h3>Critério de Sucesso</h3>
+    <table>
+      <thead>
+        <tr><th>Nível</th><th>Critério</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>🟡 Mínimo viável</td>
+          <td class="kpi-min">40 cadastros + 20 agentes ativos</td>
+        </tr>
+        <tr>
+          <td>🔵 Meta</td>
+          <td class="kpi-meta">80 cadastros + 40% retorno semana 2</td>
+        </tr>
+        <tr>
+          <td>🟢 Stretch goal</td>
+          <td class="kpi-stretch">120 cadastros + 1 conversão paga</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <!-- ALERTAS -->
+    <h2><span class="section-icon">⚠️</span> Sinais de Alerta</h2>
+    <p>Se qualquer um dos indicadores abaixo for atingido, acionar o Diego imediatamente para ajuste de estratégia.</p>
+    <div class="alert-grid">
+      <div class="alert-card">
+        <div class="alert-icon">📉</div>
+        <h4>CTR abaixo de 3% no Dia 3</h4>
+        <p>Revisar criativo. Testar nova arte ou ângulo de mensagem.</p>
+      </div>
+      <div class="alert-card">
+        <div class="alert-icon">👁️</div>
+        <h4>Abertura abaixo de 40%</h4>
+        <p>Revisar horário de disparo. Testar manhã cedo (7h–8h) ou fim de tarde (18h–19h).</p>
+      </div>
+      <div class="alert-card">
+        <div class="alert-icon">📋</div>
+        <h4>Menos de 20 cadastros na semana 1</h4>
+        <p>Reforçar com tráfego pago e revisar copy do CTA.</p>
+      </div>
+    </div>
+
+    <!-- PRÓXIMOS PASSOS -->
+    <h2><span class="section-icon">🚀</span> Próximos Passos</h2>
+    <div class="callout callout-green">
+      <strong>Checklist para iniciar a campanha</strong>
+    </div>
+
+    <table>
+      <thead>
+        <tr><th>#</th><th>Ação</th><th>Responsável</th><th>Status</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>1</td>
+          <td>Editar flyers no Canva (logo no canto + cores da marca)</td>
+          <td>Luna</td>
+          <td>🟡 Em andamento</td>
+        </tr>
+        <tr>
+          <td>2</td>
+          <td>Aprovar designs finais e criar versões Story e Post</td>
+          <td>Luna + Aprovação</td>
+          <td>⏳ Aguardando</td>
+        </tr>
+        <tr>
+          <td>3</td>
+          <td>Configurar Brand Kit no Canva (cores, fontes, logo)</td>
+          <td>Luna</td>
+          <td>⏳ Aguardando</td>
+        </tr>
+        <tr>
+          <td>4</td>
+          <td>Montar lista de contatos para disparo Dia 1</td>
+          <td>Diego</td>
+          <td>⏳ Aguardando</td>
+        </tr>
+        <tr>
+          <td>5</td>
+          <td>Configurar campanha no Meta Ads (semana 1)</td>
+          <td>Diego</td>
+          <td>⏳ Aguardando</td>
+        </tr>
+        <tr>
+          <td>6</td>
+          <td>Executar Disparo Dia 1</td>
+          <td>Equipe</td>
+          <td>⏳ Aguardando</td>
+        </tr>
+        <tr>
+          <td>7</td>
+          <td>Ana monitora métricas diariamente e reporta ao Max</td>
+          <td>Ana</td>
+          <td>⏳ Aguardando</td>
+        </tr>
+        <tr>
+          <td>8</td>
+          <td>Carol ativa todos os trials cadastrados em até 24h</td>
+          <td>Carol</td>
+          <td>⏳ Aguardando</td>
+        </tr>
+      </tbody>
+    </table>
+
+  </div>
+
+  <!-- FOOTER -->
+  <div class="footer">
+    <div><strong>WHITE ZAP</strong> — Guia de Campanha WhatsApp</div>
+    <div>Gerado pela Equipe de Marketing IA · atendente.whiteerp.com</div>
+  </div>
+
+</div>
+</body>
+</html>

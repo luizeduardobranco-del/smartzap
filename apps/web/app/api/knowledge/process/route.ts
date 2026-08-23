@@ -65,7 +65,7 @@ export async function POST(req: NextRequest) {
     } else if (source.type === 'url') {
       // Fetch URL content
       const pageRes = await fetch(metadata.url, {
-        headers: { 'User-Agent': 'Mozilla/5.0 (compatible; WhiteZapBot/1.0)' },
+        headers: { 'User-Agent': 'Mozilla/5.0 (compatible; WhiteChatBot/1.0)' },
         signal: AbortSignal.timeout(10000),
       })
       const html = await pageRes.text()

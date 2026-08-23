@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback, useRef } from 'react'
-import { Smartphone, Loader2, CheckCircle, XCircle, RefreshCw, Trash2, Wifi, WifiOff } from 'lucide-react'
+import { Smartphone, Loader2, CheckCircle, XCircle, RefreshCw, Wifi, WifiOff, Key, QrCode } from 'lucide-react'
 import { trpc } from '@/lib/trpc/client'
 
 type ConnectionState = 'idle' | 'creating' | 'qr' | 'connected' | 'error'
@@ -70,13 +70,15 @@ export function WhatsAppConnect({ agentId }: { agentId: string }) {
   )
 }
 
-// ─── Sub-components ────────────────────────────────────────────────────────
-
 function StartConnect({ agentId, onStarted }: { agentId: string; onStarted: () => void }) {
+  const [mode, setMode] = useState<'choose' | 'qr' | 'official'>('choose')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [phoneNumberId, setPhoneNumberId] = useState('')
+  const [accessToken, setAccessToken] = useState('')
 
-  const handleConnect = async () => {
+  // QR Code (Evolution) connect
+  const handleConnectQR = async () => {
     setLoading(true)
     setError(null)
     try {
@@ -94,27 +96,153 @@ function StartConnect({ agentId, onStarted }: { agentId: string; onStarted: () =
     }
   }
 
-  return (
-    <div className="flex flex-col items-center rounded-xl border-2 border-dashed py-10 text-center">
-      <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-green-50">
-        <Smartphone className="h-7 w-7 text-green-600" />
+  // Official Meta API connect
+  const handleConnectOfficial = async () => {
+    if (!phoneNumberId.trim() || !accessToken.trim()) {
+      setError('Preencha o Phone Number ID e o Access Token.')
+      return
+    }
+    setLoading(true)
+    setError(null)
+    try {
+      const res = await fetch('/api/channels/whatsapp/connect-official', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ agentId, phoneNumberId: phoneNumberId.trim(), accessToken: accessToken.trim() }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error ?? 'Erro ao conectar')
+      onStarted()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Erro desconhecido')
+      setLoading(false)
+    }
+  }
+
+  // ── Choose mode ──────────────────────────────────────────────────────────
+  if (mode === 'choose') {
+    return (
+      <div className="space-y-3">
+        <p className="text-sm text-muted-foreground">Escolha como conectar o WhatsApp:</p>
+        <div className="grid grid-cols-2 gap-3">
+          <button
+            onClick={() => setMode('qr')}
+            className="flex flex-col items-center gap-2 rounded-xl border-2 border-dashed p-5 text-center hover:border-green-400 hover:bg-green-50 transition-colors"
+          >
+            <div className="flex h-11 w-11 items-center justify-center rounded-full bg-green-100">
+              <QrCode className="h-6 w-6 text-green-600" />
+            </div>
+            <div>
+              <p className="font-medium text-sm">Via QR Code</p>
+              <p className="text-xs text-muted-foreground mt-0.5">Qualquer número WhatsApp</p>
+            </div>
+          </button>
+          <button
+            onClick={() => setMode('official')}
+            className="flex flex-col items-center gap-2 rounded-xl border-2 border-dashed p-5 text-center hover:border-blue-400 hover:bg-blue-50 transition-colors"
+          >
+            <div className="flex h-11 w-11 items-center justify-center rounded-full bg-blue-100">
+              <Key className="h-6 w-6 text-blue-600" />
+            </div>
+            <div>
+              <p className="font-medium text-sm">API Oficial Meta</p>
+              <p className="text-xs text-muted-foreground mt-0.5">WhatsApp Business API</p>
+            </div>
+          </button>
+        </div>
       </div>
-      <h3 className="mb-1 font-semibold">Conectar WhatsApp</h3>
-      <p className="mb-6 max-w-xs text-sm text-muted-foreground">
-        Conecte um número de WhatsApp para que o agente possa atender seus clientes.
-      </p>
+    )
+  }
+
+  // ── QR Code mode ─────────────────────────────────────────────────────────
+  if (mode === 'qr') {
+    return (
+      <div className="flex flex-col items-center rounded-xl border-2 border-dashed py-8 text-center">
+        <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-green-50">
+          <QrCode className="h-6 w-6 text-green-600" />
+        </div>
+        <h3 className="mb-1 font-semibold">Conectar via QR Code</h3>
+        <p className="mb-5 max-w-xs text-sm text-muted-foreground">
+          Funciona com qualquer número de WhatsApp. Basta escanear o QR code.
+        </p>
+        {error && (
+          <p className="mb-3 flex items-center gap-1.5 text-sm text-red-500">
+            <XCircle className="h-4 w-4" /> {error}
+          </p>
+        )}
+        <div className="flex gap-2">
+          <button
+            onClick={() => { setMode('choose'); setError(null) }}
+            className="rounded-lg border px-4 py-2 text-sm font-medium hover:bg-muted"
+          >
+            Voltar
+          </button>
+          <button
+            onClick={handleConnectQR}
+            disabled={loading}
+            className="flex items-center gap-2 rounded-lg bg-green-600 px-5 py-2 text-sm font-medium text-white hover:bg-green-700 disabled:opacity-60"
+          >
+            {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Smartphone className="h-4 w-4" />}
+            {loading ? 'Preparando...' : 'Gerar QR Code'}
+          </button>
+        </div>
+      </div>
+    )
+  }
+
+  // ── Official API mode ────────────────────────────────────────────────────
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center gap-2">
+        <button onClick={() => { setMode('choose'); setError(null) }} className="text-sm text-muted-foreground hover:text-foreground">
+          ← Voltar
+        </button>
+        <span className="text-sm font-medium">API Oficial Meta (WhatsApp Business)</span>
+      </div>
+
+      <div className="rounded-lg border bg-blue-50 p-3 text-xs text-blue-700 space-y-1">
+        <p className="font-medium">Onde encontrar as credenciais:</p>
+        <p>1. Acesse <strong>developers.facebook.com</strong> → Seu App → WhatsApp → API Setup</p>
+        <p>2. Copie o <strong>Phone Number ID</strong> e gere um <strong>System User Token</strong> permanente</p>
+        <p>3. Configure o webhook apontando para: <code className="bg-blue-100 px-1 rounded">atendente.whiteerp.com/api/webhooks/whatsapp</code></p>
+      </div>
+
+      <div className="space-y-3">
+        <div>
+          <label className="mb-1 block text-sm font-medium">Phone Number ID</label>
+          <input
+            type="text"
+            value={phoneNumberId}
+            onChange={(e) => setPhoneNumberId(e.target.value)}
+            placeholder="Ex: 123456789012345"
+            className="w-full rounded-lg border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
+        </div>
+        <div>
+          <label className="mb-1 block text-sm font-medium">Access Token</label>
+          <input
+            type="password"
+            value={accessToken}
+            onChange={(e) => setAccessToken(e.target.value)}
+            placeholder="EAAxxxxxxxxxxxxxxx..."
+            className="w-full rounded-lg border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
+        </div>
+      </div>
+
       {error && (
-        <p className="mb-4 flex items-center gap-1.5 text-sm text-red-500">
+        <p className="flex items-center gap-1.5 text-sm text-red-500">
           <XCircle className="h-4 w-4" /> {error}
         </p>
       )}
+
       <button
-        onClick={handleConnect}
+        onClick={handleConnectOfficial}
         disabled={loading}
-        className="flex items-center gap-2 rounded-lg bg-green-600 px-6 py-2.5 text-sm font-medium text-white hover:bg-green-700 disabled:opacity-60"
+        className="flex w-full items-center justify-center gap-2 rounded-lg bg-blue-600 px-5 py-2.5 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-60"
       >
-        {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Smartphone className="h-4 w-4" />}
-        {loading ? 'Preparando...' : 'Conectar WhatsApp'}
+        {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Key className="h-4 w-4" />}
+        {loading ? 'Verificando credenciais...' : 'Conectar API Oficial'}
       </button>
     </div>
   )

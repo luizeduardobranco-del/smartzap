@@ -1,7 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
-import { EvolutionWhatsAppAdapter } from '@zapagent/channel-adapters'
+import { EvolutionWhatsAppAdapter, MetaCloudWhatsAppAdapter } from '@zapagent/channel-adapters'
 import { runAgent } from '@zapagent/ai-engine'
+import { garagemEnabled, handleGaragemNfImage, handleGaragemNfText } from '@/lib/garagem-nf'
+import { grupoNoEscopo, transcreverAudioGrupo, classificarImagemGrupo, logGrupoGaragem } from '@/lib/garagem-grupo'
+import { grupoClienteNoEscopo, interpretarPedido, enviarPedidoGrupo, destinoPropostaJid, respostaConfirmacao } from '@/lib/garagem-pedido'
+import { grupoAbastecimentoNoEscopo, lerImagemAbastecimento, enviarAbastecimentoGrupo, statusAbastecimentoGrupo, marcarTanqueAbast } from '@/lib/abastecimento-grupo'
+import { findOrCreateOpenConversation } from '@/lib/conversations'
 
 function getSupabase() {
   return createClient(
@@ -10,7 +15,8 @@ function getSupabase() {
   )
 }
 
-const parseAdapter = new EvolutionWhatsAppAdapter('', '', '')
+const evolutionParseAdapter = new EvolutionWhatsAppAdapter('', '', '')
+const metaParseAdapter = new MetaCloudWhatsAppAdapter('', '')
 
 export async function POST(request: NextRequest) {
   const payload = await request.json()
@@ -22,17 +28,40 @@ export async function POST(request: NextRequest) {
   return NextResponse.json({ ok: true })
 }
 
+// ── Meta Cloud API webhook verification (GET) ─────────────────────────────────
+export async function GET(request: NextRequest) {
+  const { searchParams } = new URL(request.url)
+  const mode = searchParams.get('hub.mode')
+  const token = searchParams.get('hub.verify_token')
+  const challenge = searchParams.get('hub.challenge')
+
+  if (mode === 'subscribe' && token === (process.env.META_WEBHOOK_VERIFY_TOKEN ?? 'whitezap')) {
+    return new Response(challenge ?? '', { status: 200 })
+  }
+  return new Response('Forbidden', { status: 403 })
+}
+
 async function handleWebhook(payload: unknown) {
   const p = payload as Record<string, unknown>
+
+  // ── Detect provider: Meta Cloud API vs Evolution ───────────────────────────
+  const isMetaCloud = p?.object === 'whatsapp_business_account'
+
+  if (isMetaCloud) {
+    await handleMetaWebhook(payload)
+    return
+  }
+
+  // ── Evolution flow (existing) ──────────────────────────────────────────────
   console.log('[webhook] event:', p?.event, 'instance:', p?.instance)
 
-  // ── CONNECTION_UPDATE: track channel connectivity ──────────────────────────
+  // CONNECTION_UPDATE: track channel connectivity
   if (p?.event === 'connection.update' || p?.event === 'CONNECTION_UPDATE') {
     await handleConnectionUpdate(p)
     return
   }
 
-  const msg = parseAdapter.parseWebhook(payload)
+  const msg = evolutionParseAdapter.parseWebhook(payload)
   if (!msg) {
     console.log('[webhook] parseWebhook returned null — skipping')
     return
@@ -77,7 +106,7 @@ async function handleWebhook(payload: unknown) {
   // 2. Check credits
   const { data: org } = await supabase
     .from('organizations')
-    .select('credits_balance, settings')
+    .select('id, slug, credits_balance, settings')
     .eq('id', channel.organization_id)
     .single()
 
@@ -87,6 +116,190 @@ async function handleWebhook(payload: unknown) {
   }
 
   console.log('[webhook] credits ok:', org.credits_balance)
+
+  // 2b. Garagem — ESCUTA DE GRUPO (modo teste): captura tudo e registra, sem responder.
+  // Só para a org da garagem; outras orgs continuam ignorando mensagens de grupo.
+  if (msg.isGroup) {
+    // Robô de ABASTECIMENTO — grupo dedicado: lê placa/tacógrafo/bomba/NF e grava no rotograma.
+    if (garagemEnabled(org) && grupoAbastecimentoNoEscopo(msg.groupJid)) {
+      try {
+        const openaiKeyA = process.env.OPENAI_API_KEY
+        // Motorista responde CHEIO / PARCIAL → marca o último abastecimento dele.
+        const txt = (msg.text ?? '').trim().toLowerCase()
+        if (msg.contentType === 'text' && /^(parcial|tanque parcial|cheio|tanque cheio)$/.test(txt)) {
+          const out = await marcarTanqueAbast(msg.senderExternalId, /cheio/.test(txt))
+          if (out?.reply && msg.groupJid) {
+            const adp = new EvolutionWhatsAppAdapter(process.env.EVOLUTION_API_URL!, process.env.EVOLUTION_API_KEY!, msg.channelIdentifier)
+            await adp.sendMessage({ channelType: 'whatsapp', channelIdentifier: msg.channelIdentifier, recipientExternalId: msg.groupJid, contentType: 'text', text: out.reply })
+          }
+          return
+        }
+        if (msg.contentType === 'image' && openaiKeyA) {
+          const media = await fetchEvolutionMedia(msg.externalId, msg.senderExternalId, msg.channelIdentifier, 'imageMessage', msg.groupJid)
+          if (media?.base64) {
+            const leitura = await lerImagemAbastecimento(openaiKeyA, media.base64, media.mimetype ?? null)
+            if (leitura && leitura.tipo !== 'outro') {
+              const out = await enviarAbastecimentoGrupo({
+                grupoJid: msg.groupJid, remetente: msg.senderExternalId, remetenteNome: msg.senderName ?? null,
+                leitura, fotoBase64: media.base64, fotoMime: media.mimetype ?? null,
+              })
+              if (out?.reply && msg.groupJid) {
+                const adp = new EvolutionWhatsAppAdapter(process.env.EVOLUTION_API_URL!, process.env.EVOLUTION_API_KEY!, msg.channelIdentifier)
+                const postar = (text: string) => adp.sendMessage({ channelType: 'whatsapp', channelIdentifier: msg.channelIdentifier, recipientExternalId: msg.groupJid!, contentType: 'text', text })
+                if (out.acao === 'gravado') {
+                  // Concluído: responde na hora.
+                  await postar(out.reply)
+                } else {
+                  // Incompleto/divergência: aguarda a JANELA DE SILÊNCIO e só cobra se
+                  // NENHUMA foto nova chegou nesse intervalo (evita várias mensagens em sequência).
+                  const ABAST_QUIET_MS = 25000
+                  const myTs = out.updatedAt ?? null
+                  const reply = out.reply
+                  const remetente = msg.senderExternalId
+                  await new Promise((r) => setTimeout(r, ABAST_QUIET_MS))
+                  const st = await statusAbastecimentoGrupo(remetente)
+                  const semNovidade = !!st && st.status === 'aberto' && !!st.updatedAt && !!myTs &&
+                    new Date(st.updatedAt).getTime() <= new Date(myTs).getTime()
+                  if (semNovidade) await postar(reply)
+                }
+              }
+            }
+          }
+        }
+      } catch (err) {
+        console.error('[webhook] abastecimento grupo erro:', err instanceof Error ? err.message : err)
+      }
+      return // grupo de abastecimento tratado
+    }
+
+    // Grupo do CLIENTE (ICONIC × Ativa): aqui o cliente PEDE carros por texto.
+    // O robô LÊ o pedido e publica a proposta no grupo INTERNO — nunca responde
+    // neste grupo, onde só entram as notificações de saída e os relatórios.
+    // Também não cai no fluxo do pátio (foto aqui não registra movimento).
+    if (garagemEnabled(org) && grupoClienteNoEscopo(msg.groupJid)) {
+      try {
+        const openaiKeyP = process.env.OPENAI_API_KEY
+        let frase: string | null = msg.contentType === 'text' ? (msg.text ?? null) : null
+        if (msg.contentType === 'audio' && openaiKeyP) {
+          const media = await fetchEvolutionMedia(msg.externalId, msg.senderExternalId, msg.channelIdentifier, 'audioMessage', msg.groupJid)
+          if (media?.base64) frase = await transcreverAudioGrupo(openaiKeyP, media.base64, media.mimetype ?? null)
+        }
+        const destino = destinoPropostaJid()
+        if (frase && openaiKeyP && destino) {
+          const intencao = await interpretarPedido(openaiKeyP, frase)
+          // Só o PEDIDO vem do cliente; confirmar/cancelar é decisão da Ativa,
+          // feita no grupo interno (senão o robô teria de responder aqui).
+          if (intencao?.acao === 'solicitar') {
+            const out = await enviarPedidoGrupo({
+              intencao, grupoJid: msg.groupJid,
+              remetente: msg.senderExternalId, remetenteNome: msg.senderName ?? null, texto: frase,
+            })
+            if (out?.reply) {
+              const adp = new EvolutionWhatsAppAdapter(process.env.EVOLUTION_API_URL!, process.env.EVOLUTION_API_KEY!, msg.channelIdentifier)
+              await adp.sendMessage({
+                channelType: 'whatsapp', channelIdentifier: msg.channelIdentifier,
+                recipientExternalId: destino, contentType: 'text',
+                text: `📣 *Pedido do cliente no grupo da ICONIC*\n_"${frase}"_${msg.senderName ? ` — ${msg.senderName}` : ''}\n\n${out.reply}`,
+              })
+              console.log('[webhook] garagem pedido publicado no grupo interno')
+            }
+          }
+        }
+      } catch (err) {
+        console.error('[webhook] garagem pedido grupo erro:', err instanceof Error ? err.message : err)
+      }
+      return // grupo do cliente tratado (sem resposta neste grupo)
+    }
+
+    if (!garagemEnabled(org) || !grupoNoEscopo(msg.groupJid)) return
+
+    // CONFIRMA / CANCELA de um pedido do cliente que está aguardando decisão.
+    // Reconhecido por texto exato (sem custo de IA) e tratado antes do fluxo de
+    // fotos — se não for uma dessas palavras, segue tudo como antes.
+    if (msg.contentType === 'text') {
+      const decisao = respostaConfirmacao(msg.text ?? null)
+      if (decisao) {
+        try {
+          const out = await enviarPedidoGrupo({
+            intencao: { acao: decisao, quantidade: null, produto: null, placas: [] },
+            grupoJid: msg.groupJid, remetente: msg.senderExternalId,
+            remetenteNome: msg.senderName ?? null, texto: msg.text ?? null,
+          })
+          if (out?.reply && msg.groupJid) {
+            const adp = new EvolutionWhatsAppAdapter(process.env.EVOLUTION_API_URL!, process.env.EVOLUTION_API_KEY!, msg.channelIdentifier)
+            await adp.sendMessage({
+              channelType: 'whatsapp', channelIdentifier: msg.channelIdentifier,
+              recipientExternalId: msg.groupJid, contentType: 'text', text: out.reply,
+            })
+            console.log('[webhook] garagem pedido:', decisao)
+            return
+          }
+        } catch (err) {
+          console.error('[webhook] garagem confirmacao erro:', err instanceof Error ? err.message : err)
+        }
+      }
+    }
+
+    try {
+      const openaiKeyG = process.env.OPENAI_API_KEY
+      // Legenda da foto (caption) — sinal de intenção "chegando/saindo" que o
+      // colaborador escreve junto da imagem. Preserva ANTES de sobrescrever conteudo.
+      const legenda: string | null = msg.contentType === 'image' ? (msg.text ?? null) : null
+      let conteudo: string | null = msg.text ?? null
+      let classificacao: string | null = null
+      let fotoBase64: string | null = null
+      let fotoMime: string | null = null
+      let replyNf: string | null = null   // resposta da leitura da NF no grupo
+
+      if (msg.contentType === 'audio' && openaiKeyG) {
+        const media = await fetchEvolutionMedia(msg.externalId, msg.senderExternalId, msg.channelIdentifier, 'audioMessage', msg.groupJid)
+        if (media?.base64) conteudo = await transcreverAudioGrupo(openaiKeyG, media.base64, media.mimetype ?? null)
+      } else if (msg.contentType === 'image' && openaiKeyG) {
+        const media = await fetchEvolutionMedia(msg.externalId, msg.senderExternalId, msg.channelIdentifier, 'imageMessage', msg.groupJid)
+        if (media?.base64) {
+          fotoBase64 = media.base64
+          fotoMime = media.mimetype ?? null
+          const cls = await classificarImagemGrupo(openaiKeyG, media.base64, fotoMime)
+          // 'falha_leitura' = o serviço de visão não respondeu (sem crédito,
+          // chave inválida, fora do ar). A foto é arquivada e o rotograma avisa
+          // no grupo — nunca mais fica em silêncio.
+          if (cls) { classificacao = cls.tipo; if (cls.tipo !== 'falha_leitura') conteudo = cls.resumo || conteudo }
+          // NOTA FISCAL no grupo: lê e REGISTRA (mesma via oficial do privado — chave por
+          // código de barras/IA → Meu Danfe) e devolve o resumo p/ publicar no grupo.
+          if (classificacao === 'nota_fiscal') {
+            const nfOut = await handleGaragemNfImage({ openaiKey: openaiKeyG, base64: media.base64, mime: fotoMime, telefone: msg.senderExternalId })
+            if (nfOut?.reply) replyNf = nfOut.reply
+          }
+        }
+      }
+
+      const outGrupo = await logGrupoGaragem({
+        grupoJid: msg.groupJid,
+        remetente: msg.senderExternalId,
+        remetenteNome: msg.senderName ?? null,
+        tipo: msg.contentType,
+        conteudo,
+        classificacao,
+        legenda,
+        fotoBase64,
+        fotoMime,
+      })
+      // Publica no grupo: confirmação de entrada/saída (placa) OU o resumo da NF lida.
+      const replyGrupo = outGrupo?.reply || replyNf
+      if (replyGrupo && msg.groupJid) {
+        const grpAdapter = new EvolutionWhatsAppAdapter(process.env.EVOLUTION_API_URL!, process.env.EVOLUTION_API_KEY!, msg.channelIdentifier)
+        await grpAdapter.sendMessage({
+          channelType: 'whatsapp', channelIdentifier: msg.channelIdentifier,
+          recipientExternalId: msg.groupJid, contentType: 'text', text: replyGrupo,
+        })
+        console.log('[webhook] garagem grupo: resposta publicada no grupo')
+      }
+      console.log('[webhook] garagem grupo capturado:', msg.groupJid, msg.contentType)
+    } catch (err) {
+      console.error('[webhook] garagem grupo erro:', err instanceof Error ? err.message : err)
+    }
+    return // MODO ESCUTA: nunca responde no grupo
+  }
 
   // 3. Upsert contact
   let contactId: string
@@ -122,39 +335,17 @@ async function handleWebhook(payload: unknown) {
   }
 
   // 4. Find or create open conversation
-  let conversationId: string
-  let conversationMode: string
-  const { data: existingConv } = await supabase
-    .from('conversations')
-    .select('id, mode')
-    .eq('contact_id', contactId)
-    .eq('channel_id', channel.id)
-    .eq('status', 'open')
-    .maybeSingle()
-
-  if (existingConv) {
-    conversationId = existingConv.id
-    conversationMode = existingConv.mode
-    console.log('[webhook] conversation existing:', conversationId, 'mode:', conversationMode)
-  } else {
-    const { data: newConv, error: convErr } = await supabase
-      .from('conversations')
-      .insert({
-        organization_id: channel.organization_id,
-        contact_id: contactId,
-        channel_id: channel.id,
-        agent_id: channel.agent_id,
-        status: 'open',
-        mode: 'ai',
-        last_message_at: new Date().toISOString(),
-      })
-      .select('id, mode')
-      .single()
-    if (!newConv) { console.error('[webhook] conversation insert failed:', convErr?.message); return }
-    conversationId = newConv.id
-    conversationMode = newConv.mode
-    console.log('[webhook] conversation created:', conversationId)
-  }
+  const conv = await findOrCreateOpenConversation(supabase, {
+    organizationId: channel.organization_id,
+    contactId,
+    channelId: channel.id,
+    agentId: channel.agent_id,
+    mode: 'ai',
+  })
+  if (!conv) { console.error('[webhook] conversation resolve failed'); return }
+  const conversationId = conv.id
+  const conversationMode = conv.mode
+  console.log('[webhook] conversation:', conversationId, 'mode:', conversationMode)
 
   // 5. Save incoming message
   const { data: savedMsg } = await supabase
@@ -177,14 +368,18 @@ async function handleWebhook(payload: unknown) {
     .update({ last_message_at: new Date().toISOString() })
     .eq('id', conversationId)
 
-  // 6. Skip AI if human mode or document
-  if (conversationMode === 'human') { console.log('[webhook] mode=human, skipping AI'); return }
+  // 6. Skip AI if human mode or document.
+  // EXCEÇÃO: em orgs da garagem, o fluxo de NF (agendamento) precisa rodar MESMO em modo
+  // humano — senão remetentes que foram notificados (garagem-alert coloca a conversa em
+  // 'human') nunca mais conseguem agendar pelo robô. Só o agente GERAL respeita o human.
+  const humanMode = conversationMode === 'human'
+  if (humanMode && !garagemEnabled(org)) { console.log('[webhook] mode=human, skipping AI'); return }
   if (!savedMsg) { console.log('[webhook] savedMsg null, skipping AI'); return }
   if (msg.contentType === 'document') { console.log('[webhook] document, skipping AI'); return }
 
-  // 6e. Debounce: wait 3s, then check if a newer message arrived from the same contact.
+  // 6e. Debounce: wait 8s, then check if a newer message arrived from the same contact.
   // This ensures consecutive messages are batched into a single AI response.
-  const DEBOUNCE_MS = 3000
+  const DEBOUNCE_MS = 8000
   await new Promise((r) => setTimeout(r, DEBOUNCE_MS))
 
   const { data: newerMsgs } = await supabase
@@ -192,7 +387,8 @@ async function handleWebhook(payload: unknown) {
     .select('id')
     .eq('conversation_id', conversationId)
     .eq('role', 'user')
-    .gt('created_at', savedMsg.created_at)
+    .gte('created_at', savedMsg.created_at) // gte para pegar mesmo milissegundo
+    .neq('id', savedMsg.id)                 // excluir a própria mensagem
     .limit(1)
 
   if (newerMsgs && newerMsgs.length > 0) {
@@ -220,6 +416,10 @@ async function handleWebhook(payload: unknown) {
     .gt('created_at', lastAssistant?.created_at ?? '1970-01-01')
     .order('created_at', { ascending: true })
 
+  // 6b. Handle audio — transcribe with Whisper
+  // Declare effectiveText early so the batching block below can override it
+  let effectiveText = msg.text
+
   const validPending = (pendingUserMsgs ?? []).filter((m) => m.content && m.content !== '[mídia]')
   if (validPending.length > 1) {
     // Multiple messages waiting — combine into single prompt
@@ -236,9 +436,6 @@ async function handleWebhook(payload: unknown) {
 
   // Credit cost: text=1, audio=3, image=10
   let creditCost = 1
-
-  // 6b. Handle audio — transcribe with Whisper
-  let effectiveText = msg.text
   if (msg.contentType === 'audio') {
     creditCost = 3
     if (!openaiKey) {
@@ -290,6 +487,55 @@ async function handleWebhook(payload: unknown) {
       console.warn('[webhook] image: no OpenAI key for vision, skipping AI')
       return
     }
+
+    // 6c-i. Garagem (Ativa Rio): se for foto de NF, registra no rotograma.
+    if (garagemEnabled(org)) {
+      try {
+        const nfMedia = await fetchEvolutionMedia(msg.externalId, msg.senderExternalId, msg.channelIdentifier, 'imageMessage')
+        if (nfMedia?.base64) {
+          const nf = await handleGaragemNfImage({
+            openaiKey,
+            base64: nfMedia.base64,
+            mime: nfMedia.mimetype ?? null,
+            telefone: msg.senderExternalId,
+            conversationId,
+          })
+          if (nf) {
+            await supabase.from('messages').insert({
+              conversation_id: conversationId,
+              organization_id: channel.organization_id,
+              role: 'assistant',
+              content: nf.reply,
+              content_type: 'text',
+              sender_type: 'agent',
+            })
+            await supabase.from('conversations').update({ last_message_at: new Date().toISOString() }).eq('id', conversationId)
+            const nfAdapter = new EvolutionWhatsAppAdapter(
+              process.env.EVOLUTION_API_URL!,
+              process.env.EVOLUTION_API_KEY!,
+              msg.channelIdentifier
+            )
+            await nfAdapter.sendMessage({
+              channelType: 'whatsapp',
+              channelIdentifier: msg.channelIdentifier,
+              recipientExternalId: msg.senderExternalId,
+              contentType: 'text',
+              text: nf.reply,
+            })
+            await supabase.from('organizations').update({ credits_balance: org.credits_balance - 10 }).eq('id', channel.organization_id)
+            console.log('[webhook] garagem NF registrada via rotograma (10 credits)')
+            return
+          }
+        }
+      } catch (err) {
+        console.error('[webhook] garagem NF image error:', err instanceof Error ? err.message : err)
+        // cai no fluxo de visão genérico abaixo
+      }
+    }
+
+    // Modo humano: só a garagem responde — não aciona o agente de visão genérico.
+    if (humanMode) { console.log('[webhook] mode=human — sem agente de visão genérico'); return }
+
     try {
       const { data: agentVision } = await supabase
         .from('agents')
@@ -379,6 +625,46 @@ async function handleWebhook(payload: unknown) {
   // Skip if still no processable text
   if (!effectiveText) { console.log('[webhook] no text content, skipping AI'); return }
 
+  // 6c-ii. Garagem (Ativa Rio): se houver uma NF aguardando confirmação deste
+  // telefone, o "SIM"/correção vai para o rotograma em vez do agente normal.
+  if (garagemEnabled(org)) {
+    try {
+      const nfText = await handleGaragemNfText({ telefone: msg.senderExternalId, texto: effectiveText })
+      if (nfText) {
+        await supabase.from('messages').insert({
+          conversation_id: conversationId,
+          organization_id: channel.organization_id,
+          role: 'assistant',
+          content: nfText.reply,
+          content_type: 'text',
+          sender_type: 'agent',
+        })
+        await supabase.from('conversations').update({ last_message_at: new Date().toISOString() }).eq('id', conversationId)
+        const nfAdapter = new EvolutionWhatsAppAdapter(
+          process.env.EVOLUTION_API_URL!,
+          process.env.EVOLUTION_API_KEY!,
+          msg.channelIdentifier
+        )
+        await nfAdapter.sendMessage({
+          channelType: 'whatsapp',
+          channelIdentifier: msg.channelIdentifier,
+          recipientExternalId: msg.senderExternalId,
+          contentType: 'text',
+          text: nfText.reply,
+        })
+        await supabase.from('organizations').update({ credits_balance: org.credits_balance - 1 }).eq('id', channel.organization_id)
+        console.log('[webhook] garagem NF confirmação tratada via rotograma')
+        return
+      }
+    } catch (err) {
+      console.error('[webhook] garagem NF text error:', err instanceof Error ? err.message : err)
+      // cai no fluxo normal do agente abaixo
+    }
+  }
+
+  // Modo humano: só a garagem responde — não roda automações nem o agente geral.
+  if (humanMode) { console.log('[webhook] mode=human — sem agente geral'); return }
+
   // 6d. Run automations
   const automationResult = await runAutomations({
     supabase,
@@ -387,7 +673,7 @@ async function handleWebhook(payload: unknown) {
     contactId,
     conversationId,
     messageText: effectiveText,
-    isFirstMessage: !existingConv,
+    isFirstMessage: conv.created,
     senderExternalId: msg.senderExternalId,
     channelIdentifier: msg.channelIdentifier,
     evolutionApiUrl: process.env.EVOLUTION_API_URL!,
@@ -603,6 +889,308 @@ async function handleWebhook(payload: unknown) {
       .eq('id', conversationId)
     console.log('[webhook] conversation switched to human mode')
   }
+}
+
+// ─── Meta Cloud API handler ───────────────────────────────────────────────────
+
+async function handleMetaWebhook(payload: unknown) {
+  const msg = metaParseAdapter.parseWebhook(payload)
+  if (!msg) {
+    console.log('[webhook/meta] no message parsed — likely a status update, skipping')
+    return
+  }
+
+  console.log('[webhook/meta] msg parsed:', {
+    phoneNumberId: msg.channelIdentifier,
+    from: msg.senderExternalId,
+    type: msg.contentType,
+    text: msg.text?.slice(0, 50),
+  })
+
+  const supabase = getSupabase()
+
+  // 1. Find channel by phoneNumberId in credentials
+  const { data: channelRows } = await supabase
+    .from('channels')
+    .select('id, organization_id, agent_id, status, credentials')
+    .eq('type', 'whatsapp')
+    .filter('credentials->>phoneNumberId', 'eq', msg.channelIdentifier)
+    .limit(1)
+
+  const channel = channelRows?.[0]
+  if (!channel) {
+    console.warn(`[webhook/meta] no channel found for phoneNumberId: ${msg.channelIdentifier}`)
+    return
+  }
+
+  const credentials = channel.credentials as { provider: string; phoneNumberId: string; accessToken: string }
+  const sendAdapter = new MetaCloudWhatsAppAdapter(credentials.phoneNumberId, credentials.accessToken)
+
+  // 2. Check credits
+  const { data: org } = await supabase
+    .from('organizations')
+    .select('credits_balance, settings')
+    .eq('id', channel.organization_id)
+    .single()
+
+  if (!org || org.credits_balance <= 0) {
+    console.warn(`[webhook/meta] no credits for org: ${channel.organization_id}`)
+    return
+  }
+
+  // 3. Upsert contact
+  let contactId: string
+  const { data: existingContact } = await supabase
+    .from('contacts')
+    .select('id, name')
+    .eq('organization_id', channel.organization_id)
+    .eq('channel_type', 'whatsapp')
+    .eq('external_id', msg.senderExternalId)
+    .maybeSingle()
+
+  if (existingContact) {
+    contactId = existingContact.id
+    if (msg.senderName && !existingContact.name) {
+      await supabase.from('contacts').update({ name: msg.senderName }).eq('id', contactId)
+    }
+  } else {
+    const { data: newContact, error: contactErr } = await supabase
+      .from('contacts')
+      .insert({
+        organization_id: channel.organization_id,
+        external_id: msg.senderExternalId,
+        channel_type: 'whatsapp',
+        name: msg.senderName ?? msg.senderExternalId,
+        phone: msg.senderExternalId,
+      })
+      .select('id')
+      .single()
+    if (!newContact) {
+      console.error('[webhook/meta] contact insert failed:', contactErr?.message)
+      return
+    }
+    contactId = newContact.id
+  }
+
+  // 4. Find or create open conversation
+  const conv = await findOrCreateOpenConversation(supabase, {
+    organizationId: channel.organization_id,
+    contactId,
+    channelId: channel.id,
+    agentId: channel.agent_id,
+    mode: 'ai',
+  })
+  if (!conv) {
+    console.error('[webhook/meta] conversation resolve failed')
+    return
+  }
+  const conversationId = conv.id
+  const conversationMode = conv.mode
+
+  // 5. Save incoming message
+  const { data: savedMsg } = await supabase
+    .from('messages')
+    .insert({
+      conversation_id: conversationId,
+      organization_id: channel.organization_id,
+      role: 'user',
+      content: msg.text ?? '[mídia]',
+      content_type: msg.contentType,
+      media_url: msg.mediaUrl ?? null,
+      sender_type: 'contact',
+      external_id: msg.externalId,
+    })
+    .select('id, created_at')
+    .single()
+
+  await supabase
+    .from('conversations')
+    .update({ last_message_at: new Date().toISOString() })
+    .eq('id', conversationId)
+
+  if (conversationMode === 'human') return
+  if (!savedMsg) return
+  if (msg.contentType === 'document') return
+
+  // 6. Debounce (8s)
+  await new Promise((r) => setTimeout(r, 8000))
+  const { data: newerMsgs } = await supabase
+    .from('messages')
+    .select('id')
+    .eq('conversation_id', conversationId)
+    .eq('role', 'user')
+    .gte('created_at', savedMsg.created_at)
+    .neq('id', savedMsg.id)
+    .limit(1)
+
+  if (newerMsgs && newerMsgs.length > 0) return
+
+  // Batch consecutive messages
+  const { data: lastAssistant } = await supabase
+    .from('messages')
+    .select('created_at')
+    .eq('conversation_id', conversationId)
+    .eq('role', 'assistant')
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+
+  const { data: pendingUserMsgs } = await supabase
+    .from('messages')
+    .select('content, content_type, created_at')
+    .eq('conversation_id', conversationId)
+    .eq('role', 'user')
+    .neq('content_type', 'document')
+    .gt('created_at', lastAssistant?.created_at ?? '1970-01-01')
+    .order('created_at', { ascending: true })
+
+  const orgSettings = org.settings as Record<string, Record<string, string>> | null
+  const aiKeys = orgSettings?.aiKeys ?? {}
+  const openaiKey = aiKeys.openaiApiKey || process.env.OPENAI_API_KEY
+
+  const validPending = (pendingUserMsgs ?? []).filter((m) => m.content && m.content !== '[mídia]')
+  let effectiveText = validPending.length > 1
+    ? validPending.map((m) => m.content).join('\n')
+    : msg.text
+
+  // Audio transcription via Meta media URL
+  if (msg.contentType === 'audio' && msg.mediaUrl?.startsWith('meta-media://')) {
+    const mediaId = msg.mediaUrl.replace('meta-media://', '')
+    try {
+      const urlRes = await fetch(`https://graph.facebook.com/v20.0/${mediaId}?fields=url&access_token=${credentials.accessToken}`)
+      const { url: audioUrl } = await urlRes.json()
+      const audioRes = await fetch(audioUrl, { headers: { Authorization: `Bearer ${credentials.accessToken}` } })
+      const audioBuffer = Buffer.from(await audioRes.arrayBuffer())
+      const fd = new FormData()
+      fd.append('file', new Blob([audioBuffer], { type: msg.mimeType ?? 'audio/ogg' }), 'audio.ogg')
+      fd.append('model', 'whisper-1')
+      fd.append('language', 'pt')
+      const tr = await fetch('https://api.openai.com/v1/audio/transcriptions', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${openaiKey}` },
+        body: fd,
+      })
+      if (tr.ok) {
+        const { text: transcribed } = await tr.json()
+        if (transcribed?.trim()) {
+          effectiveText = transcribed.trim()
+          await supabase.from('messages').update({ content: effectiveText }).eq('id', savedMsg.id)
+        }
+      }
+    } catch (err) {
+      console.warn('[webhook/meta] audio transcription failed:', err instanceof Error ? err.message : err)
+    }
+    if (!effectiveText) return
+  }
+
+  if (!effectiveText) return
+
+  // 7. Fetch agent + conversation history
+  const { data: agent } = await supabase
+    .from('agents')
+    .select('personality, ai_config, behavior_config')
+    .eq('id', channel.agent_id)
+    .single()
+  if (!agent) return
+
+  const { data: history } = await supabase
+    .from('messages')
+    .select('role, content')
+    .eq('conversation_id', conversationId)
+    .in('role', ['user', 'assistant'])
+    .order('created_at', { ascending: false })
+    .limit(10)
+
+  const conversationHistory = (history ?? [])
+    .reverse()
+    .filter((m) => m.content !== '[mídia]')
+    .slice(0, -1)
+    .map((m) => ({ role: m.role as 'user' | 'assistant', content: m.content }))
+
+  // 8. RAG context
+  let retrievedContext = ''
+  try {
+    if (openaiKey) {
+      const embedRes = await fetch('https://api.openai.com/v1/embeddings', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${openaiKey}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ model: 'text-embedding-3-small', input: effectiveText }),
+      })
+      if (embedRes.ok) {
+        const { data } = await embedRes.json()
+        const { data: chunks } = await supabase.rpc('match_knowledge_chunks', {
+          query_embedding: `[${data[0].embedding.join(',')}]`,
+          match_agent_id: channel.agent_id,
+          match_threshold: 0.5,
+          match_count: 8,
+        })
+        if (chunks?.length) {
+          retrievedContext = (chunks as { content: string }[]).map((c, i) => `[${i + 1}] ${c.content}`).join('\n\n')
+        }
+      }
+    }
+  } catch { /* RAG is optional */ }
+
+  // 9. Run AI
+  let aiResult
+  try {
+    aiResult = await runAgent({
+      personality: agent.personality,
+      aiConfig: agent.ai_config,
+      behaviorConfig: agent.behavior_config,
+      conversationHistory,
+      userMessage: effectiveText,
+      retrievedContext: retrievedContext || undefined,
+      env: {
+        openaiApiKey: aiKeys.openaiApiKey || process.env.OPENAI_API_KEY,
+        anthropicApiKey: aiKeys.anthropicApiKey || process.env.ANTHROPIC_API_KEY,
+        groqApiKey: aiKeys.groqApiKey || process.env.GROQ_API_KEY,
+      },
+    })
+  } catch (err) {
+    console.error('[webhook/meta] AI error:', err instanceof Error ? err.message : err)
+    const fallbackText = (agent.personality as any)?.fallbackMessage || 'Olá! Estou com uma instabilidade momentânea. Em breve retorno sua mensagem.'
+    try {
+      await sendAdapter.sendMessage({ channelType: 'whatsapp', channelIdentifier: msg.channelIdentifier, recipientExternalId: msg.senderExternalId, contentType: 'text', text: fallbackText })
+    } catch { /* ignore */ }
+    return
+  }
+
+  if (!aiResult?.content) return
+
+  // 10. Save + send response
+  await supabase.from('messages').insert({
+    conversation_id: conversationId,
+    organization_id: channel.organization_id,
+    role: 'assistant',
+    content: aiResult.content,
+    content_type: 'text',
+    sender_type: 'agent',
+    ai_model: aiResult.model,
+  })
+
+  await supabase.from('conversations').update({ last_message_at: new Date().toISOString() }).eq('id', conversationId)
+
+  await sendAdapter.sendMessage({
+    channelType: 'whatsapp',
+    channelIdentifier: msg.channelIdentifier,
+    recipientExternalId: msg.senderExternalId,
+    contentType: 'text',
+    text: aiResult.content,
+  })
+
+  // 11. Deduct credits
+  await supabase
+    .from('organizations')
+    .update({ credits_balance: org.credits_balance - 1 })
+    .eq('id', channel.organization_id)
+
+  // 12. Human handoff
+  if (aiResult.shouldHandoffToHuman) {
+    await supabase.from('conversations').update({ mode: 'human' }).eq('id', conversationId)
+  }
+
+  console.log('[webhook/meta] message processed and sent')
 }
 
 // ─── Connection state handler ─────────────────────────────────────────────────
@@ -888,9 +1476,14 @@ async function fetchEvolutionMedia(
   messageId: string,
   senderPhone: string,
   instanceName: string,
-  messageType: 'imageMessage' | 'audioMessage'
+  messageType: 'imageMessage' | 'audioMessage',
+  groupJid?: string
 ): Promise<{ base64: string; mimetype: string } | null> {
   try {
+    // Em grupo, a mídia está sob o remoteJid do GRUPO, com o participante (remetente).
+    const key = groupJid
+      ? { id: messageId, fromMe: false, remoteJid: groupJid, participant: `${senderPhone}@s.whatsapp.net` }
+      : { id: messageId, fromMe: false, remoteJid: `${senderPhone}@s.whatsapp.net` }
     const res = await fetch(
       `${process.env.EVOLUTION_API_URL}/chat/getBase64FromMediaMessage/${instanceName}`,
       {
@@ -899,12 +1492,7 @@ async function fetchEvolutionMedia(
           apikey: process.env.EVOLUTION_API_KEY!,
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          message: {
-            key: { id: messageId, fromMe: false, remoteJid: `${senderPhone}@s.whatsapp.net` },
-            messageType,
-          },
-        }),
+        body: JSON.stringify({ message: { key, messageType } }),
       }
     )
     if (!res.ok) {

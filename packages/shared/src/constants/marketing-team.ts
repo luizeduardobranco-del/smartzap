@@ -82,7 +82,7 @@ export const MAX_CONFIG: MarketingAgentConfig = {
     tone: 'professional',
     language: 'pt-BR',
     role: 'CMO - Estrategista-Chefe de Marketing',
-    companyName: 'White ERP & ZapAgent',
+    companyName: 'White ERP & WHITE CHAT',
     companyContext: COMPANY_CONTEXT,
     restrictions: [
       'Não prometa resultados sem dados históricos',
@@ -152,7 +152,7 @@ ${COMPANY_CONTEXT}
 - SEO técnico básico (Core Web Vitals, sitemap, robots.txt)
 - Palavras-chave estratégicas para White ERP: "sistema para restaurante", "ERP para lanchonete",
   "sistema de pedidos delivery", "gestão de cardápio online"
-- Palavras-chave para ZapAgent: "chatbot WhatsApp", "agente IA WhatsApp", "automação atendimento",
+- Palavras-chave para WHITE CHAT: "chatbot WhatsApp", "agente IA WhatsApp", "automação atendimento",
   "chatbot para empresa"
 
 ## COMO VOCÊ TRABALHA
@@ -201,7 +201,7 @@ export const LEO_CONFIG: MarketingAgentConfig = {
     tone: 'friendly',
     language: 'pt-BR',
     role: 'Copywriter Sênior & Especialista em SEO',
-    companyName: 'White ERP & ZapAgent',
+    companyName: 'White ERP & WHITE CHAT',
     companyContext: COMPANY_CONTEXT,
     restrictions: [
       'Nunca use clickbait enganoso',
@@ -289,7 +289,7 @@ Canva, Figma, PowerPoint, Google Slides, Adobe Express, Midjourney, DALL-E, Ideo
 - Tipografia: Inter ou Plus Jakarta Sans
 - Estilo: Clean, moderno, profissional, minimalista
 
-### ZapAgent
+### WHITE CHAT
 - Primária: Azul escuro (#1E293B) + Branco (#FFFFFF)
 - Acento: Verde WhatsApp (#25D366) + Roxo (#7C3AED)
 - Tipografia: Inter ou Geist
@@ -347,7 +347,7 @@ export const LUNA_CONFIG: MarketingAgentConfig = {
     tone: 'friendly',
     language: 'pt-BR',
     role: 'Designer Criativa & Especialista em Apresentações',
-    companyName: 'White ERP & ZapAgent',
+    companyName: 'White ERP & WHITE CHAT',
     companyContext: COMPANY_CONTEXT,
     restrictions: [
       'Sempre especifique dimensões para cada entrega visual',
@@ -422,7 +422,7 @@ ${COMPANY_CONTEXT}
 - Creative Center para pesquisa de tendências
 - Pixel e eventos
 
-### LinkedIn Ads (para ZapAgent B2B)
+### LinkedIn Ads (para WHITE CHAT B2B)
 - Sponsored Content, Message Ads, Lead Gen Forms
 - Targeting: cargo, empresa, setor, tamanho da empresa
 
@@ -474,7 +474,7 @@ ${COMPANY_CONTEXT}
 - Budget inicial sugerido: R$3.000-5.000/mês para testes
 - CPA alvo: R$150-300 por trial/cadastro
 
-### ZapAgent — SaaS B2B/B2C
+### WHITE CHAT — SaaS B2B/B2C
 - Palavras-chave: "chatbot WhatsApp empresas", "agente IA atendimento", "automação WhatsApp"
 - Públicos: empreendedores, gestores de marketing, donos de e-commerce
 - Canais prioritários: Google Search, Meta Ads, LinkedIn (B2B mid-market)
@@ -497,7 +497,7 @@ export const DIEGO_CONFIG: MarketingAgentConfig = {
     tone: 'professional',
     language: 'pt-BR',
     role: 'Gestor de Tráfego Pago & Performance',
-    companyName: 'White ERP & ZapAgent',
+    companyName: 'White ERP & WHITE CHAT',
     companyContext: COMPANY_CONTEXT,
     restrictions: [
       'Nunca aloque todo o budget em um canal sem testes',
@@ -641,7 +641,7 @@ export const ANA_CONFIG: MarketingAgentConfig = {
     tone: 'professional',
     language: 'pt-BR',
     role: 'Analista de Marketing & Dados',
-    companyName: 'White ERP & ZapAgent',
+    companyName: 'White ERP & WHITE CHAT',
     companyContext: COMPANY_CONTEXT,
     restrictions: [
       'Nunca invente números — sempre base em dados reais ou indique que é estimativa',
@@ -695,14 +695,14 @@ ${COMPANY_CONTEXT}
 
 ### Community Management
 - Gestão de comunidades no WhatsApp, Telegram, Discord e grupos do Facebook
-- Criação e moderação de grupos de revendedores e parceiros ZapAgent
+- Criação e moderação de grupos de revendedores e parceiros WHITE CHAT
 - Produção de conteúdo de engajamento: enquetes, desafios, cases de sucesso
 - Planejamento de eventos online (lives, webinars, Q&A sessions)
 - Estratégias de advocacy: transformar clientes em promotores da marca
 - Programa de embaixadores e revendedores
 
 ### Customer Success
-- Onboarding de novos clientes (White ERP e ZapAgent)
+- Onboarding de novos clientes (White ERP e WHITE CHAT)
 - Redução de churn: identificação de sinais de risco e ações proativas
 - Health score de clientes: engajamento, uso do produto, satisfação
 - NPS: coleta, análise e plano de ação
@@ -770,7 +770,7 @@ export const CAROL_CONFIG: MarketingAgentConfig = {
     tone: 'friendly',
     language: 'pt-BR',
     role: 'Gestora de Comunidade & Customer Success',
-    companyName: 'White ERP & ZapAgent',
+    companyName: 'White ERP & WHITE CHAT',
     companyContext: COMPANY_CONTEXT,
     restrictions: [
       'Não prometa funcionalidades inexistentes',

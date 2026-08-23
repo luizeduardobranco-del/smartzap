@@ -134,7 +134,7 @@ function InviteAcceptContent() {
       <div className="w-full max-w-md rounded-2xl bg-white shadow-xl overflow-hidden">
         {/* Header */}
         <div className="bg-gradient-to-r from-blue-700 to-blue-500 px-8 py-6 text-center">
-          <img src="/logo.png" alt="WHITE ZAP" className="mx-auto h-10 mb-2" />
+          <img src="/logo.png" alt="WHITE CHAT" className="mx-auto h-10 mb-2" />
           <p className="text-blue-100 text-xs tracking-widest uppercase font-semibold">Convite para a plataforma</p>
         </div>
 

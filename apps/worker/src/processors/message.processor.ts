@@ -13,8 +13,9 @@ import {
 import { runAgent } from '@zapagent/ai-engine'
 import { calculateCredits } from '@zapagent/shared'
 import type { AIModelId } from '@zapagent/shared'
-import { EvolutionWhatsAppAdapter } from '@zapagent/channel-adapters'
+import { EvolutionWhatsAppAdapter, MetaCloudWhatsAppAdapter } from '@zapagent/channel-adapters'
 import type { MessageJobData } from '../queues/message.queue'
+import { dispatchMatchingAutomations } from './automation.processor'
 
 const MAX_HISTORY_MESSAGES = 20
 
@@ -159,6 +160,42 @@ export async function processMessage(job: Job<MessageJobData>, db: Database): Pr
       .update(conversations)
       .set({ mode: 'human' })
       .where(eq(conversations.id, conversationId))
+  }
+
+  // 10. Dispatch matching automations (keyword, first_message, off_hours, etc.)
+  const isFirstMessage = conversationHistory.length === 0
+  const recipientPhone = channel.settings?.recipientPhone as string | undefined
+    ?? job.data.userMessageContent // fallback — será sobrescrito abaixo
+
+  // Get external contact phone from conversation
+  const [convRow] = await db
+    .select({ externalContactId: conversations.contactId })
+    .from(conversations)
+    .where(eq(conversations.id, conversationId))
+    .limit(1)
+
+  const contactPhone = await getContactPhone(db, convRow?.externalContactId ?? '')
+
+  await dispatchMatchingAutomations(db, {
+    organizationId,
+    conversationId,
+    contactId: conv?.contactId ?? undefined,
+    channelId,
+    recipientPhone: contactPhone,
+    messageContent: userMessageContent,
+    isFirstMessage,
+  })
+}
+
+async function getContactPhone(db: Database, contactId: string): Promise<string> {
+  if (!contactId) return ''
+  try {
+    const result = await db.execute(sql`
+      SELECT phone FROM contacts WHERE id = ${contactId} LIMIT 1
+    `)
+    return (result.rows[0] as Record<string, unknown>)?.phone as string ?? ''
+  } catch {
+    return ''
   }
 }
 
@@ -308,24 +345,33 @@ async function sendWhatsAppResponse(
   channel: { credentials: unknown; config: unknown },
   text: string
 ): Promise<void> {
-  const credentials = channel.credentials as {
-    evolutionApiUrl: string
-    instanceName: string
-    apiKey: string
-    phoneNumber: string
-  }
-  const config = channel.config as { phoneNumber?: string }
+  const credentials = channel.credentials as Record<string, string>
+  const config = channel.config as { phoneNumber?: string; phone?: string }
 
+  // Route to correct adapter based on provider
+  if (credentials.provider === 'meta') {
+    const adapter = new MetaCloudWhatsAppAdapter(credentials.phoneNumberId, credentials.accessToken)
+    await adapter.sendMessage({
+      channelType: 'whatsapp',
+      channelIdentifier: credentials.phoneNumberId,
+      recipientExternalId: config.phone ?? config.phoneNumber ?? '',
+      contentType: 'text',
+      text,
+    })
+    return
+  }
+
+  // Default: Evolution (provider = 'evolution' or legacy without provider field)
   const adapter = new EvolutionWhatsAppAdapter(
-    credentials.evolutionApiUrl,
-    credentials.apiKey,
+    process.env.EVOLUTION_API_URL!,
+    process.env.EVOLUTION_API_KEY!,
     credentials.instanceName
   )
 
   await adapter.sendMessage({
     channelType: 'whatsapp',
     channelIdentifier: credentials.instanceName,
-    recipientExternalId: config.phoneNumber ?? credentials.phoneNumber,
+    recipientExternalId: config.phone ?? config.phoneNumber ?? credentials.phoneNumber,
     contentType: 'text',
     text,
   })

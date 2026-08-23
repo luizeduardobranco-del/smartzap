@@ -299,7 +299,7 @@ export function FunnelHelpModal({ onClose }: Props) {
 
         {/* Footer */}
         <div className="border-t bg-slate-50 px-6 py-3 flex items-center justify-between">
-          <p className="text-xs text-slate-400">Dúvidas? Entre em contato com o suporte White Zap.</p>
+          <p className="text-xs text-slate-400">Dúvidas? Entre em contato com o suporte White Chat.</p>
           <button
             onClick={onClose}
             className="rounded-lg bg-blue-600 px-4 py-2 text-xs font-semibold text-white hover:bg-blue-700 transition-colors"

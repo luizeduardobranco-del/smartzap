@@ -84,7 +84,7 @@ export function SettingsClient({ admins }: Props) {
               <h2 className="font-semibold">Informações da plataforma</h2>
             </div>
             <div className="space-y-3">
-              <InfoRow label="Nome da plataforma" value="White Zap" />
+              <InfoRow label="Nome da plataforma" value="White Chat" />
               <InfoRow label="URL do sistema" value="atendente.whiteerp.com" />
               <InfoRow label="Versão" value="1.0.0" />
               <InfoRow label="Ambiente" value={process.env.NODE_ENV === 'production' ? 'Produção' : 'Desenvolvimento'} />

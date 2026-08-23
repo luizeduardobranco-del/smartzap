@@ -8,7 +8,7 @@ const nextConfig = {
     ],
   },
   experimental: {
-    serverComponentsExternalPackages: ['@node-rs/argon2', 'tiktoken'],
+    serverComponentsExternalPackages: ['@node-rs/argon2', 'tiktoken', 'jimp', '@zxing/library'],
   },
 }
 

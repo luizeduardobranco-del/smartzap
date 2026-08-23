@@ -852,11 +852,31 @@ function InlineConversation({ contactId, contactName, onBack, onClose }: {
   contactId: string; contactName: string; onBack: () => void; onClose: () => void
 }) {
   const bottomRef = useRef<HTMLDivElement>(null)
+  const utils = trpc.useUtils()
+  const [text, setText] = useState('')
 
   const { data, isLoading } = trpc.conversations.getContactThread.useQuery(
     { contactId },
-    { refetchInterval: 10000 }
+    { refetchInterval: 5000 }
   )
+
+  // Find the most recent open conversation
+  const activeConv = (data?.conversations ?? [])
+    .filter((c: any) => c.status === 'open')
+    .sort((a: any, b: any) => new Date(b.last_message_at ?? b.created_at).getTime() - new Date(a.last_message_at ?? a.created_at).getTime())[0] as any | undefined
+
+  const conversationId = activeConv?.id as string | undefined
+  const isHumanMode = activeConv?.mode === 'human'
+
+  const setMode = trpc.conversations.setMode.useMutation({
+    onSuccess: () => utils.conversations.getContactThread.invalidate({ contactId }),
+  })
+  const sendMessage = trpc.conversations.sendMessage.useMutation({
+    onSuccess: () => {
+      setText('')
+      utils.conversations.getContactThread.invalidate({ contactId })
+    },
+  })
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -870,10 +890,16 @@ function InlineConversation({ contactId, contactName, onBack, onClose }: {
     })
   }
 
+  function handleSend() {
+    if (!text.trim() || !conversationId) return
+    sendMessage.mutate({ conversationId, text: text.trim() })
+  }
+
   let lastDate = ''
 
   return (
     <div className="flex flex-col h-full">
+      {/* Header */}
       <div className="flex items-center gap-3 border-b px-4 py-3 shrink-0">
         <button onClick={onBack} className="rounded-lg p-1.5 hover:bg-slate-100">
           <ArrowLeft className="h-4 w-4 text-slate-500" />
@@ -884,14 +910,36 @@ function InlineConversation({ contactId, contactName, onBack, onClose }: {
         <div className="flex-1 min-w-0">
           <p className="text-sm font-semibold truncate">{contactName}</p>
           <p className="text-xs text-slate-400">
-            {data?.conversations.length ?? 0} conversa{(data?.conversations.length ?? 0) !== 1 ? 's' : ''}
+            {isHumanMode ? '👤 Modo humano' : '🤖 Modo IA'} · {data?.conversations.length ?? 0} conversa{(data?.conversations.length ?? 0) !== 1 ? 's' : ''}
           </p>
         </div>
+        {/* Assumir / Devolver botão */}
+        {conversationId && (
+          <button
+            onClick={() => setMode.mutate({ id: conversationId, mode: isHumanMode ? 'ai' : 'human' })}
+            disabled={setMode.isPending}
+            title={isHumanMode ? 'Devolver para IA' : 'Assumir atendimento'}
+            className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors disabled:opacity-50 ${
+              isHumanMode
+                ? 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                : 'bg-primary text-white hover:bg-primary/90'
+            }`}
+          >
+            {setMode.isPending ? (
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            ) : isHumanMode ? (
+              <><Bot className="h-3.5 w-3.5" />Devolver IA</>
+            ) : (
+              <><UserCheck className="h-3.5 w-3.5" />Assumir</>
+            )}
+          </button>
+        )}
         <button onClick={onClose} className="rounded-lg p-1.5 hover:bg-slate-100">
           <X className="h-4 w-4 text-slate-500" />
         </button>
       </div>
 
+      {/* Messages */}
       <div className="flex-1 overflow-y-auto p-4 space-y-1">
         {isLoading && (
           <div className="flex items-center justify-center py-16">
@@ -942,6 +990,38 @@ function InlineConversation({ contactId, contactName, onBack, onClose }: {
         })}
         <div ref={bottomRef} />
       </div>
+
+      {/* Input — só aparece no modo humano */}
+      {isHumanMode && conversationId && (
+        <div className="border-t px-3 py-2 shrink-0">
+          <div className="flex gap-2">
+            <textarea
+              value={text}
+              onChange={(e) => setText(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend() } }}
+              placeholder="Digite sua mensagem... (Enter para enviar)"
+              rows={2}
+              className="flex-1 resize-none rounded-xl border px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/30"
+            />
+            <button
+              onClick={handleSend}
+              disabled={!text.trim() || sendMessage.isPending}
+              className="self-end rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-white hover:bg-primary/90 disabled:opacity-40 transition-colors"
+            >
+              {sendMessage.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Enviar'}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Aviso quando modo IA */}
+      {!isHumanMode && conversationId && (
+        <div className="border-t px-4 py-2 shrink-0 bg-slate-50">
+          <p className="text-center text-xs text-slate-400">
+            Clique em <span className="font-semibold text-primary">Assumir</span> para enviar mensagens
+          </p>
+        </div>
+      )}
     </div>
   )
 }

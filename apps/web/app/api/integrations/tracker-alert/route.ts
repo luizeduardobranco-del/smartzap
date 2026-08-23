@@ -16,6 +16,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { EvolutionWhatsAppAdapter, MetaCloudWhatsAppAdapter } from '@zapagent/channel-adapters'
+import { findOrCreateOpenConversation } from '@/lib/conversations'
 
 function getSupabase() {
   return createClient(
@@ -34,9 +35,9 @@ export interface TrackerAlertPayload {
   trackerName: string
   /** Mensagem personalizada — se não fornecida, usa o template padrão */
   customMessage?: string
-  /** ID da organização WHITE ZAP — se omitido, tenta pelo slug */
+  /** ID da organização WHITE CHAT — se omitido, tenta pelo slug */
   organizationId?: string
-  /** Slug da organização WHITE ZAP (ex.: "luizmarques-88e7ec83") */
+  /** Slug da organização WHITE CHAT (ex.: "luizmarques-88e7ec83") */
   organizationSlug?: string
   /** Nome do agente que deve responder (resolvido dentro da organização) */
   agentName?: string
@@ -211,37 +212,17 @@ export async function POST(request: NextRequest) {
   }
 
   // ── 5. Cria ou encontra conversa aberta ──────────────────────────────────────
-  let conversationId: string
-  const { data: existingConv } = await supabase
-    .from('conversations')
-    .select('id')
-    .eq('contact_id', contactId)
-    .eq('channel_id', channel.id)
-    .eq('status', 'open')
-    .maybeSingle()
-
-  if (existingConv) {
-    conversationId = existingConv.id
-  } else {
-    const { data: newConv, error: convErr } = await supabase
-      .from('conversations')
-      .insert({
-        organization_id: organizationId,
-        contact_id: contactId,
-        channel_id: channel.id,
-        agent_id: agentId,
-        status: 'open',
-        mode: 'ai',
-        last_message_at: new Date().toISOString(),
-      })
-      .select('id')
-      .single()
-
-    if (!newConv) {
-      return NextResponse.json({ error: `Erro ao criar conversa: ${convErr?.message}` }, { status: 500 })
-    }
-    conversationId = newConv.id
+  const conv = await findOrCreateOpenConversation(supabase, {
+    organizationId,
+    contactId,
+    channelId: channel.id,
+    agentId,
+    mode: 'ai',
+  })
+  if (!conv) {
+    return NextResponse.json({ error: 'Erro ao criar conversa' }, { status: 500 })
   }
+  const conversationId = conv.id
 
   // ── 6. Monta e salva mensagem de alerta ──────────────────────────────────────
   const messageText = buildMessage(payload)

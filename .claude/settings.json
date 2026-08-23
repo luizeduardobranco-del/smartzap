@@ -1,0 +1,16 @@
+{
+  "hooks": {
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "shell": "bash",
+            "command": "node -e \"const c=[];process.stdin.on('data',d=>c.push(d));process.stdin.on('end',()=>{try{const i=JSON.parse(c.join(''));const p=i.prompt||'';if(/max|leo|luna|diego|ana|carol|marketing|campanha|equipe|divulga\\u00e7|capta/i.test(p)){const fs=require('fs');const now=new Date();const date=now.toISOString().slice(0,10);const time=now.toTimeString().slice(0,5);const f='C:/Users/luize/zapagent/marketing-history/'+date+'.md';let t='';if(!fs.existsSync(f))t='# Hist\\u00f3rico de Marketing \\u2014 '+date+'\\n\\n';t+='## '+time+'\\n\\n> '+p+'\\n\\n---\\n\\n';fs.appendFileSync(f,t);}}catch(e){}});\"",
+            "async": true
+          }
+        ]
+      }
+    ]
+  }
+}

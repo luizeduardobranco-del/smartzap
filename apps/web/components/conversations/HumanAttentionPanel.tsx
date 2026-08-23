@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef } from 'react'
+import { useState, useRef, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { trpc } from '@/lib/trpc/client'
 import { UserCheck, ChevronDown, ChevronUp, Clock, GripVertical } from 'lucide-react'
@@ -28,10 +28,27 @@ export function HumanAttentionPanel() {
   const dragRef = useRef<{ startX: number; startY: number; startLeft: number; startBottom: number } | null>(null)
   const wasDragRef = useRef(false)
 
-  const { data: conversations = [] } = trpc.conversations.list.useQuery(
-    { mode: 'human', status: 'open', limit: 50 },
+  // limit 50 fazia o contador travar em "50" sempre que a fila passava disso —
+  // era o teto do query, não o tamanho da fila.
+  const { data: rows = [] } = trpc.conversations.list.useQuery(
+    { mode: 'human', status: 'open', limit: 500 },
     { refetchInterval: 10000 }
   )
+
+  // A fila é de CONTATOS aguardando atendimento, não de linhas em `conversations`:
+  // um contato pode ter conversa aberta em mais de um canal.
+  const conversations = useMemo(() => {
+    const byContact = new Map<string, (typeof rows)[number]>()
+    for (const conv of rows) {
+      const cid = (conv as any).contact_id as string | undefined
+      if (!cid) continue
+      const current = byContact.get(cid)
+      const t = conv.last_message_at ?? ''
+      const currentT = current ? (current.last_message_at ?? '') : ''
+      if (!current || t > currentT) byContact.set(cid, conv)
+    }
+    return Array.from(byContact.values())
+  }, [rows])
 
   function handleDragMouseDown(e: React.MouseEvent) {
     e.preventDefault()

@@ -1,0 +1,1362 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>WHITE ZAP — Manual de Utilização</title>
+<style>
+  /* ── Reset & Base ─────────────────────────────── */
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+  body {
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    font-size: 15px;
+    line-height: 1.7;
+    color: #1a1a2e;
+    background: #f1f5f9;
+  }
+
+  /* ── Brand Colors ─────────────────────────────── */
+  :root {
+    --primary:       #2563eb;
+    --primary-light: #3b82f6;
+    --primary-dark:  #1d4ed8;
+    --primary-xdark: #1e40af;
+    --primary-bg:    #eff6ff;
+    --primary-bg2:   #dbeafe;
+    --dark:          #0f172a;
+    --slate:         #1e293b;
+    --muted:         #64748b;
+    --border:        #e2e8f0;
+    --surface:       #ffffff;
+    --hero-grad: linear-gradient(160deg, #0c1a4e 0%, #0f2569 20%, #0f172a 60%, #1e293b 100%);
+  }
+
+  /* ── Layout ───────────────────────────────────── */
+  .layout { display: flex; min-height: 100vh; }
+
+  /* ── Sidebar ──────────────────────────────────── */
+  .sidebar {
+    width: 260px;
+    min-width: 260px;
+    background: var(--dark);
+    position: sticky;
+    top: 0;
+    height: 100vh;
+    overflow-y: auto;
+    padding: 0 0 32px;
+    display: flex;
+    flex-direction: column;
+    border-right: 1px solid rgba(37,99,235,.25);
+  }
+  .sidebar-header {
+    padding: 20px 16px 18px;
+    border-bottom: 1px solid rgba(255,255,255,.07);
+    margin-bottom: 6px;
+  }
+  .sidebar-logo img {
+    width: 160px;
+    object-fit: contain;
+    display: block;
+  }
+  .sidebar-subtitle {
+    font-size: 11px;
+    color: rgba(255,255,255,.35);
+    margin-top: 8px;
+    letter-spacing: .4px;
+  }
+  .sidebar nav { flex: 1; padding: 0 10px; }
+  .sidebar nav a {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 12px;
+    border-radius: 8px;
+    color: rgba(255,255,255,.55);
+    text-decoration: none;
+    font-size: 13px;
+    transition: background .15s, color .15s;
+    margin-bottom: 1px;
+  }
+  .sidebar nav a:hover { background: rgba(37,99,235,.18); color: #93c5fd; }
+  .sidebar nav a.active { background: rgba(37,99,235,.28); color: #60a5fa; font-weight: 600; }
+  .sidebar nav .section-label {
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: rgba(255,255,255,.22);
+    padding: 14px 12px 3px;
+    font-weight: 700;
+  }
+  .sidebar nav .icon { font-size: 15px; width: 18px; text-align: center; }
+
+  /* ── Main Content ─────────────────────────────── */
+  .main { flex: 1; min-width: 0; }
+
+  /* ── Cover ────────────────────────────────────── */
+  .cover {
+    background: var(--hero-grad);
+    color: #fff;
+    padding: 72px 60px 64px;
+    position: relative;
+    overflow: hidden;
+  }
+  .cover::before {
+    content: '';
+    position: absolute;
+    top: -80px; right: -80px;
+    width: 500px; height: 500px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(37,99,235,.25) 0%, transparent 65%);
+    pointer-events: none;
+  }
+  .cover::after {
+    content: '';
+    position: absolute;
+    bottom: -40px; left: 20%;
+    width: 300px; height: 300px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(59,130,246,.12) 0%, transparent 65%);
+    pointer-events: none;
+  }
+  .cover-logo {
+    margin-bottom: 28px;
+    position: relative;
+    z-index: 1;
+  }
+  .cover-logo img {
+    height: 72px;
+    object-fit: contain;
+    filter: drop-shadow(0 0 20px rgba(37,99,235,.6));
+  }
+  .cover-badge {
+    display: inline-block;
+    background: rgba(37,99,235,.25);
+    border: 1px solid rgba(37,99,235,.5);
+    color: #93c5fd;
+    font-size: 11px;
+    font-weight: 700;
+    padding: 4px 14px;
+    border-radius: 20px;
+    margin-bottom: 18px;
+    letter-spacing: .8px;
+    text-transform: uppercase;
+    position: relative;
+    z-index: 1;
+  }
+  .cover h1 {
+    font-size: 48px;
+    font-weight: 900;
+    line-height: 1.1;
+    margin-bottom: 14px;
+    letter-spacing: -1.5px;
+    position: relative;
+    z-index: 1;
+    background: linear-gradient(135deg, #ffffff 30%, #bae6fd 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  .cover p {
+    font-size: 17px;
+    opacity: .7;
+    max-width: 520px;
+    margin-bottom: 36px;
+    position: relative;
+    z-index: 1;
+    -webkit-text-fill-color: rgba(255,255,255,.7);
+  }
+  .cover-meta {
+    display: flex;
+    gap: 36px;
+    flex-wrap: wrap;
+    position: relative;
+    z-index: 1;
+  }
+  .cover-meta .meta-item { display: flex; flex-direction: column; }
+  .cover-meta .meta-label { font-size: 10px; opacity: .4; text-transform: uppercase; letter-spacing: 1px; }
+  .cover-meta .meta-value { font-size: 15px; font-weight: 700; margin-top: 2px; color: #93c5fd; }
+
+  /* ── TOC ──────────────────────────────────────── */
+  .toc-section {
+    background: var(--surface);
+    padding: 44px 60px;
+    border-bottom: 1px solid var(--border);
+  }
+  .toc-section h2 {
+    font-size: 19px;
+    font-weight: 800;
+    color: var(--primary-xdark);
+    margin-bottom: 22px;
+  }
+  .toc-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+    gap: 9px;
+  }
+  .toc-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 14px;
+    border-radius: 10px;
+    background: var(--primary-bg);
+    border: 1px solid rgba(37,99,235,.18);
+    text-decoration: none;
+    color: var(--primary-dark);
+    font-size: 13px;
+    font-weight: 500;
+    transition: all .15s;
+  }
+  .toc-item:hover { background: var(--primary-bg2); transform: translateY(-1px); box-shadow: 0 2px 8px rgba(37,99,235,.12); }
+  .toc-item .toc-icon { font-size: 17px; }
+  .toc-item .toc-num { font-size: 11px; opacity: .4; margin-left: auto; font-weight: 700; }
+
+  /* ── Content Area ─────────────────────────────── */
+  .content { padding: 44px 60px; }
+
+  /* ── Section ──────────────────────────────────── */
+  .section {
+    background: var(--surface);
+    border-radius: 16px;
+    border: 1px solid var(--border);
+    margin-bottom: 36px;
+    overflow: hidden;
+    box-shadow: 0 1px 6px rgba(0,0,0,.05);
+  }
+  .section-header {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 26px 30px 22px;
+    border-bottom: 1px solid var(--border);
+    background: linear-gradient(to right, var(--primary-bg), transparent 60%);
+  }
+  .section-icon {
+    font-size: 28px;
+    width: 52px;
+    height: 52px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, var(--primary-dark), var(--primary-light));
+    border-radius: 14px;
+    flex-shrink: 0;
+    box-shadow: 0 4px 14px rgba(37,99,235,.3);
+  }
+  .section-title-area { flex: 1; }
+  .section-num {
+    font-size: 10px;
+    font-weight: 800;
+    color: var(--primary);
+    text-transform: uppercase;
+    letter-spacing: 1.2px;
+    margin-bottom: 2px;
+  }
+  .section-title {
+    font-size: 22px;
+    font-weight: 800;
+    color: var(--dark);
+    letter-spacing: -.4px;
+  }
+  .section-desc {
+    font-size: 13px;
+    color: var(--muted);
+    margin-top: 3px;
+  }
+  .section-body { padding: 26px 30px; }
+
+  /* ── Typography ───────────────────────────────── */
+  h3 {
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--primary-dark);
+    margin: 22px 0 11px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  h3:first-child { margin-top: 0; }
+  h4 {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--dark);
+    margin: 14px 0 5px;
+  }
+  p { margin-bottom: 11px; color: #374151; }
+  p:last-child { margin-bottom: 0; }
+  ul, ol { padding-left: 20px; margin-bottom: 11px; }
+  li { margin-bottom: 5px; color: #374151; }
+
+  /* ── Steps ────────────────────────────────────── */
+  .steps { counter-reset: step; list-style: none; padding: 0; margin: 0 0 14px; }
+  .steps li {
+    counter-increment: step;
+    display: flex;
+    align-items: flex-start;
+    gap: 14px;
+    margin-bottom: 10px;
+    padding: 13px 16px;
+    background: var(--primary-bg);
+    border-radius: 10px;
+    border: 1px solid rgba(37,99,235,.12);
+  }
+  .steps li::before {
+    content: counter(step);
+    background: linear-gradient(135deg, var(--primary-dark), var(--primary-light));
+    color: #fff;
+    font-size: 11px;
+    font-weight: 800;
+    min-width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-top: 2px;
+    flex-shrink: 0;
+  }
+
+  /* ── Tips / Warnings ──────────────────────────── */
+  .tip, .warn, .info, .danger {
+    display: flex;
+    gap: 12px;
+    padding: 13px 16px;
+    border-radius: 10px;
+    margin: 13px 0;
+    font-size: 14px;
+    line-height: 1.6;
+  }
+  .tip    { background: #f0fdf4; border: 1px solid #86efac; color: #166534; }
+  .warn   { background: #fffbeb; border: 1px solid #fcd34d; color: #92400e; }
+  .info   { background: var(--primary-bg); border: 1px solid #93c5fd; color: var(--primary-xdark); }
+  .danger { background: #fef2f2; border: 1px solid #fca5a5; color: #991b1b; }
+  .tip::before    { content: '✅'; font-size: 17px; }
+  .warn::before   { content: '⚠️'; font-size: 17px; }
+  .info::before   { content: 'ℹ️'; font-size: 17px; }
+  .danger::before { content: '🚫'; font-size: 17px; }
+
+  /* ── Feature Grid ─────────────────────────────── */
+  .feature-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+    gap: 11px;
+    margin: 13px 0;
+  }
+  .feature-card {
+    background: var(--primary-bg);
+    border: 1px solid rgba(37,99,235,.14);
+    border-radius: 10px;
+    padding: 14px 16px;
+    transition: box-shadow .15s;
+  }
+  .feature-card:hover { box-shadow: 0 2px 10px rgba(37,99,235,.1); }
+  .feature-card .fc-icon { font-size: 21px; margin-bottom: 6px; }
+  .feature-card .fc-title { font-size: 13px; font-weight: 700; color: var(--dark); margin-bottom: 3px; }
+  .feature-card .fc-desc  { font-size: 12px; color: var(--muted); }
+
+  /* ── Table ────────────────────────────────────── */
+  table { width: 100%; border-collapse: collapse; margin: 13px 0; font-size: 14px; }
+  th {
+    background: var(--primary-bg2);
+    color: var(--primary-xdark);
+    font-weight: 700;
+    padding: 9px 13px;
+    text-align: left;
+    border: 1px solid rgba(37,99,235,.18);
+    font-size: 13px;
+  }
+  td { padding: 8px 13px; border: 1px solid var(--border); vertical-align: top; }
+  tr:nth-child(even) td { background: var(--primary-bg); }
+
+  /* ── Code / Badge ─────────────────────────────── */
+  code {
+    background: var(--slate);
+    color: #93c5fd;
+    padding: 2px 8px;
+    border-radius: 5px;
+    font-family: 'Consolas', 'Courier New', monospace;
+    font-size: 13px;
+  }
+  .badge {
+    display: inline-block;
+    padding: 2px 10px;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .5px;
+  }
+  .badge-green  { background: #d1fae5; color: #065f46; }
+  .badge-yellow { background: #fef3c7; color: #92400e; }
+  .badge-blue   { background: var(--primary-bg2); color: var(--primary-xdark); }
+  .badge-red    { background: #fee2e2; color: #991b1b; }
+  .badge-purple { background: #ede9fe; color: #5b21b6; }
+
+  /* ── Divider ──────────────────────────────────── */
+  hr { border: none; border-top: 1px solid var(--border); margin: 22px 0; }
+
+  /* ── Footer ───────────────────────────────────── */
+  .footer {
+    background: var(--dark);
+    padding: 36px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+  }
+  .footer img { height: 36px; object-fit: contain; opacity: .75; }
+  .footer p { color: rgba(255,255,255,.3); font-size: 13px; text-align: center; }
+  .footer strong { color: #60a5fa; }
+
+  /* ── Print ────────────────────────────────────── */
+  @media print {
+    .sidebar { display: none; }
+    .cover { padding: 40px; }
+    .content { padding: 20px; }
+    .section { box-shadow: none; break-inside: avoid; }
+  }
+
+  /* ── Scrollbar ────────────────────────────────── */
+  .sidebar::-webkit-scrollbar { width: 4px; }
+  .sidebar::-webkit-scrollbar-track { background: transparent; }
+  .sidebar::-webkit-scrollbar-thumb { background: rgba(37,99,235,.3); border-radius: 4px; }
+
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: #f1f5f9; }
+  ::-webkit-scrollbar-thumb { background: var(--primary); border-radius: 999px; }
+</style>
+</head>
+<body>
+
+<div class="layout">
+  <!-- ══════════════════ SIDEBAR ══════════════════ -->
+  <div class="sidebar">
+    <div class="sidebar-header">
+      <div class="sidebar-logo">
+        <img src="apps/web/public/logo.png" alt="White ZAP" />
+      </div>
+      <div class="sidebar-subtitle">Manual de Utilização v1.0 · 2026</div>
+    </div>
+    <nav>
+      <div class="section-label">Início</div>
+      <a href="#inicio"><span class="icon">🏠</span> Início</a>
+      <a href="#primeiros-passos"><span class="icon">🚀</span> Primeiros Passos</a>
+
+      <div class="section-label">Módulos</div>
+      <a href="#agentes"><span class="icon">🤖</span> 01 · Agentes</a>
+      <a href="#conversas"><span class="icon">💬</span> 02 · Conversas</a>
+      <a href="#contatos"><span class="icon">👥</span> 03 · Contatos</a>
+      <a href="#crm"><span class="icon">📋</span> 04 · CRM</a>
+      <a href="#funis"><span class="icon">🔀</span> 05 · Funis</a>
+      <a href="#automacoes"><span class="icon">⚡</span> 06 · Automações</a>
+      <a href="#disparos"><span class="icon">📤</span> 07 · Disparos</a>
+      <a href="#stories"><span class="icon">🎬</span> 08 · Stories</a>
+      <a href="#analytics"><span class="icon">📊</span> 09 · Analytics</a>
+      <a href="#creditos"><span class="icon">🪙</span> 10 · Créditos</a>
+      <a href="#afiliados"><span class="icon">🤝</span> 11 · Afiliados</a>
+      <a href="#configuracoes"><span class="icon">⚙️</span> 12 · Configurações</a>
+
+      <div class="section-label">Referência</div>
+      <a href="#canais"><span class="icon">📡</span> Canais WhatsApp</a>
+      <a href="#faq"><span class="icon">❓</span> FAQ</a>
+    </nav>
+  </div>
+
+  <!-- ══════════════════ MAIN ══════════════════════ -->
+  <div class="main">
+
+    <!-- ─── COVER ─── -->
+    <section class="cover" id="inicio">
+      <div class="cover-logo">
+        <img src="apps/web/public/logo.png" alt="White ZAP" />
+      </div>
+      <div class="cover-badge">📖 Manual Oficial</div>
+      <h1>Manual de Utilização</h1>
+      <p>Guia completo da plataforma de agentes de IA para WhatsApp, Instagram e atendimento automatizado.</p>
+      <div class="cover-meta">
+        <div class="meta-item">
+          <span class="meta-label">Versão</span>
+          <span class="meta-value">1.0 · 2026</span>
+        </div>
+        <div class="meta-item">
+          <span class="meta-label">Módulos</span>
+          <span class="meta-value">12 módulos</span>
+        </div>
+        <div class="meta-item">
+          <span class="meta-label">Idioma</span>
+          <span class="meta-value">Português BR</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- ─── TOC ─── -->
+    <section class="toc-section">
+      <h2>📑 Índice de Conteúdo</h2>
+      <div class="toc-grid">
+        <a class="toc-item" href="#primeiros-passos"><span class="toc-icon">🚀</span> Primeiros Passos <span class="toc-num">→</span></a>
+        <a class="toc-item" href="#agentes"><span class="toc-icon">🤖</span> Agentes de IA <span class="toc-num">01</span></a>
+        <a class="toc-item" href="#conversas"><span class="toc-icon">💬</span> Conversas <span class="toc-num">02</span></a>
+        <a class="toc-item" href="#contatos"><span class="toc-icon">👥</span> Contatos <span class="toc-num">03</span></a>
+        <a class="toc-item" href="#crm"><span class="toc-icon">📋</span> CRM Kanban <span class="toc-num">04</span></a>
+        <a class="toc-item" href="#funis"><span class="toc-icon">🔀</span> Funis de Venda <span class="toc-num">05</span></a>
+        <a class="toc-item" href="#automacoes"><span class="toc-icon">⚡</span> Automações <span class="toc-num">06</span></a>
+        <a class="toc-item" href="#disparos"><span class="toc-icon">📤</span> Disparos em Massa <span class="toc-num">07</span></a>
+        <a class="toc-item" href="#stories"><span class="toc-icon">🎬</span> Stories / Status <span class="toc-num">08</span></a>
+        <a class="toc-item" href="#analytics"><span class="toc-icon">📊</span> Analytics <span class="toc-num">09</span></a>
+        <a class="toc-item" href="#creditos"><span class="toc-icon">🪙</span> Créditos <span class="toc-num">10</span></a>
+        <a class="toc-item" href="#afiliados"><span class="toc-icon">🤝</span> Afiliados <span class="toc-num">11</span></a>
+        <a class="toc-item" href="#configuracoes"><span class="toc-icon">⚙️</span> Configurações <span class="toc-num">12</span></a>
+      </div>
+    </section>
+
+    <!-- ─── CONTENT ─── -->
+    <div class="content">
+
+      <!-- ════════ PRIMEIROS PASSOS ════════ -->
+      <section class="section" id="primeiros-passos">
+        <div class="section-header">
+          <div class="section-icon">🚀</div>
+          <div class="section-title-area">
+            <div class="section-num">Introdução</div>
+            <div class="section-title">Primeiros Passos</div>
+            <div class="section-desc">Como criar sua conta, configurar seu canal e começar a usar</div>
+          </div>
+        </div>
+        <div class="section-body">
+
+          <h3>🌐 O que é o WHITE ZAP?</h3>
+          <p>O <strong>WHITE ZAP</strong> é uma plataforma SaaS de atendimento automatizado com inteligência artificial para WhatsApp e Instagram. Com ele você cria <strong>agentes de IA</strong> que conversam com seus clientes 24 horas por dia, 7 dias por semana — respondendo dúvidas, qualificando leads, agendando serviços e muito mais.</p>
+
+          <div class="feature-grid">
+            <div class="feature-card">
+              <div class="fc-icon">🤖</div>
+              <div class="fc-title">Agentes de IA</div>
+              <div class="fc-desc">GPT-4 treinado com o seu negócio</div>
+            </div>
+            <div class="feature-card">
+              <div class="fc-icon">📱</div>
+              <div class="fc-title">WhatsApp & Instagram</div>
+              <div class="fc-desc">Múltiplos canais, uma plataforma</div>
+            </div>
+            <div class="feature-card">
+              <div class="fc-icon">📤</div>
+              <div class="fc-title">Disparos em Massa</div>
+              <div class="fc-desc">Envie mensagens para listas inteiras</div>
+            </div>
+            <div class="feature-card">
+              <div class="fc-icon">📊</div>
+              <div class="fc-title">Analytics</div>
+              <div class="fc-desc">Relatórios completos de atendimento</div>
+            </div>
+          </div>
+
+          <h3>📝 Criando sua Conta</h3>
+          <ol class="steps">
+            <li>Acesse <strong>whitezap.com.br</strong> e clique em <strong>"Criar conta grátis"</strong>.</li>
+            <li>Preencha nome, e-mail e senha. Clique em <strong>"Cadastrar"</strong>.</li>
+            <li>Verifique seu e-mail (confira a caixa de spam) e clique no link de confirmação.</li>
+            <li>Ao entrar pela primeira vez, o assistente de <strong>Primeiros Passos</strong> será exibido automaticamente — siga as etapas indicadas.</li>
+          </ol>
+
+          <h3>📡 Conectando seu WhatsApp</h3>
+          <ol class="steps">
+            <li>No menu lateral, acesse <strong>Agentes</strong> → clique em <strong>"Novo Agente"</strong>.</li>
+            <li>Siga o assistente de criação e, na etapa de canal, escolha <strong>WhatsApp</strong>.</li>
+            <li>Um <strong>QR Code</strong> será gerado. Abra o WhatsApp no celular → <strong>Dispositivos Conectados</strong> → <strong>"Conectar dispositivo"</strong>.</li>
+            <li>Escaneie o QR Code. Aguarde a confirmação de conexão (ícone verde ✅).</li>
+            <li>Seu agente já está ativo e responderá mensagens automaticamente!</li>
+          </ol>
+
+          <div class="tip">Use um número de WhatsApp <strong>exclusivo para o agente</strong> (não o seu número pessoal). Isso evita conflitos e garante melhor performance.</div>
+
+        </div>
+      </section>
+
+      <!-- ════════ AGENTES ════════ -->
+      <section class="section" id="agentes">
+        <div class="section-header">
+          <div class="section-icon">🤖</div>
+          <div class="section-title-area">
+            <div class="section-num">Módulo 01</div>
+            <div class="section-title">Agentes de IA</div>
+            <div class="section-desc">Crie e configure assistentes inteligentes para cada canal</div>
+          </div>
+        </div>
+        <div class="section-body">
+
+          <h3>📌 O que é um Agente?</h3>
+          <p>Um <strong>Agente</strong> é um assistente de inteligência artificial conectado a um canal (WhatsApp ou Instagram). Ele recebe mensagens dos seus clientes, processa com IA e responde automaticamente com base nas instruções e na base de conhecimento que você configurar.</p>
+
+          <h3>➕ Criando um Novo Agente</h3>
+          <ol class="steps">
+            <li>No menu lateral, clique em <strong>Agentes</strong>.</li>
+            <li>Clique no botão <strong>"Novo Agente"</strong> (canto superior direito).</li>
+            <li>Preencha o <strong>nome</strong> do agente (ex: "Suporte Vendas") e selecione o <strong>canal</strong>.</li>
+            <li>Configure o <strong>prompt base</strong>: escreva quem é o agente, como ele deve se comportar, tom de voz e limitações.</li>
+            <li>Clique em <strong>"Criar Agente"</strong>.</li>
+          </ol>
+
+          <h3>✏️ Abas de Configuração</h3>
+          <table>
+            <tr><th>Aba</th><th>O que configura</th></tr>
+            <tr><td><strong>Configurações Gerais</strong></td><td>Nome, prompt principal, modelo de IA, temperatura de resposta</td></tr>
+            <tr><td><strong>Base de Conhecimento</strong></td><td>Documentos, FAQs e textos que o agente usa para responder</td></tr>
+            <tr><td><strong>Canal</strong></td><td>Conexão WhatsApp/Instagram, QR Code, status de conexão</td></tr>
+            <tr><td><strong>Habilidades</strong></td><td>Capacidades extras: agendamento, coleta de leads, etc.</td></tr>
+            <tr><td><strong>Testar</strong></td><td>Chat de simulação para testar as respostas do agente</td></tr>
+          </table>
+
+          <h3>🧠 Base de Conhecimento</h3>
+          <p>A base de conhecimento é o "cérebro" do agente. Adicione informações sobre seu negócio para que ele responda com precisão:</p>
+          <ol class="steps">
+            <li>Acesse a aba <strong>"Base de Conhecimento"</strong> do agente.</li>
+            <li>Clique em <strong>"Adicionar Conteúdo"</strong>.</li>
+            <li>Cole textos, perguntas e respostas, preços, políticas, cardápio ou qualquer informação relevante.</li>
+            <li>Clique em <strong>"Salvar"</strong>.</li>
+          </ol>
+
+          <div class="tip">Quanto mais detalhada e bem estruturada for a base de conhecimento, mais preciso e confiável será o agente. Inclua exemplos de perguntas frequentes com respostas completas.</div>
+
+          <h3>🔧 Habilidades do Agente</h3>
+          <div class="feature-grid">
+            <div class="feature-card">
+              <div class="fc-icon">📅</div>
+              <div class="fc-title">Agendamento</div>
+              <div class="fc-desc">Coleta data/hora e registra agendamentos</div>
+            </div>
+            <div class="feature-card">
+              <div class="fc-icon">🎯</div>
+              <div class="fc-title">Captura de Lead</div>
+              <div class="fc-desc">Coleta nome, e-mail e telefone</div>
+            </div>
+            <div class="feature-card">
+              <div class="fc-icon">🔀</div>
+              <div class="fc-title">Transferência Humana</div>
+              <div class="fc-desc">Encaminha para atendente quando necessário</div>
+            </div>
+            <div class="feature-card">
+              <div class="fc-icon">🛒</div>
+              <div class="fc-title">Pedidos</div>
+              <div class="fc-desc">Registra pedidos e solicitações</div>
+            </div>
+          </div>
+
+          <h3>🧪 Testando o Agente</h3>
+          <ol class="steps">
+            <li>Acesse a aba <strong>"Testar"</strong> dentro do agente.</li>
+            <li>Digite mensagens como se fosse um cliente real.</li>
+            <li>Verifique se as respostas estão corretas, naturais e dentro do esperado.</li>
+            <li>Ajuste o prompt ou a base de conhecimento conforme necessário.</li>
+          </ol>
+
+          <div class="warn">Sempre teste o agente antes de ativá-lo em produção. Simule cenários difíceis: perguntas fora do escopo, solicitações de desconto, reclamações.</div>
+
+          <h3>🤝 Equipe de Marketing IA</h3>
+          <p>O WHITE ZAP conta com 6 agentes especializados em marketing digital:</p>
+          <table>
+            <tr><th>Agente</th><th>Especialidade</th></tr>
+            <tr><td>🔥 <strong>Max</strong></td><td>Estrategista geral, copywriting persuasivo</td></tr>
+            <tr><td>📊 <strong>Leo</strong></td><td>Analytics e dados de marketing</td></tr>
+            <tr><td>🎨 <strong>Luna</strong></td><td>Criatividade, branding e design conceitual</td></tr>
+            <tr><td>📱 <strong>Diego</strong></td><td>Marketing de redes sociais e engajamento</td></tr>
+            <tr><td>✉️ <strong>Ana</strong></td><td>E-mail marketing e nutrição de leads</td></tr>
+            <tr><td>🎯 <strong>Carol</strong></td><td>Conversão, funis e vendas</td></tr>
+          </table>
+
+        </div>
+      </section>
+
+      <!-- ════════ CONVERSAS ════════ -->
+      <section class="section" id="conversas">
+        <div class="section-header">
+          <div class="section-icon">💬</div>
+          <div class="section-title-area">
+            <div class="section-num">Módulo 02</div>
+            <div class="section-title">Conversas</div>
+            <div class="section-desc">Gerencie todas as conversas dos seus canais em um só lugar</div>
+          </div>
+        </div>
+        <div class="section-body">
+
+          <h3>📋 Visão Geral</h3>
+          <p>O módulo de <strong>Conversas</strong> é a caixa de entrada unificada de todas as mensagens recebidas pelos seus canais. Aqui você acompanha em tempo real o que está acontecendo, intervém manualmente quando necessário e monitora o desempenho do agente.</p>
+
+          <h3>🔍 Navegando pelas Conversas</h3>
+          <ol class="steps">
+            <li>No menu lateral, clique em <strong>Conversas</strong>.</li>
+            <li>A lista da esquerda mostra todas as conversas ordenadas pela mais recente.</li>
+            <li>Clique em qualquer conversa para abrir o histórico completo.</li>
+            <li>Use a barra de busca no topo para encontrar contatos específicos.</li>
+          </ol>
+
+          <h3>🎛️ Status das Conversas</h3>
+          <table>
+            <tr><th>Status</th><th>Significado</th></tr>
+            <tr><td><span class="badge badge-blue">IA Ativa</span></td><td>O agente de IA está respondendo automaticamente</td></tr>
+            <tr><td><span class="badge badge-yellow">Atenção Humana</span></td><td>Aguardando ou em atendimento por um humano</td></tr>
+            <tr><td><span class="badge badge-green">Resolvida</span></td><td>Conversa encerrada e arquivada</td></tr>
+            <tr><td><span class="badge badge-red">Erro</span></td><td>Falha no processamento — requer atenção</td></tr>
+          </table>
+
+          <h3>🙋 Assumindo o Atendimento Manualmente</h3>
+          <ol class="steps">
+            <li>Abra a conversa desejada.</li>
+            <li>Clique no botão <strong>"Assumir Atendimento"</strong> no topo do chat.</li>
+            <li>O agente de IA será pausado e você poderá digitar mensagens diretamente.</li>
+            <li>Quando terminar, clique em <strong>"Devolver para IA"</strong> para reativar o agente.</li>
+          </ol>
+
+          <div class="info">O painel de <strong>Atenção Humana</strong> destaca conversas que precisam de intervenção — por exemplo, quando o cliente pediu falar com um humano ou o agente não soube responder.</div>
+
+          <h3>📎 Enviando Mensagens</h3>
+          <ul>
+            <li><strong>Texto</strong>: digitando normalmente no campo de resposta</li>
+            <li><strong>Áudio</strong>: gravando pelo microfone</li>
+            <li><strong>Imagens / Documentos</strong>: pelo ícone de anexo</li>
+            <li><strong>Respostas rápidas</strong>: atalhos de mensagens pré-configuradas</li>
+          </ul>
+
+        </div>
+      </section>
+
+      <!-- ════════ CONTATOS ════════ -->
+      <section class="section" id="contatos">
+        <div class="section-header">
+          <div class="section-icon">👥</div>
+          <div class="section-title-area">
+            <div class="section-num">Módulo 03</div>
+            <div class="section-title">Contatos</div>
+            <div class="section-desc">Base de dados de todos os clientes que interagiram com seus canais</div>
+          </div>
+        </div>
+        <div class="section-body">
+
+          <h3>📋 O que são Contatos?</h3>
+          <p>Toda vez que alguém envia uma mensagem para um dos seus canais, um <strong>contato</strong> é criado automaticamente com o número de telefone, nome e histórico de conversas. Você também pode importar ou criar contatos manualmente.</p>
+
+          <h3>👤 Visualizando Contatos</h3>
+          <ol class="steps">
+            <li>Acesse <strong>Contatos</strong> no menu lateral.</li>
+            <li>A lista exibe nome, telefone, canal de origem e última interação.</li>
+            <li>Clique em um contato para ver o perfil completo e histórico.</li>
+            <li>Use a busca para encontrar contatos pelo nome ou telefone.</li>
+          </ol>
+
+          <h3>✏️ Editando um Contato</h3>
+          <p>No perfil do contato você pode:</p>
+          <ul>
+            <li>Editar nome, e-mail, empresa e anotações</li>
+            <li>Adicionar <strong>tags</strong> para segmentação (ex: "cliente vip", "interessado produto X")</li>
+            <li>Ver todo o histórico de conversas</li>
+            <li>Iniciar uma nova conversa diretamente</li>
+          </ul>
+
+          <h3>📥 Importando Contatos</h3>
+          <ol class="steps">
+            <li>Na página de Contatos, clique em <strong>"Importar"</strong>.</li>
+            <li>Baixe o modelo CSV de exemplo.</li>
+            <li>Preencha o arquivo com: <code>nome, telefone, email, tags</code>.</li>
+            <li>Faça o upload do arquivo e confirme a importação.</li>
+          </ol>
+
+          <div class="warn">Os números devem estar no formato internacional sem o <code>+</code>: <code>5511999998888</code> (55 = Brasil, 11 = DDD, restante = número).</div>
+
+          <h3>🏷️ Tags e Segmentação</h3>
+          <div class="feature-grid">
+            <div class="feature-card">
+              <div class="fc-icon">🔴</div>
+              <div class="fc-title">Lead Quente</div>
+              <div class="fc-desc">Contatos com alta intenção de compra</div>
+            </div>
+            <div class="feature-card">
+              <div class="fc-icon">💼</div>
+              <div class="fc-title">Cliente Ativo</div>
+              <div class="fc-desc">Já comprou nos últimos 30 dias</div>
+            </div>
+            <div class="feature-card">
+              <div class="fc-icon">😴</div>
+              <div class="fc-title">Inativo</div>
+              <div class="fc-desc">Sem interação há mais de 90 dias</div>
+            </div>
+            <div class="feature-card">
+              <div class="fc-icon">⭐</div>
+              <div class="fc-title">VIP</div>
+              <div class="fc-desc">Clientes prioritários ou recorrentes</div>
+            </div>
+          </div>
+
+        </div>
+      </section>
+
+      <!-- ════════ CRM ════════ -->
+      <section class="section" id="crm">
+        <div class="section-header">
+          <div class="section-icon">📋</div>
+          <div class="section-title-area">
+            <div class="section-num">Módulo 04</div>
+            <div class="section-title">CRM — Kanban</div>
+            <div class="section-desc">Gerencie oportunidades de venda em um quadro visual</div>
+          </div>
+        </div>
+        <div class="section-body">
+
+          <h3>🗂️ O que é o CRM Kanban?</h3>
+          <p>O <strong>CRM</strong> usa um quadro Kanban para visualizar e gerenciar o pipeline de vendas. Cada card representa um lead ou oportunidade — arraste de coluna em coluna conforme avança na negociação.</p>
+
+          <h3>📌 Colunas Padrão</h3>
+          <table>
+            <tr><th>Coluna</th><th>Significa que o lead...</th></tr>
+            <tr><td>🆕 <strong>Novo</strong></td><td>Acabou de entrar em contato</td></tr>
+            <tr><td>👀 <strong>Em Contato</strong></td><td>Está sendo atendido / negociando</td></tr>
+            <tr><td>💡 <strong>Proposta</strong></td><td>Recebeu uma proposta comercial</td></tr>
+            <tr><td>🤝 <strong>Negociação</strong></td><td>Está negociando condições</td></tr>
+            <tr><td>✅ <strong>Fechado</strong></td><td>Venda concluída com sucesso</td></tr>
+            <tr><td>❌ <strong>Perdido</strong></td><td>Desistiu ou não avançou</td></tr>
+          </table>
+
+          <h3>🃏 Trabalhando com Cards</h3>
+          <ol class="steps">
+            <li>Clique em <strong>"+ Adicionar Card"</strong> na coluna desejada.</li>
+            <li>Preencha: nome do lead, valor potencial, responsável e descrição.</li>
+            <li>Para mover: <strong>arraste e solte</strong> o card entre colunas.</li>
+            <li>Clique no card para ver detalhes, adicionar notas e histórico de conversa vinculado.</li>
+          </ol>
+
+          <div class="tip">Configure automações para mover cards automaticamente quando o agente detectar intenção de compra ou confirmação de pedido.</div>
+
+        </div>
+      </section>
+
+      <!-- ════════ FUNIS ════════ -->
+      <section class="section" id="funis">
+        <div class="section-header">
+          <div class="section-icon">🔀</div>
+          <div class="section-title-area">
+            <div class="section-num">Módulo 05</div>
+            <div class="section-title">Funis de Venda</div>
+            <div class="section-desc">Crie sequências automáticas de mensagens para nutrir leads</div>
+          </div>
+        </div>
+        <div class="section-body">
+
+          <h3>🔀 O que é um Funil?</h3>
+          <p>Um <strong>Funil</strong> é uma sequência programada de mensagens enviadas automaticamente ao longo do tempo. Ideal para nutrição de leads, onboarding de novos clientes, follow-ups e reativação de inativos.</p>
+
+          <h3>➕ Criando um Funil</h3>
+          <ol class="steps">
+            <li>Acesse <strong>Funis</strong> no menu lateral.</li>
+            <li>Clique em <strong>"Criar Funil"</strong>.</li>
+            <li>Dê um nome e selecione o canal (WhatsApp).</li>
+            <li>Adicione etapas clicando em <strong>"+ Adicionar Etapa"</strong>.</li>
+            <li>Configure cada etapa: mensagem, intervalo de tempo e condição de avançar.</li>
+            <li>Salve e ative o funil.</li>
+          </ol>
+
+          <h3>⚙️ O que cada Etapa pode ter</h3>
+          <ul>
+            <li><strong>Mensagem de texto</strong> com variáveis dinâmicas: <code>{{nome}}</code>, <code>{{empresa}}</code></li>
+            <li><strong>Imagem ou vídeo</strong> com legenda</li>
+            <li><strong>Condições</strong>: avançar somente se o contato não respondeu (ou respondeu com palavra-chave)</li>
+            <li><strong>Ação</strong>: adicionar tag, mover no CRM, notificar equipe</li>
+          </ul>
+
+          <div class="info">Funis são excelentes para recuperar carrinhos abandonados, sequências de boas-vindas e reativar clientes que não compram há meses.</div>
+
+          <h3>📥 Adicionando Contatos a um Funil</h3>
+          <ol class="steps">
+            <li>Na página do funil, clique em <strong>"Adicionar Contatos"</strong>.</li>
+            <li>Selecione contatos individualmente ou filtre por tag.</li>
+            <li>O funil começa a rodar imediatamente para os contatos selecionados.</li>
+          </ol>
+
+        </div>
+      </section>
+
+      <!-- ════════ AUTOMAÇÕES ════════ -->
+      <section class="section" id="automacoes">
+        <div class="section-header">
+          <div class="section-icon">⚡</div>
+          <div class="section-title-area">
+            <div class="section-num">Módulo 06</div>
+            <div class="section-title">Automações</div>
+            <div class="section-desc">Regras automáticas baseadas em gatilhos e ações</div>
+          </div>
+        </div>
+        <div class="section-body">
+
+          <h3>⚙️ O que são Automações?</h3>
+          <p>As <strong>Automações</strong> são regras do tipo <em>"quando X acontece, faça Y"</em>. Diferente dos funis (sequências temporais), as automações reagem a eventos em tempo real.</p>
+
+          <h3>🔧 Estrutura de uma Automação</h3>
+          <table>
+            <tr><th>Componente</th><th>Exemplos</th></tr>
+            <tr><td><strong>Gatilho</strong></td><td>Nova mensagem recebida, tag adicionada, lead criado no CRM, horário agendado</td></tr>
+            <tr><td><strong>Condição</strong></td><td>Contém a palavra "preço", tag = "vip", canal = WhatsApp</td></tr>
+            <tr><td><strong>Ação</strong></td><td>Enviar mensagem, adicionar tag, mover no CRM, iniciar funil, notificar equipe</td></tr>
+          </table>
+
+          <h3>➕ Criando uma Automação</h3>
+          <ol class="steps">
+            <li>Acesse <strong>Automações</strong> no menu lateral.</li>
+            <li>Clique em <strong>"Nova Automação"</strong>.</li>
+            <li>Selecione o <strong>gatilho</strong> (evento que dispara a automação).</li>
+            <li>Adicione <strong>condições</strong> para filtrar quando deve rodar.</li>
+            <li>Configure as <strong>ações</strong> que serão executadas.</li>
+            <li>Ative a automação com o toggle.</li>
+          </ol>
+
+          <h3>💡 Exemplos de Automações</h3>
+          <div class="feature-grid">
+            <div class="feature-card">
+              <div class="fc-icon">🌙</div>
+              <div class="fc-title">Fora do Horário</div>
+              <div class="fc-desc">Mensagem após 18h → responder "Retornamos amanhã às 8h"</div>
+            </div>
+            <div class="feature-card">
+              <div class="fc-icon">🛑</div>
+              <div class="fc-title">Transferir Humano</div>
+              <div class="fc-desc">Mensagem com "falar com humano" → transferir para atendente</div>
+            </div>
+            <div class="feature-card">
+              <div class="fc-icon">🎂</div>
+              <div class="fc-title">Aniversário</div>
+              <div class="fc-desc">No aniversário do contato → enviar parabéns + cupom</div>
+            </div>
+            <div class="feature-card">
+              <div class="fc-icon">🔔</div>
+              <div class="fc-title">Lead Qualificado</div>
+              <div class="fc-desc">Tag "lead quente" adicionada → notificar vendedor</div>
+            </div>
+          </div>
+
+        </div>
+      </section>
+
+      <!-- ════════ DISPAROS ════════ -->
+      <section class="section" id="disparos">
+        <div class="section-header">
+          <div class="section-icon">📤</div>
+          <div class="section-title-area">
+            <div class="section-num">Módulo 07</div>
+            <div class="section-title">Disparos em Massa</div>
+            <div class="section-desc">Envie mensagens para centenas de contatos simultaneamente</div>
+          </div>
+        </div>
+        <div class="section-body">
+
+          <h3>📣 O que são Disparos?</h3>
+          <p>O módulo de <strong>Disparos</strong> permite enviar mensagens em massa — promoções, avisos, lembretes, novidades. Os envios são feitos com intervalo aleatório entre mensagens para simular comportamento humano e reduzir o risco de bloqueio.</p>
+
+          <h3>📋 Criando uma Campanha</h3>
+          <ol class="steps">
+            <li>Acesse <strong>Disparos</strong> no menu lateral.</li>
+            <li>Clique em <strong>"Nova Campanha"</strong>.</li>
+            <li>Dê um nome e selecione o <strong>canal</strong>.</li>
+            <li>Escreva a <strong>mensagem</strong> — use <code>{{nome}}</code> para personalizar.</li>
+            <li>Opcionalmente, adicione imagem, vídeo ou documento.</li>
+            <li>Selecione os <strong>destinatários</strong>: por tag, lista importada ou todos os contatos.</li>
+            <li>Defina se o envio será <strong>imediato</strong> ou <strong>agendado</strong>.</li>
+            <li>Clique em <strong>"Criar Campanha"</strong> e confirme.</li>
+          </ol>
+
+          <h3>⚙️ Configurações de Envio</h3>
+          <table>
+            <tr><th>Configuração</th><th>Descrição</th></tr>
+            <tr><td><strong>Intervalo mínimo</strong></td><td>Tempo mínimo entre mensagens (ex: 3 segundos)</td></tr>
+            <tr><td><strong>Intervalo máximo</strong></td><td>Tempo máximo entre mensagens (ex: 8 segundos)</td></tr>
+            <tr><td><strong>Horário de envio</strong></td><td>Limitar envios apenas em horário comercial</td></tr>
+            <tr><td><strong>Limite diário</strong></td><td>Máximo de mensagens por dia para proteger o número</td></tr>
+          </table>
+
+          <div class="danger">Nunca envie mensagens não solicitadas para pessoas sem relacionamento com sua empresa. Isso viola os Termos de Uso do WhatsApp e pode resultar no bloqueio do número.</div>
+
+          <h3>📊 Acompanhando os Resultados</h3>
+          <p>Na lista de campanhas, clique em uma campanha para ver: total enviado / com erro, taxa de entrega e leitura, respostas recebidas e status em tempo real.</p>
+
+        </div>
+      </section>
+
+      <!-- ════════ STORIES ════════ -->
+      <section class="section" id="stories">
+        <div class="section-header">
+          <div class="section-icon">🎬</div>
+          <div class="section-title-area">
+            <div class="section-num">Módulo 08</div>
+            <div class="section-title">Stories / Status</div>
+            <div class="section-desc">Publique stories automaticamente no WhatsApp Status</div>
+          </div>
+        </div>
+        <div class="section-body">
+
+          <h3>📸 O que são Stories?</h3>
+          <p>O módulo de <strong>Stories</strong> publica conteúdo automaticamente no <strong>WhatsApp Status</strong>. Você agenda ou dispara manualmente imagens, vídeos ou stories de texto com cor de fundo para seus contatos.</p>
+
+          <h3>➕ Criando um Story</h3>
+          <ol class="steps">
+            <li>Acesse <strong>Stories</strong> no menu lateral.</li>
+            <li>Clique em <strong>"Novo Story"</strong>.</li>
+            <li>Dê um <strong>nome</strong> ao story (uso interno).</li>
+            <li>Selecione o <strong>canal WhatsApp</strong> que publicará o story.</li>
+            <li>Escolha o <strong>tipo de mídia</strong>: Imagem, Vídeo ou Texto.</li>
+            <li>Para imagem/vídeo: faça o upload do arquivo (máx. 50 MB).</li>
+            <li>Para texto: escreva o texto e escolha a <strong>cor de fundo</strong>.</li>
+            <li>Opcionalmente, adicione uma <strong>legenda</strong>.</li>
+            <li>Clique em <strong>"Criar Story"</strong>.</li>
+          </ol>
+
+          <h3>📅 Agendamento e Repetição</h3>
+          <ul>
+            <li><strong>Enviar Agora</strong>: publica imediatamente no WhatsApp Status</li>
+            <li><strong>Agendar</strong>: define uma data e hora para publicação automática</li>
+            <li><strong>Repetir Semanalmente</strong>: marca dias da semana e horário (ex: toda segunda e quarta às 09:00)</li>
+          </ul>
+
+          <h3>📂 Múltiplas Mídias por Story</h3>
+          <p>Você pode fazer upload de vários arquivos de uma vez. O sistema publicará um story separado para cada arquivo, em sequência, no mesmo disparo.</p>
+
+          <div class="tip">Use o Canva para criar artes profissionais. Exporte como PNG/JPG e faça o upload pelo WHITE ZAP — isso garante compatibilidade total e evita erros de URL de redirecionamento.</div>
+
+          <h3>🔄 Status dos Stories</h3>
+          <table>
+            <tr><th>Status</th><th>Significado</th></tr>
+            <tr><td><span class="badge badge-yellow">Rascunho</span></td><td>Criado mas não agendado</td></tr>
+            <tr><td><span class="badge badge-blue">Agendado</span></td><td>Aguardando o horário de envio</td></tr>
+            <tr><td><span class="badge badge-green">Enviado</span></td><td>Publicado com sucesso no WhatsApp Status</td></tr>
+            <tr><td><span class="badge badge-red">Falhou</span></td><td>Erro no envio — mensagem de erro visível no card</td></tr>
+          </table>
+
+          <div class="info">Para que os stories funcionem, o WhatsApp deve estar <strong>conectado</strong> e a Evolution API deve estar ativa. Verifique o status do canal em <strong>Agentes → Canal</strong>.</div>
+
+        </div>
+      </section>
+
+      <!-- ════════ ANALYTICS ════════ -->
+      <section class="section" id="analytics">
+        <div class="section-header">
+          <div class="section-icon">📊</div>
+          <div class="section-title-area">
+            <div class="section-num">Módulo 09</div>
+            <div class="section-title">Analytics</div>
+            <div class="section-desc">Relatórios e métricas de desempenho da sua operação</div>
+          </div>
+        </div>
+        <div class="section-body">
+
+          <h3>📈 Visão Geral</h3>
+          <p>O módulo de <strong>Analytics</strong> oferece uma visão completa do desempenho dos seus agentes e canais. Acesse métricas em tempo real e histórico para tomar decisões baseadas em dados.</p>
+
+          <h3>📊 Métricas Disponíveis</h3>
+          <div class="feature-grid">
+            <div class="feature-card">
+              <div class="fc-icon">💬</div>
+              <div class="fc-title">Total de Conversas</div>
+              <div class="fc-desc">Conversas iniciadas no período selecionado</div>
+            </div>
+            <div class="feature-card">
+              <div class="fc-icon">🤖</div>
+              <div class="fc-title">Taxa de Automação</div>
+              <div class="fc-desc">% resolvidas pela IA sem intervenção humana</div>
+            </div>
+            <div class="feature-card">
+              <div class="fc-icon">⏱️</div>
+              <div class="fc-title">Tempo de Resposta</div>
+              <div class="fc-desc">Tempo médio para primeira resposta</div>
+            </div>
+            <div class="feature-card">
+              <div class="fc-icon">😊</div>
+              <div class="fc-title">Satisfação</div>
+              <div class="fc-desc">NPS e avaliações dos atendimentos</div>
+            </div>
+            <div class="feature-card">
+              <div class="fc-icon">📤</div>
+              <div class="fc-title">Mensagens Enviadas</div>
+              <div class="fc-desc">Volume total de mensagens outbound</div>
+            </div>
+            <div class="feature-card">
+              <div class="fc-icon">🧠</div>
+              <div class="fc-title">Uso de Créditos</div>
+              <div class="fc-desc">Tokens de IA consumidos no período</div>
+            </div>
+          </div>
+
+          <h3>📅 Filtros de Período</h3>
+          <p>Use os filtros no topo: <strong>hoje, 7 dias, 30 dias, 90 dias</strong> ou intervalo personalizado.</p>
+
+          <h3>📥 Exportando Relatórios</h3>
+          <ol class="steps">
+            <li>Configure os filtros desejados (período, canal, agente).</li>
+            <li>Clique no botão <strong>"Exportar"</strong>.</li>
+            <li>Escolha o formato: <strong>CSV</strong> (para Excel) ou <strong>PDF</strong>.</li>
+          </ol>
+
+        </div>
+      </section>
+
+      <!-- ════════ CRÉDITOS ════════ -->
+      <section class="section" id="creditos">
+        <div class="section-header">
+          <div class="section-icon">🪙</div>
+          <div class="section-title-area">
+            <div class="section-num">Módulo 10</div>
+            <div class="section-title">Créditos</div>
+            <div class="section-desc">Gerencie os créditos de IA da sua conta</div>
+          </div>
+        </div>
+        <div class="section-body">
+
+          <h3>🪙 O que são Créditos?</h3>
+          <p>Os <strong>créditos</strong> são utilizados para processar respostas dos agentes de IA. Cada mensagem processada pelo GPT consome créditos proporcionais ao tamanho da conversa (tokens).</p>
+
+          <h3>📊 Consultando seu Saldo</h3>
+          <ol class="steps">
+            <li>Acesse <strong>Créditos</strong> no menu lateral.</li>
+            <li>O painel exibe o saldo atual, consumo do mês e histórico de uso.</li>
+            <li>O gráfico mostra a evolução diária dos créditos utilizados.</li>
+          </ol>
+
+          <h3>💳 Adquirindo Mais Créditos</h3>
+          <ol class="steps">
+            <li>Na página de Créditos, clique em <strong>"Comprar Créditos"</strong>.</li>
+            <li>Selecione o pacote desejado.</li>
+            <li>Conclua o pagamento via cartão ou PIX.</li>
+            <li>Os créditos são adicionados imediatamente após confirmação.</li>
+          </ol>
+
+          <div class="info">Créditos não utilizados no mês <strong>não expiram</strong> e são acumulados para o próximo período, desde que a assinatura esteja ativa.</div>
+
+          <h3>💡 Economizando Créditos</h3>
+          <ul>
+            <li>Configure limites de tokens por conversa no agente</li>
+            <li>Use respostas pré-definidas para FAQs frequentes (não consomem IA)</li>
+            <li>Ative o modo "resposta curta" para perguntas simples</li>
+            <li>Monitore quais agentes consomem mais e otimize os prompts</li>
+          </ul>
+
+        </div>
+      </section>
+
+      <!-- ════════ AFILIADOS ════════ -->
+      <section class="section" id="afiliados">
+        <div class="section-header">
+          <div class="section-icon">🤝</div>
+          <div class="section-title-area">
+            <div class="section-num">Módulo 11</div>
+            <div class="section-title">Programa de Afiliados</div>
+            <div class="section-desc">Indique o WHITE ZAP e ganhe comissões recorrentes</div>
+          </div>
+        </div>
+        <div class="section-body">
+
+          <h3>🤝 Como Funciona?</h3>
+          <p>O <strong>Programa de Afiliados</strong> permite que você indique o WHITE ZAP para outras empresas e ganhe uma comissão recorrente sobre cada assinatura gerada pela sua indicação.</p>
+
+          <h3>🔗 Obtendo seu Link</h3>
+          <ol class="steps">
+            <li>Acesse <strong>Afiliados</strong> no menu lateral.</li>
+            <li>Seu link único de indicação estará exibido no topo da página.</li>
+            <li>Copie o link e compartilhe com potenciais clientes.</li>
+            <li>Quando alguém se cadastrar pelo seu link, será vinculado à sua conta.</li>
+          </ol>
+
+          <h3>💰 Comissões e Pagamentos</h3>
+          <table>
+            <tr><th>Evento</th><th>Comissão</th></tr>
+            <tr><td>Nova assinatura gerada</td><td>Conforme percentual do plano de afiliado</td></tr>
+            <tr><td>Renovação mensal do indicado</td><td>Comissão recorrente enquanto ativo</td></tr>
+            <tr><td>Upgrade de plano do indicado</td><td>Diferença proporcional</td></tr>
+          </table>
+
+          <h3>📊 Acompanhando suas Indicações</h3>
+          <ul>
+            <li>Total de cliques no seu link</li>
+            <li>Cadastros realizados</li>
+            <li>Assinaturas ativas indicadas</li>
+            <li>Comissão acumulada e histórico de pagamentos</li>
+          </ul>
+
+          <div class="tip">Compartilhe seu link em grupos de empreendedores, redes sociais e para contatos que podem se beneficiar da automação de atendimento.</div>
+
+        </div>
+      </section>
+
+      <!-- ════════ CONFIGURAÇÕES ════════ -->
+      <section class="section" id="configuracoes">
+        <div class="section-header">
+          <div class="section-icon">⚙️</div>
+          <div class="section-title-area">
+            <div class="section-num">Módulo 12</div>
+            <div class="section-title">Configurações</div>
+            <div class="section-desc">Personalize sua conta, organização, equipe e assinatura</div>
+          </div>
+        </div>
+        <div class="section-body">
+
+          <h3>🏢 Dados da Organização</h3>
+          <ol class="steps">
+            <li>Acesse <strong>Configurações</strong> no menu lateral.</li>
+            <li>Em <strong>"Organização"</strong>, edite nome da empresa, logo e dados de contato.</li>
+            <li>Salve as alterações.</li>
+          </ol>
+
+          <h3>👥 Gerenciando a Equipe</h3>
+          <ol class="steps">
+            <li>Em Configurações, acesse a aba <strong>"Equipe"</strong>.</li>
+            <li>Clique em <strong>"Convidar Membro"</strong>.</li>
+            <li>Informe o e-mail do colaborador e selecione o <strong>papel</strong>.</li>
+            <li>Clique em <strong>"Enviar Convite"</strong>.</li>
+          </ol>
+
+          <table>
+            <tr><th>Papel</th><th>Permissões</th></tr>
+            <tr><td><span class="badge badge-red">Administrador</span></td><td>Acesso total: criar agentes, disparos, configurações, faturamento</td></tr>
+            <tr><td><span class="badge badge-blue">Atendente</span></td><td>Ver conversas, responder, gerenciar contatos e CRM</td></tr>
+            <tr><td><span class="badge badge-green">Somente Leitura</span></td><td>Visualizar relatórios e conversas sem poder editar</td></tr>
+          </table>
+
+          <h3>💎 Plano e Assinatura</h3>
+          <ol class="steps">
+            <li>Em Configurações, acesse a aba <strong>"Assinatura"</strong>.</li>
+            <li>Visualize seu plano atual, limites de canais, agentes e créditos.</li>
+            <li>Para upgrade, clique em <strong>"Mudar Plano"</strong> e escolha o novo plano.</li>
+          </ol>
+
+          <h3>🔔 Notificações</h3>
+          <p>Configure alertas para: nova mensagem fora do horário, conversa transferida para humano, falha em story ou campanha, créditos baixos, canal desconectado.</p>
+
+        </div>
+      </section>
+
+      <!-- ════════ CANAIS ════════ -->
+      <section class="section" id="canais">
+        <div class="section-header">
+          <div class="section-icon">📡</div>
+          <div class="section-title-area">
+            <div class="section-num">Referência</div>
+            <div class="section-title">Canais WhatsApp</div>
+            <div class="section-desc">Como conectar, manter e solucionar problemas de conexão</div>
+          </div>
+        </div>
+        <div class="section-body">
+
+          <h3>📱 Conectando o WhatsApp</h3>
+          <ol class="steps">
+            <li>Acesse o agente desejado → aba <strong>"Canal"</strong>.</li>
+            <li>Clique em <strong>"Conectar WhatsApp"</strong>. Um QR Code será gerado.</li>
+            <li>No celular: <strong>WhatsApp</strong> → 3 pontinhos → <strong>"Dispositivos Conectados"</strong> → <strong>"Conectar um dispositivo"</strong>.</li>
+            <li>Aponte a câmera para o QR Code e aguarde a confirmação.</li>
+          </ol>
+
+          <div class="warn">O QR Code expira em 60 segundos. Se expirar, clique em <strong>"Atualizar QR Code"</strong> para gerar um novo.</div>
+
+          <h3>🔌 Status de Conexão</h3>
+          <table>
+            <tr><th>Status</th><th>Ação recomendada</th></tr>
+            <tr><td><span class="badge badge-green">Conectado</span></td><td>Tudo funcionando normalmente</td></tr>
+            <tr><td><span class="badge badge-yellow">Conectando</span></td><td>Aguarde alguns segundos</td></tr>
+            <tr><td><span class="badge badge-red">Desconectado</span></td><td>Reconecte usando o QR Code</td></tr>
+          </table>
+
+          <h3>🔧 Solução de Problemas</h3>
+          <div class="feature-grid">
+            <div class="feature-card">
+              <div class="fc-icon">❌</div>
+              <div class="fc-title">QR Code não funciona</div>
+              <div class="fc-desc">Atualize a página, aguarde 5 segundos e tente novamente</div>
+            </div>
+            <div class="feature-card">
+              <div class="fc-icon">🔄</div>
+              <div class="fc-title">Desconecta com frequência</div>
+              <div class="fc-desc">Mantenha o celular conectado e não delete os dados do WhatsApp</div>
+            </div>
+            <div class="feature-card">
+              <div class="fc-icon">📵</div>
+              <div class="fc-title">Número bloqueado</div>
+              <div class="fc-desc">Reduza volume de disparos e adicione intervalo entre mensagens</div>
+            </div>
+            <div class="feature-card">
+              <div class="fc-icon">🌐</div>
+              <div class="fc-title">Stories não publicam</div>
+              <div class="fc-desc">Verifique se o canal está conectado e o arquivo não excede 50 MB</div>
+            </div>
+          </div>
+
+        </div>
+      </section>
+
+      <!-- ════════ FAQ ════════ -->
+      <section class="section" id="faq">
+        <div class="section-header">
+          <div class="section-icon">❓</div>
+          <div class="section-title-area">
+            <div class="section-num">Referência</div>
+            <div class="section-title">Perguntas Frequentes</div>
+            <div class="section-desc">Respostas para as dúvidas mais comuns</div>
+          </div>
+        </div>
+        <div class="section-body">
+
+          <h4>❓ Quantos números posso conectar?</h4>
+          <p>Depende do plano. Cada agente utiliza um número. Planos superiores suportam mais números simultâneos.</p>
+          <hr />
+
+          <h4>❓ O agente responde fora do horário comercial?</h4>
+          <p>Sim! O agente funciona 24/7. Configure uma automação para enviar mensagem personalizada fora do horário se desejar.</p>
+          <hr />
+
+          <h4>❓ O WhatsApp pode banir meu número?</h4>
+          <p>O risco existe principalmente em disparos para contatos que não te conhecem. Use intervalos entre mensagens, envie apenas para quem já interagiu e ofereça opção de descadastro.</p>
+          <hr />
+
+          <h4>❓ Posso usar o WHITE ZAP no celular?</h4>
+          <p>Sim! A plataforma é responsiva e funciona em navegadores mobile (Chrome ou Safari).</p>
+          <hr />
+
+          <h4>❓ Como cancelar a assinatura?</h4>
+          <p>Acesse <strong>Configurações → Assinatura → Cancelar plano</strong>. O acesso permanece até o fim do período já pago.</p>
+          <hr />
+
+          <h4>❓ Posso ter mais de um usuário na mesma conta?</h4>
+          <p>Sim! Adicione colaboradores em <strong>Configurações → Equipe</strong> com papéis distintos (Administrador, Atendente, Leitura).</p>
+          <hr />
+
+          <h4>❓ O agente lembra das conversas anteriores?</h4>
+          <p>Sim, o agente tem memória do histórico da conversa atual. Todo o histórico fica salvo e pode ser consultado em <strong>Conversas</strong>.</p>
+
+        </div>
+      </section>
+
+    </div><!-- /content -->
+
+    <!-- ─── FOOTER ─── -->
+    <footer class="footer">
+      <img src="apps/web/public/logo.png" alt="White ZAP" />
+      <p><strong>WHITE ZAP</strong> — Manual de Utilização v1.0 · 2026</p>
+      <p>Plataforma SaaS de Agentes de IA para WhatsApp e Instagram</p>
+    </footer>
+
+  </div><!-- /main -->
+</div><!-- /layout -->
+
+<script>
+  const links = document.querySelectorAll('.sidebar nav a')
+  const sections = document.querySelectorAll('section[id]')
+
+  function setActive() {
+    let current = ''
+    sections.forEach(s => {
+      if (s.getBoundingClientRect().top <= 100) current = s.id
+    })
+    links.forEach(a => {
+      a.classList.remove('active')
+      if (a.getAttribute('href') === '#' + current) a.classList.add('active')
+    })
+  }
+
+  window.addEventListener('scroll', setActive, { passive: true })
+  document.querySelector('.main')?.addEventListener('scroll', setActive, { passive: true })
+  setActive()
+</script>
+
+</body>
+</html>

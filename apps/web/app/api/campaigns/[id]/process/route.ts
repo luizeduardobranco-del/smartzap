@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { EvolutionWhatsAppAdapter } from '@zapagent/channel-adapters'
+import { findOrCreateOpenConversation } from '@/lib/conversations'
 
 function getSupabase() {
   return createClient(
@@ -188,35 +189,14 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
       const agentId = campaign.channels?.agent_id ?? null
 
       // Find open conversation for this contact+channel or create one
-      const { data: existingConv } = await supabase
-        .from('conversations')
-        .select('id')
-        .eq('contact_id', nextMsg.contact_id)
-        .eq('channel_id', channelId)
-        .eq('status', 'open')
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .maybeSingle()
-
-      let conversationId: string | null = existingConv?.id ?? null
-
-      if (!conversationId) {
-        const { data: newConv, error: convErr } = await supabase
-          .from('conversations')
-          .insert({
-            organization_id: campaign.organization_id,
-            contact_id: nextMsg.contact_id,
-            channel_id: channelId,
-            agent_id: agentId,
-            status: 'open',
-            mode: 'ai',
-            last_message_at: new Date().toISOString(),
-          })
-          .select('id')
-          .single()
-        if (convErr) console.error('[campaign/process] conversation insert error:', convErr.message, convErr.details)
-        conversationId = newConv?.id ?? null
-      }
+      const conv = await findOrCreateOpenConversation(supabase, {
+        organizationId: campaign.organization_id,
+        contactId: nextMsg.contact_id,
+        channelId,
+        agentId,
+        mode: 'ai',
+      })
+      const conversationId: string | null = conv?.id ?? null
 
       if (conversationId) {
         const { error: msgErr } = await supabase.from('messages').insert({

@@ -9,7 +9,7 @@ export function buildInviteEmail({
   inviterName?: string
   acceptUrl: string
 }): { subject: string; html: string } {
-  const subject = `Você foi convidado para ${orgName} no WHITE ZAP`
+  const subject = `Você foi convidado para ${orgName} no WHITE CHAT`
 
   const html = `<!DOCTYPE html>
 <html lang="pt-BR">
@@ -29,7 +29,7 @@ export function buildInviteEmail({
             <td align="center" style="background:linear-gradient(135deg,#1e40af 0%,#2563eb 60%,#3b82f6 100%);border-radius:16px 16px 0 0;padding:36px 40px 32px;">
               <img
                 src="https://atendente.whiteerp.com/logo.png"
-                alt="WHITE ZAP"
+                alt="WHITE CHAT"
                 width="140"
                 style="display:block;margin:0 auto 16px;"
               />
@@ -47,7 +47,7 @@ export function buildInviteEmail({
               </h1>
               <p style="margin:0 0 24px;font-size:15px;color:#475569;line-height:1.6;">
                 ${inviterName ? `<strong>${inviterName}</strong> convidou você` : 'Você foi convidado'} para fazer parte da organização
-                <strong style="color:#2563eb;">${orgName}</strong> no WHITE ZAP.
+                <strong style="color:#2563eb;">${orgName}</strong> no WHITE CHAT.
               </p>
 
               <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:12px;padding:20px 24px;margin-bottom:28px;">
@@ -56,7 +56,7 @@ export function buildInviteEmail({
               </div>
 
               <p style="margin:0 0 24px;font-size:14px;color:#64748b;line-height:1.6;">
-                Com o WHITE ZAP você acessa agentes de IA, automações, campanhas, conversas e muito mais — tudo em um só lugar.
+                Com o WHITE CHAT você acessa agentes de IA, automações, campanhas, conversas e muito mais — tudo em um só lugar.
               </p>
 
               <!-- CTA Button -->
@@ -87,7 +87,7 @@ export function buildInviteEmail({
                 Este convite expira em <strong>7 dias</strong>. Se você não esperava este convite, pode ignorar este e-mail.
               </p>
               <p style="margin:0;font-size:12px;color:#cbd5e1;">
-                © ${new Date().getFullYear()} WHITE ZAP · Plataforma de Agentes IA
+                © ${new Date().getFullYear()} WHITE CHAT · Plataforma de Agentes IA
               </p>
             </td>
           </tr>

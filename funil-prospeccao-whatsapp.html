@@ -1,0 +1,742 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>WHITE ZAP — Funil de Prospecção WhatsApp</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Segoe UI', Arial, sans-serif;
+      background: #f8fafc;
+      color: #0f172a;
+      line-height: 1.6;
+    }
+
+    /* ── Header ── */
+    .header {
+      background: linear-gradient(135deg, #0c1a4e 0%, #1e3a8a 50%, #2563eb 100%);
+      color: white;
+      padding: 48px 32px;
+      text-align: center;
+    }
+    .header .tag {
+      display: inline-block;
+      background: rgba(255,255,255,0.12);
+      border: 1px solid rgba(255,255,255,0.25);
+      border-radius: 999px;
+      padding: 4px 16px;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: .1em;
+      text-transform: uppercase;
+      margin-bottom: 16px;
+    }
+    .header h1 { font-size: 2rem; font-weight: 900; margin-bottom: 8px; }
+    .header p  { font-size: 1rem; opacity: .8; max-width: 520px; margin: 0 auto; }
+    .header .meta {
+      margin-top: 20px;
+      font-size: 12px;
+      opacity: .55;
+    }
+
+    /* ── Layout ── */
+    .container { max-width: 900px; margin: 0 auto; padding: 40px 24px 80px; }
+
+    /* ── Seção ── */
+    .section { margin-bottom: 40px; }
+    .section-title {
+      font-size: 13px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .08em;
+      color: #64748b;
+      margin-bottom: 16px;
+      padding-bottom: 8px;
+      border-bottom: 2px solid #e2e8f0;
+    }
+
+    /* ── Pipeline visual ── */
+    .pipeline {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0;
+      border-radius: 12px;
+      overflow: hidden;
+      border: 1px solid #e2e8f0;
+      margin-bottom: 8px;
+    }
+    .pipeline-step {
+      flex: 1;
+      min-width: 120px;
+      padding: 14px 12px;
+      background: white;
+      border-right: 1px solid #e2e8f0;
+      position: relative;
+      text-align: center;
+    }
+    .pipeline-step:last-child { border-right: none; }
+    .pipeline-step .dot {
+      width: 12px; height: 12px;
+      border-radius: 50%;
+      margin: 0 auto 8px;
+    }
+    .pipeline-step .step-name { font-size: 12px; font-weight: 700; color: #1e293b; }
+    .pipeline-step .step-msgs { font-size: 11px; color: #94a3b8; margin-top: 2px; }
+    .pipeline-arrow {
+      position: absolute; right: -10px; top: 50%;
+      transform: translateY(-50%);
+      width: 0; height: 0;
+      border-top: 8px solid transparent;
+      border-bottom: 8px solid transparent;
+      border-left: 10px solid #e2e8f0;
+      z-index: 1;
+    }
+
+    /* ── Stage card ── */
+    .stage-card {
+      background: white;
+      border: 1px solid #e2e8f0;
+      border-radius: 14px;
+      margin-bottom: 20px;
+      overflow: hidden;
+      box-shadow: 0 1px 4px rgba(0,0,0,.04);
+    }
+    .stage-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 16px 20px;
+      border-bottom: 1px solid #f1f5f9;
+    }
+    .stage-color-bar {
+      width: 4px;
+      height: 36px;
+      border-radius: 4px;
+      flex-shrink: 0;
+    }
+    .stage-info { flex: 1; }
+    .stage-name { font-size: 16px; font-weight: 800; color: #0f172a; }
+    .stage-sub  { font-size: 12px; color: #94a3b8; margin-top: 1px; }
+    .stage-badge {
+      font-size: 11px;
+      font-weight: 700;
+      padding: 3px 10px;
+      border-radius: 999px;
+      color: white;
+    }
+
+    /* ── Messages ── */
+    .messages { padding: 16px 20px; display: flex; flex-direction: column; gap: 12px; }
+    .msg-empty {
+      padding: 20px;
+      text-align: center;
+      font-size: 13px;
+      color: #94a3b8;
+      font-style: italic;
+    }
+    .msg-item {
+      border: 1px solid #e2e8f0;
+      border-radius: 10px;
+      overflow: hidden;
+    }
+    .msg-meta {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 14px;
+      background: #f8fafc;
+      border-bottom: 1px solid #e2e8f0;
+      font-size: 11px;
+      font-weight: 600;
+      color: #64748b;
+    }
+    .msg-meta .num {
+      width: 20px; height: 20px;
+      border-radius: 50%;
+      background: #2563eb;
+      color: white;
+      font-size: 10px;
+      font-weight: 800;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+    }
+    .msg-meta .delay-tag {
+      margin-left: auto;
+      background: #eff6ff;
+      color: #2563eb;
+      border: 1px solid #bfdbfe;
+      border-radius: 999px;
+      padding: 2px 8px;
+      font-size: 10px;
+      font-weight: 700;
+    }
+    .msg-body {
+      padding: 12px 14px;
+      font-size: 13px;
+      color: #334155;
+      white-space: pre-line;
+      line-height: 1.65;
+      background: white;
+    }
+
+    /* ── Trigger ── */
+    .trigger-box {
+      margin: 0 20px 16px;
+      background: #f0fdf4;
+      border: 1px solid #bbf7d0;
+      border-radius: 8px;
+      padding: 10px 14px;
+      font-size: 12px;
+      color: #166534;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .trigger-box .icon { font-size: 14px; }
+
+    /* ── Rules ── */
+    .rules-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+      gap: 12px;
+    }
+    .rule-card {
+      background: white;
+      border: 1px solid #e2e8f0;
+      border-radius: 10px;
+      padding: 14px 16px;
+      display: flex;
+      gap: 12px;
+      align-items: flex-start;
+    }
+    .rule-icon { font-size: 18px; flex-shrink: 0; }
+    .rule-title { font-size: 13px; font-weight: 700; color: #0f172a; margin-bottom: 2px; }
+    .rule-desc  { font-size: 12px; color: #64748b; }
+
+    /* ── KPIs ── */
+    .kpi-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+      gap: 12px;
+    }
+    .kpi-card {
+      background: white;
+      border: 1px solid #e2e8f0;
+      border-radius: 12px;
+      padding: 18px 16px;
+      text-align: center;
+    }
+    .kpi-value { font-size: 28px; font-weight: 900; color: #2563eb; }
+    .kpi-label { font-size: 12px; color: #64748b; margin-top: 2px; }
+
+    /* ── Table ── */
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      background: white;
+      border-radius: 12px;
+      overflow: hidden;
+      border: 1px solid #e2e8f0;
+      font-size: 13px;
+    }
+    thead tr { background: #f8fafc; }
+    th {
+      text-align: left;
+      padding: 10px 16px;
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .05em;
+      color: #64748b;
+      border-bottom: 1px solid #e2e8f0;
+    }
+    td {
+      padding: 10px 16px;
+      border-bottom: 1px solid #f1f5f9;
+      color: #334155;
+    }
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background: #f8fafc; }
+    .dot-cell { display: flex; align-items: center; gap: 8px; }
+    .dot-sm { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+
+    /* ── Footer ── */
+    .footer {
+      text-align: center;
+      padding: 32px 24px;
+      background: #0f172a;
+      color: #64748b;
+      font-size: 12px;
+    }
+    .footer strong { color: #2563eb; }
+
+    @media (max-width: 600px) {
+      .pipeline { flex-direction: column; }
+      .pipeline-step { border-right: none; border-bottom: 1px solid #e2e8f0; }
+      .pipeline-arrow { display: none; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ── Header ── -->
+<div class="header">
+  <div class="tag">WHITE ZAP — Equipe de Marketing</div>
+  <h1>Funil de Prospecção WhatsApp</h1>
+  <p>Script completo de onboarding + configuração de etapas e sequências de mensagens</p>
+  <div class="meta">Gerado em 01/04/2026 · Carol — Community Manager &amp; Customer Success</div>
+</div>
+
+<div class="container">
+
+  <!-- ── Pipeline visual ── -->
+  <div class="section">
+    <div class="section-title">Visão geral do funil</div>
+    <div class="pipeline">
+      <div class="pipeline-step">
+        <div class="dot" style="background:#94a3b8"></div>
+        <div class="step-name">Novo Lead</div>
+        <div class="step-msgs">Entrada manual</div>
+        <div class="pipeline-arrow"></div>
+      </div>
+      <div class="pipeline-step">
+        <div class="dot" style="background:#3b82f6"></div>
+        <div class="step-name">Abordado</div>
+        <div class="step-msgs">3 msgs · D0/D3/D6</div>
+        <div class="pipeline-arrow"></div>
+      </div>
+      <div class="pipeline-step">
+        <div class="dot" style="background:#f59e0b"></div>
+        <div class="step-name">Respondeu</div>
+        <div class="step-msgs">1 msg · D0</div>
+        <div class="pipeline-arrow"></div>
+      </div>
+      <div class="pipeline-step">
+        <div class="dot" style="background:#8b5cf6"></div>
+        <div class="step-name">Demo agendada</div>
+        <div class="step-msgs">1 msg · D0</div>
+        <div class="pipeline-arrow"></div>
+      </div>
+      <div class="pipeline-step">
+        <div class="dot" style="background:#06b6d4"></div>
+        <div class="step-name">Trial ativo</div>
+        <div class="step-msgs">4 msgs · D0/D1/D3/D5</div>
+        <div class="pipeline-arrow"></div>
+      </div>
+      <div class="pipeline-step">
+        <div class="dot" style="background:#10b981"></div>
+        <div class="step-name">Cliente</div>
+        <div class="step-msgs">1 msg · D2</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Etapa 1 ── -->
+  <div class="section">
+    <div class="section-title">Etapas e mensagens</div>
+
+    <div class="stage-card">
+      <div class="stage-header">
+        <div class="stage-color-bar" style="background:#94a3b8"></div>
+        <div class="stage-info">
+          <div class="stage-name">Etapa 1 — Novo Lead</div>
+          <div class="stage-sub">Cor: #94a3b8 · Entrada via extração Google Maps</div>
+        </div>
+        <div class="stage-badge" style="background:#94a3b8">Etapa 1</div>
+      </div>
+      <div class="msg-empty">Nenhuma mensagem automática — leads entram após extração manual</div>
+    </div>
+
+    <!-- ── Etapa 2 ── -->
+    <div class="stage-card">
+      <div class="stage-header">
+        <div class="stage-color-bar" style="background:#3b82f6"></div>
+        <div class="stage-info">
+          <div class="stage-name">Etapa 2 — Abordado</div>
+          <div class="stage-sub">Cor: #3b82f6 · 3 mensagens · Sequência de 6 dias</div>
+        </div>
+        <div class="stage-badge" style="background:#3b82f6">Etapa 2</div>
+      </div>
+      <div class="messages">
+        <div class="msg-item">
+          <div class="msg-meta">
+            <div class="num">1</div>
+            Texto
+            <div class="delay-tag">Delay: 0 min (imediato)</div>
+          </div>
+          <div class="msg-body">Olá, {nome}! Tudo bem? 👋
+
+Vi que vocês trabalham com [segmento] em [cidade]. Sou da White Zap — criamos agentes de IA que atendem clientes no WhatsApp 24h por dia, sem precisar de equipe extra.
+
+Posso te mostrar como funciona em 2 minutinhos?</div>
+        </div>
+
+        <div class="msg-item">
+          <div class="msg-meta">
+            <div class="num">2</div>
+            Texto
+            <div class="delay-tag">Delay: 4320 min (3 dias)</div>
+          </div>
+          <div class="msg-body">Oi, {nome}! Só passando pra compartilhar um exemplo real 😊
+
+Uma clínica aqui em SP configurou o agente numa tarde e hoje ele responde 80% dos clientes sozinho — inclusive fora do horário comercial.
+
+Se quiser testar grátis por 7 dias, é só me falar 👇</div>
+        </div>
+
+        <div class="msg-item">
+          <div class="msg-meta">
+            <div class="num">3</div>
+            Texto
+            <div class="delay-tag">Delay: 4320 min (3 dias após msg 2)</div>
+          </div>
+          <div class="msg-body">{nome}, última mensagem, prometo! 😄
+
+Criamos uma conta gratuita pra você testar sem compromisso, sem cartão:
+👉 whitezap.com
+
+Se não for o momento certo, tudo bem! Qualquer dúvida é só chamar 🙂</div>
+        </div>
+      </div>
+      <div class="trigger-box">
+        <span class="icon">⚡</span>
+        <span><strong>Gatilho de avanço:</strong> Lead responde qualquer mensagem → mover para "Respondeu"</span>
+      </div>
+    </div>
+
+    <!-- ── Etapa 3 ── -->
+    <div class="stage-card">
+      <div class="stage-header">
+        <div class="stage-color-bar" style="background:#f59e0b"></div>
+        <div class="stage-info">
+          <div class="stage-name">Etapa 3 — Respondeu</div>
+          <div class="stage-sub">Cor: #f59e0b · 1 mensagem · Qualificação</div>
+        </div>
+        <div class="stage-badge" style="background:#f59e0b">Etapa 3</div>
+      </div>
+      <div class="messages">
+        <div class="msg-item">
+          <div class="msg-meta">
+            <div class="num">1</div>
+            Texto
+            <div class="delay-tag">Delay: 0 min (imediato)</div>
+          </div>
+          <div class="msg-body">Que ótimo, {nome}! Fico feliz que tenha respondido 😊
+
+Me conta rapidinho: qual é o principal desafio de atendimento hoje? Muitas mensagens sem resposta? Demora no retorno? Equipe sobrecarregada?
+
+Assim consigo te mostrar exatamente como o agente resolve o seu caso.</div>
+        </div>
+      </div>
+      <div class="trigger-box">
+        <span class="icon">⚡</span>
+        <span><strong>Gatilho de avanço:</strong> Demo confirmada → mover para "Demo agendada"</span>
+      </div>
+    </div>
+
+    <!-- ── Etapa 4 ── -->
+    <div class="stage-card">
+      <div class="stage-header">
+        <div class="stage-color-bar" style="background:#8b5cf6"></div>
+        <div class="stage-info">
+          <div class="stage-name">Etapa 4 — Demo agendada</div>
+          <div class="stage-sub">Cor: #8b5cf6 · 1 mensagem · Confirmação</div>
+        </div>
+        <div class="stage-badge" style="background:#8b5cf6">Etapa 4</div>
+      </div>
+      <div class="messages">
+        <div class="msg-item">
+          <div class="msg-meta">
+            <div class="num">1</div>
+            Texto
+            <div class="delay-tag">Delay: 0 min (imediato)</div>
+          </div>
+          <div class="msg-body">Perfeito, {nome}! Confirmado 🎉
+
+Vou te mostrar a plataforma ao vivo e você já vai sair com seu agente configurado.
+
+Qualquer dúvida antes, pode me chamar aqui mesmo. Até lá! 👋</div>
+        </div>
+      </div>
+      <div class="trigger-box">
+        <span class="icon">⚡</span>
+        <span><strong>Gatilho de avanço:</strong> Lead acessa o trial → mover para "Trial ativo"</span>
+      </div>
+    </div>
+
+    <!-- ── Etapa 5 ── -->
+    <div class="stage-card">
+      <div class="stage-header">
+        <div class="stage-color-bar" style="background:#06b6d4"></div>
+        <div class="stage-info">
+          <div class="stage-name">Etapa 5 — Trial ativo</div>
+          <div class="stage-sub">Cor: #06b6d4 · 4 mensagens · Sequência de 5 dias</div>
+        </div>
+        <div class="stage-badge" style="background:#06b6d4">Etapa 5</div>
+      </div>
+      <div class="messages">
+        <div class="msg-item">
+          <div class="msg-meta">
+            <div class="num">1</div>
+            Texto
+            <div class="delay-tag">Delay: 0 min (boas-vindas)</div>
+          </div>
+          <div class="msg-body">{nome}, seja bem-vindo ao White Zap! 🚀
+
+Sua conta está pronta. Aqui estão os 3 primeiros passos:
+
+1️⃣ Crie seu agente em /agents
+2️⃣ Conecte seu WhatsApp escaneando o QR code
+3️⃣ Suba sua base de conhecimento (PDF, FAQ, links)
+
+Em menos de 10 minutos você já está atendendo. Qualquer dúvida me chama!</div>
+        </div>
+
+        <div class="msg-item">
+          <div class="msg-meta">
+            <div class="num">2</div>
+            Texto
+            <div class="delay-tag">Delay: 1440 min (1 dia depois)</div>
+          </div>
+          <div class="msg-body">Oi, {nome}! Como está indo a configuração? 😊
+
+Se precisar de ajuda com qualquer etapa — conectar o WhatsApp, treinar o agente ou configurar horários — é só me chamar.
+
+Seu agente pode estar atendendo ainda hoje!</div>
+        </div>
+
+        <div class="msg-item">
+          <div class="msg-meta">
+            <div class="num">3</div>
+            Texto
+            <div class="delay-tag">Delay: 4320 min (3 dias depois)</div>
+          </div>
+          <div class="msg-body">{nome}, já faz 3 dias desde que você ativou o trial! 🎯
+
+Como está a experiência? O agente já está respondendo seus clientes?
+
+Se ainda não configurou tudo, posso te ajudar agora mesmo — leva menos de 15 minutos. Quer agendar?</div>
+        </div>
+
+        <div class="msg-item">
+          <div class="msg-meta">
+            <div class="num">4</div>
+            Texto
+            <div class="delay-tag">Delay: 2880 min (2 dias antes do trial acabar)</div>
+          </div>
+          <div class="msg-body">{nome}, seu trial gratuito termina em 2 dias ⏰
+
+Se o agente já está te ajudando, garanta seu plano agora e continue sem interrupção:
+👉 whitezap.com/pricing
+
+Tem alguma dúvida antes de assinar? Me fala que resolvo!</div>
+        </div>
+      </div>
+      <div class="trigger-box">
+        <span class="icon">⚡</span>
+        <span><strong>Gatilho de avanço:</strong> Lead assina um plano → mover para "Cliente"</span>
+      </div>
+    </div>
+
+    <!-- ── Etapa 6 ── -->
+    <div class="stage-card">
+      <div class="stage-header">
+        <div class="stage-color-bar" style="background:#10b981"></div>
+        <div class="stage-info">
+          <div class="stage-name">Etapa 6 — Cliente</div>
+          <div class="stage-sub">Cor: #10b981 · 1 mensagem · Pós-venda</div>
+        </div>
+        <div class="stage-badge" style="background:#10b981">Etapa 6</div>
+      </div>
+      <div class="messages">
+        <div class="msg-item">
+          <div class="msg-meta">
+            <div class="num">1</div>
+            Texto
+            <div class="delay-tag">Delay: 2880 min (2 dias após virar cliente)</div>
+          </div>
+          <div class="msg-body">{nome}, muito obrigado pela confiança! 🙏
+
+Você agora faz parte da família White Zap. Se tiver alguma sugestão, dúvida ou precisar de ajuda para evoluir seu agente, pode contar comigo sempre.
+
+Ah, e se conhecer alguém que também poderia se beneficiar, me indica! 😊</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Regras de disparo ── -->
+  <div class="section">
+    <div class="section-title">Regras de disparo — evitar bloqueio</div>
+    <div class="rules-grid">
+      <div class="rule-card">
+        <div class="rule-icon">📊</div>
+        <div>
+          <div class="rule-title">Máx. 50 disparos/dia</div>
+          <div class="rule-desc">Por número. WhatsApp bloqueia volume alto repentino.</div>
+        </div>
+      </div>
+      <div class="rule-card">
+        <div class="rule-icon">🕘</div>
+        <div>
+          <div class="rule-title">Horário: 9h–12h e 14h–18h</div>
+          <div class="rule-desc">Maior taxa de abertura, evita parecer spam.</div>
+        </div>
+      </div>
+      <div class="rule-card">
+        <div class="rule-icon">📱</div>
+        <div>
+          <div class="rule-title">Chip aquecido (7+ dias)</div>
+          <div class="rule-desc">Números novos têm limite menor de disparos.</div>
+        </div>
+      </div>
+      <div class="rule-card">
+        <div class="rule-icon">✏️</div>
+        <div>
+          <div class="rule-title">Personalizar nome e segmento</div>
+          <div class="rule-desc">Mensagem genérica = baixa resposta + risco de bloqueio.</div>
+        </div>
+      </div>
+      <div class="rule-card">
+        <div class="rule-icon">🚫</div>
+        <div>
+          <div class="rule-title">Evitar sábado noite / domingo cedo</div>
+          <div class="rule-desc">Contexto errado gera resposta negativa.</div>
+        </div>
+      </div>
+      <div class="rule-card">
+        <div class="rule-icon">📋</div>
+        <div>
+          <div class="rule-title">Lotes de 50 por dia</div>
+          <div class="rule-desc">Seg: lote 1, Ter: lote 2 + follow-up lote 1.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Metas ── -->
+  <div class="section">
+    <div class="section-title">Metas — semana 1</div>
+    <div class="kpi-grid">
+      <div class="kpi-card">
+        <div class="kpi-value">200+</div>
+        <div class="kpi-label">Leads extraídos</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-value">150</div>
+        <div class="kpi-label">Disparos enviados</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-value">15–25%</div>
+        <div class="kpi-label">Taxa de resposta</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-value">10+</div>
+        <div class="kpi-label">Demos agendadas</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-value">5+</div>
+        <div class="kpi-label">Trials ativados</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Plano de execução ── -->
+  <div class="section">
+    <div class="section-title">Plano de execução — semana 1</div>
+    <table>
+      <thead>
+        <tr>
+          <th>Dia</th>
+          <th>Ação</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>Segunda</strong></td>
+          <td>Extrair 200 leads (Maps) + criar funil na plataforma + configurar etapas</td>
+        </tr>
+        <tr>
+          <td><strong>Terça</strong></td>
+          <td>Disparar mensagem 1 para lote 1 (50 contatos)</td>
+        </tr>
+        <tr>
+          <td><strong>Quarta</strong></td>
+          <td>Disparar mensagem 1 para lote 2 (50 contatos) + follow-up automático lote 1 sem resposta</td>
+        </tr>
+        <tr>
+          <td><strong>Quinta</strong></td>
+          <td>Continuar disparos + atender respostas com agente qualificador</td>
+        </tr>
+        <tr>
+          <td><strong>Sexta</strong></td>
+          <td>Analisar métricas + ajustar script conforme padrão de respostas</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- ── Resumo do funil ── -->
+  <div class="section">
+    <div class="section-title">Resumo do funil</div>
+    <table>
+      <thead>
+        <tr>
+          <th>Etapa</th>
+          <th>Cor</th>
+          <th>Msgs</th>
+          <th>Gatilho de avanço</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><div class="dot-cell"><div class="dot-sm" style="background:#94a3b8"></div>Novo Lead</div></td>
+          <td>#94a3b8</td>
+          <td>—</td>
+          <td>Extração Maps</td>
+        </tr>
+        <tr>
+          <td><div class="dot-cell"><div class="dot-sm" style="background:#3b82f6"></div>Abordado</div></td>
+          <td>#3b82f6</td>
+          <td>3 (D0 / D3 / D6)</td>
+          <td>Lead responde</td>
+        </tr>
+        <tr>
+          <td><div class="dot-cell"><div class="dot-sm" style="background:#f59e0b"></div>Respondeu</div></td>
+          <td>#f59e0b</td>
+          <td>1 (D0)</td>
+          <td>Demo confirmada</td>
+        </tr>
+        <tr>
+          <td><div class="dot-cell"><div class="dot-sm" style="background:#8b5cf6"></div>Demo agendada</div></td>
+          <td>#8b5cf6</td>
+          <td>1 (D0)</td>
+          <td>Acessa o trial</td>
+        </tr>
+        <tr>
+          <td><div class="dot-cell"><div class="dot-sm" style="background:#06b6d4"></div>Trial ativo</div></td>
+          <td>#06b6d4</td>
+          <td>4 (D0 / D1 / D3 / D5)</td>
+          <td>Assina um plano</td>
+        </tr>
+        <tr>
+          <td><div class="dot-cell"><div class="dot-sm" style="background:#10b981"></div>Cliente</div></td>
+          <td>#10b981</td>
+          <td>1 (D2)</td>
+          <td>—</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+</div>
+
+<!-- ── Footer ── -->
+<div class="footer">
+  <strong>WHITE ZAP</strong> · Gerado pela equipe de marketing IA · 01/04/2026
+</div>
+
+</body>
+</html>

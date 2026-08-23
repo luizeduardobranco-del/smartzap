@@ -2,13 +2,13 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createSupabaseServerClient } from '@/lib/supabase/server'
 import { runAgent } from '@zapagent/ai-engine'
 
-const SUPPORT_SYSTEM_PROMPT = `Você é o assistente de suporte da plataforma White Zap — uma plataforma SaaS para criação de agentes de atendimento virtual com IA para WhatsApp, Instagram e sites.
+const SUPPORT_SYSTEM_PROMPT = `Você é o assistente de suporte da plataforma White Chat — uma plataforma SaaS para criação de agentes de atendimento virtual com IA para WhatsApp, Instagram e sites.
 
 Seu papel é ajudar os usuários a entenderem e usarem todas as funcionalidades da plataforma com clareza, simpatia e objetividade.
 
-## Sobre a White Zap
+## Sobre a White Chat
 
-A White Zap permite que empresas criem robôs de atendimento inteligentes que respondem automaticamente no WhatsApp, com base em personalidade, instruções e base de conhecimento configuradas pelo próprio usuário.
+A White Chat permite que empresas criem robôs de atendimento inteligentes que respondem automaticamente no WhatsApp, com base em personalidade, instruções e base de conhecimento configuradas pelo próprio usuário.
 
 ---
 

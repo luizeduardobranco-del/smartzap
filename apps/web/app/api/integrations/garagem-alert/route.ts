@@ -20,6 +20,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { EvolutionWhatsAppAdapter, MetaCloudWhatsAppAdapter } from '@zapagent/channel-adapters'
+import { findOrCreateOpenConversation } from '@/lib/conversations'
 
 function getSupabase() {
   return createClient(
@@ -40,8 +41,14 @@ export interface GaragemAlertPayload {
   produto?: string | null
   /** Mensagem personalizada — se não fornecida, usa o template padrão */
   customMessage?: string
-  /** ID da organização WHITE ZAP — se omitido, usa a primeira org com canal conectado */
+  /** Nome do contato (se omitido, usa transportadoraNome) — ex.: aviso ao remetente da NF */
+  contactName?: string
+  /** Tags do contato (se omitido, usa garagem/patio/transportadora) */
+  contactTags?: string[]
+  /** ID da organização WHITE CHAT — se omitido, tenta pelo slug; senão usa a 1ª org com canal conectado */
   organizationId?: string
+  /** Slug da organização WHITE CHAT (alternativa ao id, ex.: "luizmarques-88e7ec83") */
+  organizationSlug?: string
 }
 
 function buildMessage(p: GaragemAlertPayload): string {
@@ -53,8 +60,8 @@ function buildMessage(p: GaragemAlertPayload): string {
   const prod = p.produto ? `\n\nProduto: ${p.produto}.` : ''
 
   return (
-    `🅿️ *Ativa Rio — Pátio*\n\n` +
-    `Olá! O cliente *${p.clienteNome}* solicitou a retirada do veículo ${veic} do pátio da Ativa Rio.${prod}\n\n` +
+    `🅿️ *Estacionamento WR*\n\n` +
+    `Olá! O cliente *${p.clienteNome}* solicitou o envio do veículo ${veic} para a sua fábrica.${prod}\n\n` +
     `Por favor, envie um motorista para a coleta. Em caso de dúvidas, responda esta mensagem.`
   )
 }
@@ -87,7 +94,18 @@ export async function POST(request: NextRequest) {
   const phone = payload.phone.replace(/\D/g, '')
   const supabase = getSupabase()
 
-  // ── 3. Canal WhatsApp conectado ───────────────────────────────────────────
+  // ── 3. Canal WhatsApp conectado da ORGANIZAÇÃO certa ──────────────────────
+  // Resolve a org por id ou slug — evita pegar o canal de outra conta.
+  let orgId = payload.organizationId || null
+  if (!orgId && payload.organizationSlug) {
+    const { data: org } = await supabase
+      .from('organizations').select('id').eq('slug', payload.organizationSlug).maybeSingle()
+    if (!org) {
+      return NextResponse.json({ error: `Organização não encontrada (slug: ${payload.organizationSlug})` }, { status: 404 })
+    }
+    orgId = org.id
+  }
+
   let channelQuery = supabase
     .from('channels')
     .select('id, organization_id, agent_id, credentials, type')
@@ -95,8 +113,8 @@ export async function POST(request: NextRequest) {
     .eq('status', 'connected')
     .limit(1)
 
-  if (payload.organizationId) {
-    channelQuery = channelQuery.eq('organization_id', payload.organizationId)
+  if (orgId) {
+    channelQuery = channelQuery.eq('organization_id', orgId)
   }
 
   const { data: channelRows, error: channelErr } = await channelQuery
@@ -127,9 +145,9 @@ export async function POST(request: NextRequest) {
         organization_id: organizationId,
         external_id: phone,
         channel_type: 'whatsapp',
-        name: payload.transportadoraNome,
+        name: payload.contactName || payload.transportadoraNome,
         phone,
-        tags: ['garagem', 'patio', 'transportadora'],
+        tags: payload.contactTags || ['garagem', 'patio', 'transportadora'],
       })
       .select('id')
       .single()
@@ -140,37 +158,18 @@ export async function POST(request: NextRequest) {
   }
 
   // ── 5. Conversa em mode='human' (sem auto-resposta da IA) ──────────────────
-  let conversationId: string
-  const { data: existingConv } = await supabase
-    .from('conversations')
-    .select('id')
-    .eq('contact_id', contactId)
-    .eq('channel_id', channel.id)
-    .eq('status', 'open')
-    .maybeSingle()
-
-  if (existingConv) {
-    conversationId = existingConv.id
-    await supabase.from('conversations').update({ mode: 'human' }).eq('id', conversationId)
-  } else {
-    const { data: newConv, error: convErr } = await supabase
-      .from('conversations')
-      .insert({
-        organization_id: organizationId,
-        contact_id: contactId,
-        channel_id: channel.id,
-        agent_id: channel.agent_id,
-        status: 'open',
-        mode: 'human',
-        last_message_at: new Date().toISOString(),
-      })
-      .select('id')
-      .single()
-    if (!newConv) {
-      return NextResponse.json({ error: `Erro ao criar conversa: ${convErr?.message}` }, { status: 500 })
-    }
-    conversationId = newConv.id
+  const conv = await findOrCreateOpenConversation(supabase, {
+    organizationId,
+    contactId,
+    channelId: channel.id,
+    agentId: channel.agent_id,
+    mode: 'human',
+    forceHumanMode: true,
+  })
+  if (!conv) {
+    return NextResponse.json({ error: 'Erro ao criar conversa' }, { status: 500 })
   }
+  const conversationId = conv.id
 
   // ── 6. Salva mensagem ─────────────────────────────────────────────────────
   const messageText = buildMessage(payload)

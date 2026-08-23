@@ -1,7 +1,7 @@
 import { getAdminStats } from '@/lib/admin'
 import { Building2, Users, CreditCard, TrendingUp } from 'lucide-react'
 
-export const metadata = { title: 'Admin — White Zap' }
+export const metadata = { title: 'Admin — White Chat' }
 
 export default async function AdminPage() {
   const { organizations, totalOrgs, totalUsers } = await getAdminStats()
@@ -19,7 +19,7 @@ export default async function AdminPage() {
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold">Painel do Administrador</h1>
-        <p className="text-sm text-muted-foreground">Visão geral da plataforma White Zap</p>
+        <p className="text-sm text-muted-foreground">Visão geral da plataforma White Chat</p>
       </div>
 
       {/* Stats */}

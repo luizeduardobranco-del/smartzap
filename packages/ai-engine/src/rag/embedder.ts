@@ -75,7 +75,7 @@ export class Embedder {
 
 async function fetchUrlText(url: string): Promise<string> {
   const response = await fetch(url, {
-    headers: { 'User-Agent': 'ZapAgent/1.0 (knowledge-indexer)' },
+    headers: { 'User-Agent': 'WhiteChat/1.0 (knowledge-indexer)' },
     signal: AbortSignal.timeout(15_000),
   })
   if (!response.ok) throw new Error(`Failed to fetch URL: ${response.status}`)

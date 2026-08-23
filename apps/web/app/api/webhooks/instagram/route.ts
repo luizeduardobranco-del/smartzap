@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { MetaInstagramAdapter } from '@zapagent/channel-adapters'
 import { runAgent } from '@zapagent/ai-engine'
+import { findOrCreateOpenConversation } from '@/lib/conversations'
 
 function getSupabase() {
   return createClient(
@@ -82,10 +83,12 @@ async function handleWebhook(payload: unknown) {
 
   const creds = channel.credentials as {
     igUserId: string
-    pageAccessToken: string
-    pageId: string
+    accessToken?: string      // Instagram Business Login (novo)
+    pageAccessToken?: string  // Facebook Pages (legado)
+    pageId?: string
     igUsername?: string
   }
+  const resolvedToken = creds.accessToken ?? creds.pageAccessToken ?? ''
 
   // 2. Check credits
   const { data: org } = await supabase
@@ -130,40 +133,19 @@ async function handleWebhook(payload: unknown) {
   }
 
   // 4. Find or create open conversation
-  let conversationId: string
-  let conversationMode: string
-  const { data: existingConv } = await supabase
-    .from('conversations')
-    .select('id, mode')
-    .eq('contact_id', contactId)
-    .eq('channel_id', channel.id)
-    .eq('status', 'open')
-    .maybeSingle()
-
-  if (existingConv) {
-    conversationId = existingConv.id
-    conversationMode = existingConv.mode
-  } else {
-    const { data: newConv, error: convErr } = await supabase
-      .from('conversations')
-      .insert({
-        organization_id: channel.organization_id,
-        contact_id: contactId,
-        channel_id: channel.id,
-        agent_id: channel.agent_id,
-        status: 'open',
-        mode: 'ai',
-        last_message_at: new Date().toISOString(),
-      })
-      .select('id, mode')
-      .single()
-    if (!newConv) {
-      console.error('[webhook/instagram] conversation insert failed:', convErr?.message)
-      return
-    }
-    conversationId = newConv.id
-    conversationMode = newConv.mode
+  const conv = await findOrCreateOpenConversation(supabase, {
+    organizationId: channel.organization_id,
+    contactId,
+    channelId: channel.id,
+    agentId: channel.agent_id,
+    mode: 'ai',
+  })
+  if (!conv) {
+    console.error('[webhook/instagram] conversation resolve failed')
+    return
   }
+  const conversationId = conv.id
+  const conversationMode = conv.mode
 
   // 5. Save incoming message
   const { data: savedMsg } = await supabase
@@ -288,7 +270,7 @@ async function handleWebhook(payload: unknown) {
     .eq('id', conversationId)
 
   // 13. Send via Instagram
-  const sendAdapter = new MetaInstagramAdapter(creds.igUserId, creds.pageAccessToken)
+  const sendAdapter = new MetaInstagramAdapter(creds.igUserId, resolvedToken)
   await sendAdapter.sendMessage({
     channelType: 'instagram',
     channelIdentifier: creds.igUserId,

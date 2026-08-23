@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
-import { EvolutionWhatsAppAdapter } from '@zapagent/channel-adapters'
+import { EvolutionWhatsAppAdapter, MetaInstagramAdapter } from '@zapagent/channel-adapters'
 
 function getSupabase() {
   return createClient(
@@ -121,13 +121,79 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     }
   }
 
-  // --- Instagram (placeholder — integration pending approval) ---
+  // --- Instagram via Meta Content Publishing API ---
   if (post.channel_type === 'instagram') {
-    await supabase
-      .from('story_posts')
-      .update({ status: 'failed', error_message: 'Integração Instagram pendente de aprovação' })
-      .eq('id', postId)
-    return NextResponse.json({ error: 'Instagram integration not yet available' }, { status: 503 })
+    try {
+      const igUserId = credentials?.igUserId as string | undefined
+      const pageAccessToken = credentials?.pageAccessToken as string | undefined
+
+      if (!igUserId || !pageAccessToken) {
+        throw new Error('Canal Instagram sem igUserId ou pageAccessToken nas credentials')
+      }
+
+      // Resolve media URLs (may be a JSON array for carousel)
+      let mediaUrls: string[] = []
+      if (post.media_url) {
+        try {
+          const parsed = JSON.parse(post.media_url)
+          mediaUrls = Array.isArray(parsed) ? parsed : [post.media_url]
+        } catch {
+          mediaUrls = [post.media_url]
+        }
+      }
+
+      const caption = post.caption ?? undefined
+      const mediaType = (post.media_type as string | null)?.toUpperCase()
+
+      let result: { containerId: string; mediaId?: string }
+
+      if (mediaUrls.length > 1) {
+        // Carrossel
+        result = await MetaInstagramAdapter.publishCarousel(igUserId, pageAccessToken, {
+          imageUrls: mediaUrls,
+          caption,
+        })
+      } else if (mediaUrls.length === 1) {
+        const isVideo = mediaType === 'VIDEO' || mediaType === 'REELS'
+        result = await MetaInstagramAdapter.publishPost(igUserId, pageAccessToken, {
+          imageUrl: isVideo ? undefined : mediaUrls[0],
+          videoUrl: isVideo ? mediaUrls[0] : undefined,
+          caption,
+          mediaType: isVideo ? (mediaType as 'VIDEO' | 'REELS') : 'IMAGE',
+        })
+      } else {
+        throw new Error('Post Instagram sem mídia — publicação de texto puro não é suportada')
+      }
+
+      const isRepeating = !!post.repeat_days?.length
+      await supabase
+        .from('story_posts')
+        .update({
+          status: isRepeating ? 'scheduled' : 'sent',
+          sent_at: new Date().toISOString(),
+          error_message: null,
+          scheduled_at: isRepeating && post.repeat_time
+            ? nextRepeatDate(post.repeat_days, post.repeat_time)
+            : null,
+          media_url: isRepeating ? post.media_url : null,
+        })
+        .eq('id', postId)
+
+      if (!isRepeating) {
+        for (const url of mediaUrls) {
+          await deleteStorageFile(supabase, url)
+        }
+      }
+
+      return NextResponse.json({ success: true, postId, ...result })
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Instagram publish failed'
+      await supabase
+        .from('story_posts')
+        .update({ status: 'failed', error_message: message })
+        .eq('id', postId)
+      return NextResponse.json({ error: message }, { status: 500 })
+    }
   }
 
   return NextResponse.json({ error: 'Canal não suportado' }, { status: 400 })

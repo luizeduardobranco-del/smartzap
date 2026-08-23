@@ -1,0 +1,82 @@
+WHITE ZAP — PLANILHA DE PRECIFICAÇÃO,,,,,,,
+Atualizado em: Abril 2026,,,,,,,
+,,,,,,,
+=== SEÇÃO 1: CUSTOS META (WhatsApp API) por mensagem ===,,,,,,,
+Categoria,USD por msg,R$ por msg (USD × 5,70),Quem paga,Quem inicia,Janela,Observação
+Marketing,$0,0625,R$ 0,36,Você (WHITE ZAP),Empresa,N/A,Campanhas / disparos em massa
+Utilidade,$0,0068,R$ 0,04,Você (WHITE ZAP),Empresa,N/A,Confirmações / notificações
+Autenticação,$0,0068,R$ 0,04,Você (WHITE ZAP),Empresa,N/A,OTP / verificação
+Serviço,$0,0000,R$ 0,00,Grátis,Cliente,24h,Cliente inicia → você responde grátis
+,,,,,,,
+Nota: A partir de H2/2026 a Meta passará a cobrar em BRL diretamente,,,,,,,
+,,,,,,,
+=== SEÇÃO 2: CUSTOS DE IA por mensagem (estimativa) ===,,,,,,,
+Modelo,Custo/1K tokens (USD),Custo por resposta (USD),Custo por resposta (R$),Qualidade,Indicado para
+Groq Llama 3,$0,0001,$0,0001,R$ 0,001,Alta velocidade,Plano Free / Starter
+GPT-4o Mini,$0,0002,$0,0002,R$ 0,001,Boa,Starter
+GPT-4o,$0,0050,$0,0030,R$ 0,017,Excelente,Pro
+Claude Haiku,$0,0010,$0,0008,R$ 0,005,Boa,Starter / Pro
+Claude Sonnet,$0,0030,$0,0020,R$ 0,011,Muito boa,Pro / Enterprise
+,,,,,,,
+=== SEÇÃO 3: CUSTO META POR MIX DE USO (por 1.000 mensagens) ===,,,,,,,
+Perfil de uso,% Serviço (grátis),% Utilidade,% Marketing,Custo Meta / 1.000 msgs,Custo Meta / msg,Cenário típico
+Só atendimento (inbound),90%,10%,0%,R$ 4,00,R$ 0,004,Suporte ao cliente
+Misto conservador,70%,25%,5%,R$ 28,00,R$ 0,028,Atendimento + alertas
+Misto agressivo,50%,30%,20%,R$ 84,00,R$ 0,084,Vendas + campanhas
+Marketing intenso,20%,30%,50%,R$ 192,00,R$ 0,192,E-commerce / promoções
+,,,,,,,
+=== SEÇÃO 4: ANÁLISE DE MARGEM POR PLANO (cenário conservador — 70% serviço / 25% utilidade / 5% marketing) ===,,,,,,,
+Plano,Preço mensal (R$),Créditos/mês,Custo Meta (R$),Custo IA (R$),Custo infra fixo (R$),Custo total (R$),Margem bruta (R$),Margem %,Situação
+Free,R$ 0,100,R$ 2,80,R$ 0,10,R$ 42,70,R$ 45,60,-R$ 45,60,-100%,PREJUÍZO (aquisição)
+Starter,R$ 97,2.000,R$ 56,00,R$ 3,00,R$ 42,70,R$ 101,70,-R$ 4,70,-5%,APERTADO
+Pro,R$ 297,10.000,R$ 280,00,R$ 17,00,R$ 42,70,R$ 339,70,-R$ 42,70,-14%,PREJUÍZO
+Enterprise,Customizado,-1,Negociável,Negociável,Variável,Variável,Positivo,>50%,OK
+,,,,,,,
+=== SEÇÃO 5: ANÁLISE DE MARGEM POR PLANO (cenário inbound — 90% serviço / 10% utilidade) ===,,,,,,,
+Plano,Preço mensal (R$),Créditos/mês,Custo Meta (R$),Custo IA (R$),Custo infra fixo (R$),Custo total (R$),Margem bruta (R$),Margem %,Situação
+Free,R$ 0,100,R$ 0,40,R$ 0,10,R$ 42,70,R$ 43,20,-R$ 43,20,-100%,PREJUÍZO (aquisição)
+Starter,R$ 97,2.000,R$ 8,00,R$ 3,00,R$ 42,70,R$ 53,70,R$ 43,30,45%,SAUDÁVEL
+Pro,R$ 297,10.000,R$ 40,00,R$ 17,00,R$ 42,70,R$ 99,70,R$ 197,30,66%,ÓTIMO
+Enterprise,Customizado,-1,Negociável,Negociável,Variável,Variável,Positivo,>50%,OK
+,,,,,,,
+=== SEÇÃO 6: INFRAESTRUTURA FIXA MENSAL (estimativa) ===,,,,,,,
+Serviço,Custo (USD),Custo (R$),Observação
+Vercel Pro,$20,R$ 114,Hospedagem web + workers
+Supabase Pro,$25,R$ 142,Banco de dados + pgvector
+Upstash Redis,$10,R$ 57,BullMQ / filas de mensagens
+Evolution API (VPS),$20,R$ 114,Servidor WhatsApp
+TOTAL FIXO,$75,R$ 427,Por mês independente do volume
+,,,,,,,
+Custo fixo por cliente (base 10 clientes pagantes):,,,R$ 42,70,,,(427 / 10)
+Custo fixo por cliente (base 50 clientes pagantes):,,,R$ 8,54,,,(427 / 50)
+Custo fixo por cliente (base 100 clientes pagantes):,,,R$ 4,27,,,(427 / 100)
+,,,,,,,
+=== SEÇÃO 7: RECOMENDAÇÕES DE REPRICING ===,,,,,,,
+Ação,Plano afetado,Sugestão atual,Sugestão nova,Justificativa
+Aumentar preço,Starter,R$ 97/mês,R$ 127/mês,Margem insuficiente no cenário misto
+Aumentar preço,Pro,R$ 297/mês,R$ 397/mês,Pode virar prejuízo com uso intenso
+Limitar marketing,Starter,Sem limite por tipo,Máx 200 msgs marketing/mês,Controlar custo do plano mais barato
+Cobrar excedente,Todos,Sem cobrança extra,R$ 0,50/100 créditos extras,Monetizar uso acima do limite
+Separar créditos,Todos,1 crédito = 1 msg,Créditos por categoria (mkt = 5 créditos),Refletir custo real da Meta
+Add-on Marketing,Starter / Pro,Incluso,Pacote R$ 49 (500 msgs marketing),Isolar custo de disparos em massa
+,,,,,,,
+=== SEÇÃO 8: SIMULAÇÃO DE RECEITA (meta: 50 clientes pagantes) ===,,,,,,,
+Distribuição de clientes,Qtd,Receita mensal,Custo variável (conservador),Margem
+Free,20,R$ 0,R$ 0,R$ 0
+Starter,25,R$ 2.425,R$ 1.492,R$ 933
+Pro,5,R$ 1.485,R$ 1.698,-R$ 213
+TOTAL,50,R$ 3.910,R$ 3.190,R$ 720
+Infra fixa,,,-R$ 427,
+Margem líquida estimada,,,R$ 293,7,5%
+,,,,,,,
+=== SEÇÃO 9: SIMULAÇÃO DE RECEITA (meta: 100 clientes pagantes) ===,,,,,,,
+Distribuição de clientes,Qtd,Receita mensal,Custo variável (conservador),Margem
+Free,30,R$ 0,R$ 0,R$ 0
+Starter,50,R$ 4.850,R$ 2.685,R$ 2.165
+Pro,20,R$ 5.940,R$ 6.794,-R$ 854
+Enterprise,5,R$ 3.000,R$ 1.200,R$ 1.800
+TOTAL,105,R$ 13.790,R$ 10.679,R$ 3.111
+Infra fixa,,,-R$ 427,
+Margem líquida estimada,,,R$ 2.684,19,5%
+,,,,,,,
+Legenda: Crédito = 1 mensagem enviada pelo agente IA | Dólar: R$ 5,70 | Meta cobra por mensagem desde Jul/2025,,,,,,,

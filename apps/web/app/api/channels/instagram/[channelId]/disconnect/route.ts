@@ -21,12 +21,18 @@ export async function POST(
   if (!channel) return NextResponse.json({ error: 'Channel not found' }, { status: 404 })
 
   const creds = channel.credentials as {
-    pageId: string
-    pageAccessToken: string
+    igUserId?: string
+    accessToken?: string      // Instagram Business Login (novo)
+    pageId?: string
+    pageAccessToken?: string  // Facebook Pages (legado)
   }
 
   // Unsubscribe webhooks (best-effort)
-  await MetaInstagramAdapter.unsubscribeFromWebhooks(creds.pageId, creds.pageAccessToken)
+  if (creds.igUserId && creds.accessToken) {
+    await MetaInstagramAdapter.unsubscribeInstagramUser(creds.igUserId, creds.accessToken)
+  } else if (creds.pageId && creds.pageAccessToken) {
+    await MetaInstagramAdapter.unsubscribeFromWebhooks(creds.pageId, creds.pageAccessToken)
+  }
 
   await supabase
     .from('channels')

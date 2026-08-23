@@ -56,3 +56,7 @@ supabase_*.sql
 apps/web/.env.local
 apps/worker/.env.local
 apps/worker/.env
+
+# Saída operacional (backups de scripts, build info)
+scripts/backups/
+*.tsbuildinfo

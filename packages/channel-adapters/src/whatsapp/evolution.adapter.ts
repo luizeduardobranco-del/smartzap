@@ -10,6 +10,13 @@ interface EvolutionWebhookPayload {
       remoteJid: string
       fromMe: boolean
       id: string
+      participant?: string
+      // Quando o participante vem como LID (identidade oculta do WhatsApp), o número real
+      // chega nestes campos companheiros. O nome varia por versão do Baileys/Evolution.
+      senderPn?: string
+      participantPn?: string
+      participantAlt?: string
+      senderAlt?: string
     }
     pushName?: string
     message?: {
@@ -42,10 +49,30 @@ export class EvolutionWhatsAppAdapter implements ChannelAdapter {
     if (p.data.key.fromMe) return null
 
     const remoteJid = p.data.key.remoteJid
-    // Skip group messages for now (contain @g.us)
-    if (remoteJid.includes('@g.us')) return null
-
-    const phone = remoteJid.replace('@s.whatsapp.net', '')
+    // Em grupo (@g.us): o remetente real é o "participant"; o remoteJid é o JID do grupo.
+    const isGroup = remoteJid.includes('@g.us')
+    // O WhatsApp passou a entregar o participante de grupo como LID (`<id>@lid`), que NÃO
+    // é telefone — é uma identidade opaca. Como só removíamos '@s.whatsapp.net' e '@g.us',
+    // o senderExternalId virava "36369850196144@lid" e nenhum cruzamento por telefone
+    // funcionava (0 de 143 leituras de abastecimento casaram com o cadastro de motoristas).
+    // Quando o participante é LID, o número real vem num campo companheiro; preferimos ele.
+    const k = p.data.key
+    const ehLid = (s?: string) => !!s && s.includes('@lid')
+    const participante = isGroup ? (k.participant || remoteJid) : remoteJid
+    const numeroReal = [k.senderPn, k.participantPn, k.participantAlt, k.senderAlt]
+      .find((c) => c && !ehLid(c))
+    const senderJid = (ehLid(participante) && numeroReal) ? numeroReal : participante
+    const phone = senderJid
+      .replace('@s.whatsapp.net', '')
+      .replace('@g.us', '')
+      .replace('@lid', '')
+    if (ehLid(participante) && !numeroReal) {
+      // Sem número no payload não há como identificar o motorista. Logamos as chaves
+      // disponíveis para descobrir em qual campo esta versão da Evolution manda o telefone.
+      console.warn('[evolution] participante veio como LID e sem telefone', {
+        participante, camposDisponiveis: Object.keys(k),
+      })
+    }
     const msg = p.data.message
 
     if (!msg) return null
@@ -90,6 +117,8 @@ export class EvolutionWhatsAppAdapter implements ChannelAdapter {
       mimeType,
       filename,
       timestamp: new Date(p.data.messageTimestamp * 1000),
+      isGroup,
+      groupJid: isGroup ? remoteJid : undefined,
       raw: payload,
     }
   }
@@ -197,8 +226,19 @@ export class EvolutionWhatsAppAdapter implements ChannelAdapter {
     caption?: string
     backgroundColor?: string // for text stories
   }): Promise<void> {
-    // Fetch owner JID — required by Evolution API v2 (statusJidList min length 1)
+    // Helper: parse a raw owner field into a valid E164@s.whatsapp.net JID
+    const parseOwnerJid = (raw: unknown): string | null => {
+      if (!raw || raw === 'None' || raw === 'null' || raw === 'undefined') return null
+      const str = String(raw)
+      const phone = str.split('@')[0].split(':')[0]
+      // Must be all digits (a real phone number)
+      return /^\d{6,}$/.test(phone) ? `${phone}@s.whatsapp.net` : null
+    }
+
+    // Fetch owner JID — needed by some Evolution API versions for statusJidList
     let ownerJid: string | null = null
+
+    // Attempt 1: fetchInstances
     try {
       const info = await axios.get(
         `${this.apiUrl}/instance/fetchInstances?instanceName=${this.instanceName}`,
@@ -206,47 +246,45 @@ export class EvolutionWhatsAppAdapter implements ChannelAdapter {
       )
       const inst = Array.isArray(info.data) ? info.data[0] : info.data
       console.log('[sendStatus] fetchInstances raw:', JSON.stringify(inst))
-      const raw = inst?.instance?.owner ?? inst?.ownerJid ?? inst?.instance?.ownerJid
-      if (raw) {
-        // Normalize: "5511999999999:0@s.whatsapp.net" → "5511999999999@s.whatsapp.net"
-        const phone = raw.split('@')[0].split(':')[0]
-        ownerJid = `${phone}@s.whatsapp.net`
-      }
+      ownerJid =
+        parseOwnerJid(inst?.instance?.owner) ??
+        parseOwnerJid(inst?.ownerJid) ??
+        parseOwnerJid(inst?.instance?.ownerJid)
     } catch (e: any) {
       console.error('[sendStatus] fetchInstances failed:', e?.message)
     }
 
+    // Attempt 2: connectionState (sometimes exposes owner in a different path)
     if (!ownerJid) {
-      throw new Error('Não foi possível obter o JID do proprietário da instância. Verifique se o canal está conectado.')
-    }
-
-    // Always convert image/video URLs to base64 — Evolution API may not be able
-    // to reach external URLs (Supabase storage, Canva, etc.) from its network.
-    let content = options.content
-    const isMediaUrl = (options.type === 'image' || options.type === 'video')
-      && content.startsWith('http')
-
-    if (isMediaUrl) {
       try {
-        const mediaRes = await axios.get(content, {
-          responseType: 'arraybuffer',
-          maxRedirects: 10,
-          timeout: 30_000,
-        })
-        const mimeType = mediaRes.headers['content-type'] ?? (options.type === 'video' ? 'video/mp4' : 'image/jpeg')
-        const base64 = Buffer.from(mediaRes.data).toString('base64')
-        content = `data:${mimeType};base64,${base64}`
-        console.log('[sendStatus] resolved to base64, mime:', mimeType, 'bytes:', base64.length)
+        const cs = await axios.get(
+          `${this.apiUrl}/instance/connectionState/${this.instanceName}`,
+          { headers: { apikey: this.apiKey } }
+        )
+        console.log('[sendStatus] connectionState raw:', JSON.stringify(cs.data))
+        ownerJid =
+          parseOwnerJid(cs.data?.instance?.owner) ??
+          parseOwnerJid(cs.data?.ownerJid)
       } catch (e: any) {
-        console.warn('[sendStatus] base64 conversion failed, sending URL directly:', e?.message)
+        console.warn('[sendStatus] connectionState failed:', e?.message)
       }
     }
+
+    console.log('[sendStatus] resolved ownerJid:', ownerJid)
+
+    // Send the URL directly to Evolution — Evolution API fetches it from Supabase storage
+    // (bucket is public, Evolution can access it). Converting to base64 was causing
+    // oversized payloads (~2 MB) which Evolution accepted but WhatsApp rendered blank.
+    const content = options.content
 
     const body: Record<string, unknown> = {
       type: options.type,
       content,
-      allContacts: true,        // broadcast para todos os contatos
-      statusJidList: [ownerJid], // fallback para versões mais antigas
+      allContacts: true, // broadcast para todos os contatos
+    }
+    // Include statusJidList only when we have a real JID — a bogus JID (e.g. "None@...") causes blank statuses
+    if (ownerJid) {
+      body.statusJidList = [ownerJid]
     }
     if (options.type === 'text') {
       body.backgroundColor = options.backgroundColor ?? '#000000'
@@ -254,7 +292,7 @@ export class EvolutionWhatsAppAdapter implements ChannelAdapter {
     }
     if (options.caption) body.caption = options.caption
 
-    console.log('[sendStatus] ownerJid:', ownerJid, '| type:', options.type, '| contentLength:', content.length, '| contentStart:', content.slice(0, 80))
+    console.log('[sendStatus] ownerJid:', ownerJid ?? 'none (allContacts only)', '| type:', options.type, '| contentLength:', content.length, '| contentStart:', content.slice(0, 80))
 
     const url = `${this.apiUrl}/message/sendStatus/${this.instanceName}`
     try {
@@ -275,7 +313,11 @@ export class EvolutionWhatsAppAdapter implements ChannelAdapter {
         { headers: { apikey: this.apiKey } }
       )
       const inst = Array.isArray(response.data) ? response.data[0] : response.data
-      return inst?.instance?.profileName ?? inst?.instance?.owner?.split(':')[0] ?? null
+      const owner = inst?.instance?.owner
+      const profileName = inst?.instance?.profileName
+      if (profileName && profileName !== 'None') return profileName
+      if (owner && owner !== 'None') return owner.split(':')[0]
+      return null
     } catch {
       return null
     }

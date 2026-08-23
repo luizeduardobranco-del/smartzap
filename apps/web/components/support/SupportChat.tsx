@@ -10,7 +10,7 @@ type Message = {
 
 const GREETING: Message = {
   role: 'assistant',
-  content: 'Olá! 👋 Sou o assistente de suporte da White Zap. Posso te ajudar com dúvidas sobre como usar a plataforma, configurar agentes, conectar WhatsApp, criar campanhas e muito mais. Como posso te ajudar?',
+  content: 'Olá! 👋 Sou o assistente de suporte da White Chat. Posso te ajudar com dúvidas sobre como usar a plataforma, configurar agentes, conectar WhatsApp, criar campanhas e muito mais. Como posso te ajudar?',
 }
 
 export function SupportChat() {
@@ -162,7 +162,7 @@ export function SupportChat() {
               <Bot className="h-5 w-5" />
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-semibold leading-none">Suporte White Zap</p>
+              <p className="text-sm font-semibold leading-none">Suporte White Chat</p>
               <div className="mt-1 flex items-center gap-1.5">
                 <span className="h-2 w-2 rounded-full bg-green-400" />
                 <p className="text-xs text-white/80">Online agora · resposta imediata</p>
@@ -280,7 +280,7 @@ export function SupportChat() {
         onMouseDown={handleBubbleMouseDown}
         onClick={handleBubbleClick}
         className="relative flex h-14 w-14 items-center justify-center rounded-full bg-primary text-white shadow-lg hover:bg-primary/90 transition-all hover:scale-105 active:scale-95 cursor-grab active:cursor-grabbing"
-        title="Suporte White Zap — arraste para mover"
+        title="Suporte White Chat — arraste para mover"
       >
         {open ? (
           <ChevronDown className="h-6 w-6" />

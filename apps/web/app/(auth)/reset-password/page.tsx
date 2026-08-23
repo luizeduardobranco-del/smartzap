@@ -53,7 +53,7 @@ export default function ResetPasswordPage() {
             <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary">
               <Zap className="h-6 w-6 text-white" />
             </div>
-            <span className="text-2xl font-bold">White Zap</span>
+            <span className="text-2xl font-bold">White Chat</span>
           </Link>
           <h1 className="text-2xl font-bold">Nova senha</h1>
           <p className="mt-1 text-sm text-muted-foreground">Defina uma nova senha para sua conta</p>

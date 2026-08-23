@@ -44,7 +44,7 @@ export function ReferralProgram() {
     <div className="space-y-6">
       <div>
         <h2 className="text-xl font-bold">Programa de Afiliados</h2>
-        <p className="text-sm text-muted-foreground">Indique a White Zap e ganhe 20% de comissão em cada assinatura confirmada</p>
+        <p className="text-sm text-muted-foreground">Indique a White Chat e ganhe 20% de comissão em cada assinatura confirmada</p>
       </div>
 
       {/* How it works */}

@@ -154,6 +154,7 @@ function ContactInfoPanel({ contactId, onClose }: { contactId: string; onClose: 
   const [showFunnelModal, setShowFunnelModal] = useState(false)
 
   const contact = data?.contact as any
+  const funnelContact = data?.funnelContact as any
 
   const updateTags = trpc.crm.updateTags.useMutation({
     onMutate: ({ tags }) => setLocalTags(tags),
@@ -215,13 +216,34 @@ function ContactInfoPanel({ contactId, onClose }: { contactId: string; onClose: 
         </div>
 
         {/* Funil */}
-        <button
-          onClick={() => setShowFunnelModal(true)}
-          className="flex w-full items-center gap-2 rounded-xl border border-dashed border-primary/30 px-3 py-2.5 text-xs font-medium text-primary hover:bg-primary/5 transition-colors"
-        >
-          <GitBranch className="h-3.5 w-3.5" />
-          Adicionar ao Funil
-        </button>
+        {funnelContact ? (
+          <div className="rounded-xl border border-primary/20 bg-primary/5 px-3 py-2.5 space-y-1">
+            <div className="flex items-center gap-2 text-xs font-semibold text-primary">
+              <GitBranch className="h-3.5 w-3.5 shrink-0" />
+              <span className="truncate">{(funnelContact.funnels as any)?.name ?? 'Funil'}</span>
+            </div>
+            <p className="text-xs text-muted-foreground pl-5 truncate">
+              Etapa: {(funnelContact.funnel_stages as any)?.name ?? '—'}
+            </p>
+            <p className="text-xs text-muted-foreground pl-5 capitalize">
+              Status: {funnelContact.status}
+            </p>
+            <button
+              onClick={() => setShowFunnelModal(true)}
+              className="mt-1 pl-5 text-xs text-primary/70 hover:text-primary underline-offset-2 hover:underline"
+            >
+              Mover para outro funil
+            </button>
+          </div>
+        ) : (
+          <button
+            onClick={() => setShowFunnelModal(true)}
+            className="flex w-full items-center gap-2 rounded-xl border border-dashed border-primary/30 px-3 py-2.5 text-xs font-medium text-primary hover:bg-primary/5 transition-colors"
+          >
+            <GitBranch className="h-3.5 w-3.5" />
+            Adicionar ao Funil
+          </button>
+        )}
 
         {/* Estágio CRM */}
         <div>
@@ -324,12 +346,20 @@ function ChatPanel({ contactId, onBack }: { contactId: string; onBack: () => voi
 
   const activeConv = data?.conversations.slice().reverse().find((c) => c.status !== 'resolved') ?? data?.conversations.at(-1)
 
+  // Assumir/Devolver e Resolver mudam a fila do popup e os badges da lista —
+  // invalidar só a thread deixava a esquerda desatualizada por até 10s.
   const setMode = trpc.conversations.setMode.useMutation({
-    onSuccess: () => utils.conversations.getContactThread.invalidate({ contactId }),
+    onSuccess: () => {
+      utils.conversations.getContactThread.invalidate({ contactId })
+      utils.conversations.list.invalidate()
+    },
     onError: () => setLocalMode(null),
   })
   const resolve = trpc.conversations.resolve.useMutation({
-    onSuccess: () => utils.conversations.getContactThread.invalidate({ contactId }),
+    onSuccess: () => {
+      utils.conversations.getContactThread.invalidate({ contactId })
+      utils.conversations.list.invalidate()
+    },
   })
   const sendMessage = trpc.conversations.sendMessage.useMutation({
     onSuccess: () => {
@@ -540,7 +570,7 @@ export function ConversationsPanel() {
   })
   const prevModeRef = useRef<Map<string, string>>(new Map())
 
-  const listInput = { status: statusFilter, limit: 200, agentId: agentFilter || undefined }
+  const listInput = { status: statusFilter, limit: 500, agentId: agentFilter || undefined }
   const utils = trpc.useUtils()
   const { data: conversations = [], isLoading, refetch } = trpc.conversations.list.useQuery(
     listInput,
@@ -603,7 +633,7 @@ export function ConversationsPanel() {
         // Browser notification for each new handoff
         if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
           for (const alert of toAdd) {
-            new Notification('WHITE ZAP — Atendimento solicitado', {
+            new Notification('WHITE CHAT — Atendimento solicitado', {
               body: `${alert.name} pediu para falar com um humano`,
               icon: '/favicon.ico',
               tag: `handoff-${alert.contactId}`,

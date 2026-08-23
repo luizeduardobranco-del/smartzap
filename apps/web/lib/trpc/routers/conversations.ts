@@ -61,12 +61,22 @@ export const conversationsRouter = router({
   getContactThread: protectedProcedure
     .input(z.object({ contactId: z.string().uuid(), limit: z.number().default(200) }))
     .query(async ({ ctx, input }) => {
-      // Contact info
-      const { data: contact } = await ctx.supabase
-        .from('contacts')
-        .select('id, name, phone, avatar_url, channel_type, tags, kanban_stage')
-        .eq('id', input.contactId)
-        .single()
+      // Contact info + active funnel enrollment
+      const [{ data: contact }, { data: funnelContact }] = await Promise.all([
+        ctx.supabase
+          .from('contacts')
+          .select('id, name, phone, avatar_url, channel_type, tags, kanban_stage')
+          .eq('id', input.contactId)
+          .single(),
+        ctx.supabase
+          .from('funnel_contacts')
+          .select('id, status, funnel_id, stage_id, funnels(id, name), funnel_stages(id, name, position)')
+          .eq('contact_id', input.contactId)
+          .in('status', ['active', 'waiting', 'paused'])
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle(),
+      ])
 
       // All conversations for this contact, newest first
       const { data: conversations } = await ctx.supabase
@@ -75,33 +85,42 @@ export const conversationsRouter = router({
         .eq('contact_id', input.contactId)
         .order('created_at', { ascending: true })
 
-      if (!conversations?.length) return { contact, conversations: [], messages: [] }
+      if (!conversations?.length) return { contact, funnelContact: funnelContact ?? null, conversations: [], messages: [] }
 
-      // All messages across all conversations
+      // All messages across all conversations.
+      // Busca DESC + inverte: ordenar ASC com limit devolvia as mensagens mais
+      // ANTIGAS da thread. Passou a importar depois que as conversas duplicadas
+      // foram consolidadas — threads de 400+ mensagens abririam em julho.
       const convIds = conversations.map((c) => c.id)
       const { data: messages, error } = await ctx.supabase
         .from('messages')
         .select('id, role, content, content_type, media_url, created_at, sender_type, ai_model, conversation_id')
         .in('conversation_id', convIds)
-        .order('created_at', { ascending: true })
+        .order('created_at', { ascending: false })
         .limit(input.limit)
 
       if (error) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: error.message })
-      return { contact, conversations: conversations ?? [], messages: messages ?? [] }
+      return {
+        contact,
+        funnelContact: funnelContact ?? null,
+        conversations: conversations ?? [],
+        messages: (messages ?? []).reverse(),
+      }
     }),
 
   getMessages: protectedProcedure
     .input(z.object({ conversationId: z.string().uuid(), limit: z.number().default(50) }))
     .query(async ({ ctx, input }) => {
+      // DESC + reverse: com ASC + limit vinham as mensagens mais antigas.
       const { data, error } = await ctx.supabase
         .from('messages')
         .select('id, role, content, content_type, created_at, sender_type, ai_model, delivery_status')
         .eq('conversation_id', input.conversationId)
-        .order('created_at', { ascending: true })
+        .order('created_at', { ascending: false })
         .limit(input.limit)
 
       if (error) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: error.message })
-      return data ?? []
+      return (data ?? []).reverse()
     }),
 
   setMode: protectedProcedure
@@ -115,15 +134,30 @@ export const conversationsRouter = router({
       return { success: true }
     }),
 
+  // Resolve TODAS as conversas abertas do contato, não só a que está na tela.
+  // A UI é orientada a contato (agrupa por contact_id), então resolver uma linha
+  // só deixava o contato de volta na fila — era por isso que o painel
+  // "aguardando atendimento" não baixava por mais que se clicasse em Resolver.
+  // O mode volta para 'ai': encerrado o atendimento humano, a próxima mensagem
+  // do lead abre uma conversa nova e o agente responde.
   resolve: protectedProcedure
     .input(z.object({ id: z.string().uuid() }))
     .mutation(async ({ ctx, input }) => {
-      const { error } = await ctx.supabase
+      const { data: conv } = await ctx.supabase
         .from('conversations')
-        .update({ status: 'resolved', resolved_at: new Date().toISOString() })
+        .select('contact_id')
         .eq('id', input.id)
+        .single()
+
+      const patch = { status: 'resolved', resolved_at: new Date().toISOString(), mode: 'ai' }
+
+      const query = conv?.contact_id
+        ? ctx.supabase.from('conversations').update(patch).eq('contact_id', conv.contact_id).eq('status', 'open')
+        : ctx.supabase.from('conversations').update(patch).eq('id', input.id)
+
+      const { data, error } = await query.select('id')
       if (error) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: error.message })
-      return { success: true }
+      return { success: true, resolved: data?.length ?? 0 }
     }),
 
   sendMessage: protectedProcedure
@@ -155,10 +189,12 @@ export const conversationsRouter = router({
       })
       if (msgErr) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: msgErr.message })
 
-      // Update last_message_at
+      // Update last_message_at. operator_read_at junto, senão a própria resposta
+      // do operador reacende o badge de "não lida" no refetch seguinte.
+      const sentAt = new Date().toISOString()
       await ctx.supabase
         .from('conversations')
-        .update({ last_message_at: new Date().toISOString() })
+        .update({ last_message_at: sentAt, operator_read_at: sentAt })
         .eq('id', input.conversationId)
 
       // Send via WhatsApp
@@ -178,13 +214,25 @@ export const conversationsRouter = router({
       return { success: true }
     }),
 
+  // Marca lida a thread INTEIRA do contato. A lista agrupa por contato, então
+  // marcar só a conversa da linha deixava as demais não lidas e o badge voltava
+  // assim que o agrupamento apontasse para outra conversa.
   markRead: protectedProcedure
     .input(z.object({ conversationId: z.string().uuid() }))
     .mutation(async ({ ctx, input }) => {
-      await ctx.supabase
+      const { data: conv } = await ctx.supabase
         .from('conversations')
-        .update({ operator_read_at: new Date().toISOString() })
+        .select('contact_id')
         .eq('id', input.conversationId)
+        .single()
+
+      const now = new Date().toISOString()
+      const query = conv?.contact_id
+        ? ctx.supabase.from('conversations').update({ operator_read_at: now }).eq('contact_id', conv.contact_id)
+        : ctx.supabase.from('conversations').update({ operator_read_at: now }).eq('id', input.conversationId)
+
+      const { error } = await query
+      if (error) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: error.message })
       return { success: true }
     }),
 })

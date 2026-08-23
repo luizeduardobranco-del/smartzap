@@ -47,13 +47,19 @@ export async function POST(req: NextRequest) {
   const evolutionKey = process.env.EVOLUTION_API_KEY!
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000'
 
-  // Create Evolution instance
+  // Create Evolution instance (reuse if already exists)
   const adapter = new EvolutionWhatsAppAdapter(evolutionUrl, evolutionKey, instanceName)
   try {
     await adapter.createInstance(`${appUrl}/api/webhooks/whatsapp`)
-  } catch (err) {
-    const msg = err instanceof Error ? err.message : 'Evolution API error'
-    return NextResponse.json({ error: msg }, { status: 502 })
+  } catch (err: unknown) {
+    // If instance already exists on Evolution, reuse it — not a fatal error
+    const responseData = (err as { response?: { data?: { response?: { message?: string[] } } } })?.response?.data
+    const evolutionMessages: string[] = responseData?.response?.message ?? []
+    const alreadyInUse = evolutionMessages.some((m) => m.includes('already in use'))
+    if (!alreadyInUse) {
+      const msg = err instanceof Error ? err.message : 'Evolution API error'
+      return NextResponse.json({ error: msg }, { status: 502 })
+    }
   }
 
   // Reuse disconnected record or create new one

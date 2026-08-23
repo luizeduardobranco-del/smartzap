@@ -1,6 +1,6 @@
 import Link from 'next/link'
 
-export const metadata = { title: 'Termos de Uso | White Zap' }
+export const metadata = { title: 'Termos de Uso | White Chat' }
 
 export default function TermsPage() {
   return (
@@ -18,7 +18,7 @@ export default function TermsPage() {
           <section>
             <h2 className="text-xl font-semibold text-slate-900">1. Aceitação dos termos</h2>
             <p>
-              Ao criar uma conta ou utilizar a plataforma White Zap (<strong>atendente.whiteerp.com</strong>),
+              Ao criar uma conta ou utilizar a plataforma White Chat (<strong>atendente.whiteerp.com</strong>),
               você concorda com estes Termos de Uso. Se não concordar, não utilize o serviço.
             </p>
           </section>
@@ -26,7 +26,7 @@ export default function TermsPage() {
           <section>
             <h2 className="text-xl font-semibold text-slate-900">2. Descrição do serviço</h2>
             <p>
-              White Zap é uma plataforma SaaS que permite criar e gerenciar agentes de inteligência artificial
+              White Chat é uma plataforma SaaS que permite criar e gerenciar agentes de inteligência artificial
               para atendimento automatizado via WhatsApp, Instagram e sites. O serviço inclui automações,
               gestão de contatos, campanhas e integrações com serviços externos.
             </p>
@@ -43,7 +43,7 @@ export default function TermsPage() {
 
           <section>
             <h2 className="text-xl font-semibold text-slate-900">4. Uso aceitável</h2>
-            <p>É proibido utilizar o White Zap para:</p>
+            <p>É proibido utilizar o White Chat para:</p>
             <ul className="list-disc space-y-1 pl-5">
               <li>Enviar spam ou mensagens não solicitadas em massa.</li>
               <li>Atividades ilegais ou que violem direitos de terceiros.</li>
@@ -66,7 +66,7 @@ export default function TermsPage() {
           <section>
             <h2 className="text-xl font-semibold text-slate-900">6. Integrações com terceiros</h2>
             <p>
-              Ao conectar serviços externos (Google, WhatsApp, Instagram), você autoriza o White Zap a operar
+              Ao conectar serviços externos (Google, WhatsApp, Instagram), você autoriza o White Chat a operar
               esses serviços em seu nome dentro dos limites da autorização concedida. Você pode revogar
               integrações a qualquer momento pelas Configurações da plataforma.
             </p>
@@ -75,10 +75,10 @@ export default function TermsPage() {
           <section>
             <h2 className="text-xl font-semibold text-slate-900">7. Propriedade intelectual</h2>
             <p>
-              O WHITE ZAP e todos os seus componentes (marcas, código, design, documentação) são propriedade
+              O WHITE CHAT e todos os seus componentes (marcas, código, design, documentação) são propriedade
               de <strong>White Trackers Rastreadores LTDA</strong> e <strong>Marques Rastreadores LTDA</strong>,
               sob responsabilidade de Luiz Eduardo Branco (Luizeduardobranco@gmail.com), titulares das marcas
-              White Trackers, White ERP e WHITE ZAP. O uso da plataforma não transfere qualquer direito de
+              White Trackers, White ERP e WHITE CHAT. O uso da plataforma não transfere qualquer direito de
               propriedade intelectual. Seus dados e conteúdos permanecem de sua propriedade.
             </p>
           </section>
@@ -86,7 +86,7 @@ export default function TermsPage() {
           <section>
             <h2 className="text-xl font-semibold text-slate-900">8. Limitação de responsabilidade</h2>
             <p>
-              O White Zap é fornecido "como está". Não nos responsabilizamos por interrupções de serviços
+              O White Chat é fornecido "como está". Não nos responsabilizamos por interrupções de serviços
               de terceiros (WhatsApp, Instagram, Google), perda de dados por falha do usuário, ou danos
               indiretos decorrentes do uso da plataforma.
             </p>

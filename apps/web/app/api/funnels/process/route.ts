@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
+import { findOrCreateOpenConversation } from '@/lib/conversations'
 
 // Called by external cron (e.g. cron-job.org) every minute
 // Secure with CRON_SECRET env variable
@@ -11,10 +12,22 @@ function getDb() {
   )
 }
 
-export async function POST(req: NextRequest) {
-  // Auth: accept either CRON_SECRET header or internal calls
-  const secret = req.headers.get('x-cron-secret')
-  if (process.env.CRON_SECRET && secret !== process.env.CRON_SECRET) {
+// Mesma convenção de /api/cron/garagem-relatorio, para o cron externo poder
+// chamar por GET com `?key=`, que é o que os serviços gratuitos suportam.
+function autorizado(req: NextRequest): boolean {
+  const secret = (process.env.CRON_SECRET ?? '').trim()
+  if (!secret) return true // sem secret configurado → não bloqueia
+  const auth = req.headers.get('authorization') ?? ''
+  const key =
+    req.headers.get('x-cron-secret') ??
+    req.headers.get('x-cron-key') ??
+    new URL(req.url).searchParams.get('key') ??
+    ''
+  return auth === `Bearer ${secret}` || key === secret
+}
+
+async function handler(req: NextRequest) {
+  if (!autorizado(req)) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
@@ -99,12 +112,24 @@ export async function POST(req: NextRequest) {
     } catch (err: any) {
       console.error('[funnels/process] error for fc', fc.id, err?.message)
       errors++
+      // Sem isto o contato continua vencido e é retentado a cada tique do cron,
+      // para sempre. Adia 5 min: erro transitório se resolve sozinho, erro
+      // permanente não vira martelo em cima da Evolution.
+      await db
+        .from('funnel_contacts')
+        .update({ next_message_at: new Date(Date.now() + 5 * 60 * 1000).toISOString() })
+        .eq('id', fc.id)
     }
   }
 
   console.log(`[funnels/process] processed=${processed} errors=${errors}`)
   return NextResponse.json({ processed, errors })
 }
+
+export const POST = handler
+export const GET = handler
+export const dynamic = 'force-dynamic'
+export const maxDuration = 60
 
 // ── Save funnel message to conversation history ────────────────────────────────
 async function saveMessageToConversation(
@@ -124,39 +149,17 @@ async function saveMessageToConversation(
   if (!opts.channelId || !opts.contactId) return
 
   try {
-    // Find existing open conversation for this contact + channel
-    let conversationId: string | null = null
+    // Usa o helper compartilhado: o padrão antigo (`.single()` sobre um filtro
+    // que casa várias linhas) devolvia PGRST116, o erro era descartado e o
+    // código criava OUTRA conversa aberta a cada mensagem do funil.
+    const conv = await findOrCreateOpenConversation(db, {
+      organizationId: opts.organizationId,
+      contactId: opts.contactId,
+      channelId: opts.channelId,
+      agentId: opts.agentId,
+    })
 
-    const { data: existing } = await db
-      .from('conversations')
-      .select('id')
-      .eq('contact_id', opts.contactId)
-      .eq('channel_id', opts.channelId)
-      .in('status', ['open', 'in_progress'])
-      .order('created_at', { ascending: false })
-      .limit(1)
-      .single()
-
-    if (existing?.id) {
-      conversationId = existing.id
-    } else if (opts.agentId) {
-      // Create conversation if none exists (requires agentId)
-      const { data: created } = await db
-        .from('conversations')
-        .insert({
-          organization_id: opts.organizationId,
-          contact_id: opts.contactId,
-          channel_id: opts.channelId,
-          agent_id: opts.agentId,
-          status: 'open',
-          mode: 'ai',
-          subject: `Funil — ${opts.stageName}`,
-        })
-        .select('id')
-        .single()
-      conversationId = created?.id ?? null
-    }
-
+    const conversationId = conv?.id ?? null
     if (!conversationId) return
 
     // Build message content
@@ -194,31 +197,45 @@ async function saveMessageToConversation(
 }
 
 // ── Send via Evolution API ────────────────────────────────────────────────────
+//
+// A URL e a chave da Evolution vêm do ambiente — `channels.credentials` guarda
+// apenas `instanceName`. A versão anterior lia `evolutionApiUrl`/`apiKey` de
+// dentro de credentials, montava `fetch("undefined/message/sendText/...")` e
+// estourava antes de enviar: nenhuma mensagem de funil jamais saiu por aqui.
+// É o mesmo caminho usado por /api/campaigns/[id]/process, que funciona.
 async function sendMessage(
-  credentials: { evolutionApiUrl: string; instanceName: string; apiKey: string },
+  credentials: { instanceName?: string },
   phone: string,
   msg: { type: string; content: string }
 ) {
-  const { evolutionApiUrl, instanceName, apiKey } = credentials
-  const headers = { apikey: apiKey, 'Content-Type': 'application/json' }
+  const evolutionApiUrl = process.env.EVOLUTION_API_URL
+  const evolutionApiKey = process.env.EVOLUTION_API_KEY
+  const instanceName = credentials?.instanceName
 
-  if (msg.type === 'text') {
-    await fetch(`${evolutionApiUrl}/message/sendText/${instanceName}`, {
-      method: 'POST',
-      headers,
-      body: JSON.stringify({ number: phone, text: msg.content }),
-    })
-  } else if (msg.type === 'image') {
-    await fetch(`${evolutionApiUrl}/message/sendMedia/${instanceName}`, {
-      method: 'POST',
-      headers,
-      body: JSON.stringify({ number: phone, mediatype: 'image', media: msg.content }),
-    })
-  } else if (msg.type === 'audio') {
-    await fetch(`${evolutionApiUrl}/message/sendMedia/${instanceName}`, {
-      method: 'POST',
-      headers,
-      body: JSON.stringify({ number: phone, mediatype: 'audio', media: msg.content }),
-    })
+  if (!evolutionApiUrl || !evolutionApiKey) {
+    throw new Error('EVOLUTION_API_URL/EVOLUTION_API_KEY ausentes no ambiente')
+  }
+  if (!instanceName) {
+    throw new Error('canal sem instanceName em credentials')
+  }
+
+  const headers = { apikey: evolutionApiKey, 'Content-Type': 'application/json' }
+  const endpoint = msg.type === 'text' ? 'sendText' : 'sendMedia'
+  const body =
+    msg.type === 'text'
+      ? { number: phone, text: msg.content }
+      : { number: phone, mediatype: msg.type, media: msg.content }
+
+  const res = await fetch(`${evolutionApiUrl}/message/${endpoint}/${instanceName}`, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify(body),
+    signal: AbortSignal.timeout(20_000),
+  })
+
+  // Sem esta checagem um 4xx da Evolution passava como sucesso e a mensagem
+  // era marcada como enviada.
+  if (!res.ok) {
+    throw new Error(`Evolution ${res.status}: ${(await res.text()).slice(0, 200)}`)
   }
 }

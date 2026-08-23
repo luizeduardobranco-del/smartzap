@@ -1,6 +1,6 @@
 import Link from 'next/link'
 
-export const metadata = { title: 'Política de Privacidade | White Zap' }
+export const metadata = { title: 'Política de Privacidade | White Chat' }
 
 export default function PrivacyPage() {
   return (
@@ -18,10 +18,10 @@ export default function PrivacyPage() {
           <section>
             <h2 className="text-xl font-semibold text-slate-900">1. Quem somos</h2>
             <p>
-              WHITE ZAP é uma plataforma SaaS de agentes de inteligência artificial para atendimento automatizado
+              WHITE CHAT é uma plataforma SaaS de agentes de inteligência artificial para atendimento automatizado
               via WhatsApp, Instagram e sites, desenvolvida e operada pela{' '}
               <strong>White Trackers Rastreadores LTDA</strong> e <strong>Marques Rastreadores LTDA</strong>,
-              sob as marcas White Trackers, White ERP e WHITE ZAP.
+              sob as marcas White Trackers, White ERP e WHITE CHAT.
             </p>
             <p className="mt-2">
               <strong>Responsável:</strong> Luiz Eduardo Branco<br />

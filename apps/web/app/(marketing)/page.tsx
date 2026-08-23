@@ -80,7 +80,7 @@ function Header() {
           <Link href="/" className="flex items-center">
             <Image
               src="/logo.png"
-              alt="White Zap"
+              alt="White Chat"
               width={150}
               height={52}
               className="object-contain"
@@ -210,7 +210,7 @@ function HeroSection() {
         <div className="animate-slide-up flex justify-center mb-8">
           <Image
             src="/logo.png"
-            alt="White Zap"
+            alt="White Chat"
             width={220}
             height={76}
             className="object-contain opacity-95"
@@ -982,7 +982,7 @@ function TestimonialsSection() {
       role: 'Agência de marketing digital',
       location: 'Belo Horizonte, MG',
       avatar: 'RM',
-      text: 'Revendemos o White Zap para nossos clientes. A plataforma tem tudo que precisamos: marca própria, multi-agentes e suporte em português.',
+      text: 'Revendemos o White Chat para nossos clientes. A plataforma tem tudo que precisamos: marca própria, multi-agentes e suporte em português.',
       stars: 5,
     },
   ]
@@ -999,7 +999,7 @@ function TestimonialsSection() {
             <span className="gradient-text">recomenda</span>
           </h2>
           <p className="mx-auto mt-4 max-w-xl text-lg text-slate-500">
-            Empresas de diferentes segmentos já automatizaram seu atendimento com White Zap.
+            Empresas de diferentes segmentos já automatizaram seu atendimento com White Chat.
           </p>
         </div>
 
@@ -1040,7 +1040,7 @@ function FAQSection() {
     },
     {
       q: 'O agente funciona com WhatsApp Business?',
-      a: 'Sim! O White Zap é compatível com WhatsApp comum e WhatsApp Business. Você mantém todas as funcionalidades do Business (catálogo, etiquetas, respostas rápidas) mais a IA por cima.',
+      a: 'Sim! O White Chat é compatível com WhatsApp comum e WhatsApp Business. Você mantém todas as funcionalidades do Business (catálogo, etiquetas, respostas rápidas) mais a IA por cima.',
     },
     {
       q: 'O que são créditos e como funcionam?',
@@ -1116,7 +1116,7 @@ function FinalCTASection() {
 
       <div className="relative mx-auto max-w-4xl px-4 text-center sm:px-6 lg:px-8">
         <div className="mb-6 flex justify-center">
-          <Image src="/logo.png" alt="White Zap" width={180} height={62} className="object-contain opacity-90" />
+          <Image src="/logo.png" alt="White Chat" width={180} height={62} className="object-contain opacity-90" />
         </div>
 
         <span className="inline-flex items-center gap-2 rounded-full border border-blue-400/30 bg-blue-400/10 px-4 py-1.5 text-xs font-semibold text-blue-300 mb-6">
@@ -1131,7 +1131,7 @@ function FinalCTASection() {
         </h2>
 
         <p className="mx-auto mt-6 max-w-xl text-lg text-blue-100/80">
-          Junte-se a centenas de empresas que já automatizaram seu atendimento e prospecção com White Zap.
+          Junte-se a centenas de empresas que já automatizaram seu atendimento e prospecção com White Chat.
         </p>
 
         <div className="mt-10 flex flex-col items-center justify-center gap-4 sm:flex-row">
@@ -1164,7 +1164,7 @@ function Footer() {
       <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
         <div className="grid gap-8 md:grid-cols-4">
           <div className="md:col-span-2">
-            <Image src="/logo.png" alt="White Zap" width={160} height={55} className="object-contain mb-4" />
+            <Image src="/logo.png" alt="White Chat" width={160} height={55} className="object-contain mb-4" />
             <p className="text-sm leading-relaxed text-slate-500 max-w-xs">
               Plataforma de agentes de IA para WhatsApp e sites. Automatize seu
               atendimento e prospecção em minutos.
@@ -1209,7 +1209,7 @@ function Footer() {
 
         <div className="mt-10 flex flex-col items-center justify-between gap-4 border-t border-slate-200 pt-8 sm:flex-row">
           <p className="text-xs text-slate-400">
-            © {new Date().getFullYear()} White Zap. Todos os direitos reservados.
+            © {new Date().getFullYear()} White Chat. Todos os direitos reservados.
           </p>
           <div className="flex items-center gap-4">
             <Link href="/privacy" className="text-xs text-slate-400 hover:text-blue-600 transition-colors">

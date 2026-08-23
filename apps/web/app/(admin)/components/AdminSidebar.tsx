@@ -39,7 +39,7 @@ export function AdminSidebar() {
       {/* Logo */}
       <div className="flex h-16 items-center border-b px-4">
         <Link href="/admin" className="flex items-center gap-2">
-          <span className="text-lg font-bold tracking-tight">White Zap</span>
+          <span className="text-lg font-bold tracking-tight">White Chat</span>
           <span className="rounded-full bg-primary px-2 py-0.5 text-xs font-bold text-white">ADMIN</span>
         </Link>
       </div>

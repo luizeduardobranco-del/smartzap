@@ -25,6 +25,10 @@ export interface NormalizedMessage {
   filename?: string
   /** When the message was sent */
   timestamp: Date
+  /** True if the message came from a group chat */
+  isGroup?: boolean
+  /** Group JID (e.g., 12345@g.us) when isGroup is true */
+  groupJid?: string
   /** Raw payload from the channel for debugging */
   raw?: unknown
 }

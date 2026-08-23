@@ -12,8 +12,8 @@ const inter = Inter({
 
 export const metadata: Metadata = {
   title: {
-    default: 'White Zap — Agentes de IA para WhatsApp e Instagram',
-    template: '%s | White Zap',
+    default: 'White Chat — Agentes de IA para WhatsApp e Instagram',
+    template: '%s | White Chat',
   },
   description:
     'Crie agentes de IA que atendem clientes 24h no WhatsApp, Instagram e seu site. Sem programação. Configure em minutos e automatize vendas, suporte e muito mais.',
@@ -27,11 +27,11 @@ export const metadata: Metadata = {
     'SaaS Brasil',
     'atendimento automático',
     'GPT-4 WhatsApp',
-    'White Zap',
+    'White Chat',
   ],
-  authors: [{ name: 'White Zap', url: 'https://whiteerp.com' }],
-  creator: 'White Zap',
-  publisher: 'White Zap',
+  authors: [{ name: 'White Chat', url: 'https://whiteerp.com' }],
+  creator: 'White Chat',
+  publisher: 'White Chat',
   metadataBase: new URL('https://whiteerp.com'),
   alternates: {
     canonical: '/',
@@ -40,8 +40,8 @@ export const metadata: Metadata = {
     type: 'website',
     locale: 'pt_BR',
     url: 'https://whiteerp.com',
-    siteName: 'White Zap',
-    title: 'White Zap — Agentes de IA para WhatsApp e Instagram',
+    siteName: 'White Chat',
+    title: 'White Chat — Agentes de IA para WhatsApp e Instagram',
     description:
       'Automatize atendimento, vendas e suporte com agentes de IA inteligentes. Conecte WhatsApp, Instagram e seu site em minutos.',
     images: [
@@ -49,13 +49,13 @@ export const metadata: Metadata = {
         url: '/og-image.png',
         width: 1200,
         height: 630,
-        alt: 'White Zap — Agentes de IA para WhatsApp',
+        alt: 'White Chat — Agentes de IA para WhatsApp',
       },
     ],
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'White Zap — Agentes de IA para WhatsApp e Instagram',
+    title: 'White Chat — Agentes de IA para WhatsApp e Instagram',
     description:
       'Automatize atendimento com agentes de IA. Conecte WhatsApp, Instagram e seu site sem programar.',
     images: ['/og-image.png'],

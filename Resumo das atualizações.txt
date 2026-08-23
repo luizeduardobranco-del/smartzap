@@ -1,0 +1,63 @@
+● Nesse caso, o processo está rodando normalmente — a mensagem "responda ao e-mail" aparece como instrução padrão, mas o
+   contato por e-mail nem sempre acontece na primeira rodada.
+
+  O que está acontecendo:
+  - A análise está em andamento pelo lado do Google
+  - A verificação do domínio foi resolvida
+  - Não há nada bloqueado do seu lado agora
+
+  O que fazer:
+  Aguardar. O Google geralmente leva de 4 a 6 semanas para revisar apps com escopos sensíveis (Gmail/Calendar). Você
+  receberá um e-mail quando precisar de algo ou quando a verificação for aprovada/reprovada.
+
+  Enquanto isso, vá preparando o vídeo de demonstração (Passo 5 do relatório) — ele será solicitado obrigatoriamente
+  durante o processo para Gmail e Calendar. Grave mostrando:
+
+  1. Login na plataforma
+  2. Ir em Configurações → Integrações Google
+  3. Clicar em "Conectar Google"
+  4. Tela de consentimento do Google aparecendo
+  5. Autorizar e retornar ao app funcionando
+
+  Hospede no YouTube como não listado e deixe o link pronto para quando o Google pedir.
+
+_________________________________________________________________________________________________________________________________
+
+Resumo das atualizações 04/04
+
+  Módulo Conversas
+
+  - Tags nos leads — painel lateral com botões PRESET_TAGS + tag personalizada, atualiza o CRM em tempo real (otimistic
+  update)
+  - Direcionar para Funil — botão "Adicionar ao Funil" no painel lateral, seleciona funil + etapa
+  - Badge de não lido — ponto vermelho no avatar e nome em negrito para conversas com mensagens novas não vistas
+  - Campo de texto limpa — ao enviar mensagem, o campo é limpo imediatamente
+  - Filtro por agente — dropdown no header para filtrar conversas pelo agente (plano Pro)
+  - Histórico de campanhas — mensagens enviadas por campanha aparecem no histórico com label "📢 Campanha"
+  - Contexto de campanha para IA — o agente lê o contexto da campanha antes de responder, evitando perguntas
+  desnecessárias
+
+  Módulo Funil
+
+  - Drag-and-drop entre etapas — arraste cards diretamente entre colunas
+  - Modal de detalhes do lead — clique no card para abrir: etapa no funil, estágio CRM, tags com preset, histórico da
+  conversa
+  - Histórico de conversa inline — sem sair do Funil, com labels 📢🔀🤖👤
+
+  Módulo Suporte (chat flutuante)
+
+  - Arrastável — botão e header do painel podem ser arrastados para qualquer posição da tela, não bloqueia mais o campo
+  de envio
+
+  Formulários de Tags (todos unificados)
+
+  - Editar contato, Adicionar contato e Importar CSV agora usam os mesmos botões visuais PRESET_TAGS
+  - Removida normalização que convertia "Hot Lead" → "hot-lead" (causava inconsistência)
+  - Tags internas _list: são preservadas em todas as gravações
+
+  Campanhas (sessão anterior)
+
+  - Limite de 200 contatos corrigido para 5.000
+  - Inscrição no funil só ocorre após mensagem enviada com sucesso
+  - Contexto de campanha injetado no topo do prompt do agente com ## CONTEXTO OBRIGATÓRIO
+

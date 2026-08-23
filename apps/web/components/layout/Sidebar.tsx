@@ -63,7 +63,7 @@ export function Sidebar({ user, isAdmin, enabledModules = [] }: SidebarProps) {
       <div className="flex h-20 items-center justify-between border-b px-3">
         {(!collapsed || isMobile) && (
           <Link href="/agents" className="flex items-center overflow-hidden">
-            <Image src="/logo.png" alt="White Zap" width={150} height={52} className="object-contain" priority />
+            <Image src="/logo.png" alt="White Chat" width={150} height={52} className="object-contain" priority />
           </Link>
         )}
         {collapsed && !isMobile && (

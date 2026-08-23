@@ -70,7 +70,7 @@ export default function SignupPage() {
         <div className="w-full max-w-md">
           <div className="mb-8 flex flex-col items-center">
             <Link href="/" className="mb-4">
-              <Image src="/logo.png" alt="White Zap" width={180} height={60} className="object-contain" priority />
+              <Image src="/logo.png" alt="White Chat" width={180} height={60} className="object-contain" priority />
             </Link>
           </div>
 
@@ -112,7 +112,7 @@ export default function SignupPage() {
       <div className="w-full max-w-md">
         <div className="mb-8 flex flex-col items-center">
           <Link href="/" className="mb-4">
-            <Image src="/logo.png" alt="White Zap" width={180} height={60} className="object-contain" priority />
+            <Image src="/logo.png" alt="White Chat" width={180} height={60} className="object-contain" priority />
           </Link>
           <h1 className="text-2xl font-bold">Crie sua conta grátis</h1>
           <p className="mt-1 text-sm text-muted-foreground">7 dias grátis, sem cartão de crédito</p>
