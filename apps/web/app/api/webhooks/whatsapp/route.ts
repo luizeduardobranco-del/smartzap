@@ -8,6 +8,13 @@ import { grupoClienteNoEscopo, interpretarPedido, enviarPedidoGrupo, destinoProp
 import { grupoAbastecimentoNoEscopo, lerImagemAbastecimento, enviarAbastecimentoGrupo, statusAbastecimentoGrupo, marcarTanqueAbast } from '@/lib/abastecimento-grupo'
 import { findOrCreateOpenConversation } from '@/lib/conversations'
 
+// Declarado NO CÓDIGO, não em apps/web/vercel.json: o projeto tem rootDirectory
+// nulo, então a Vercel lê o vercel.json da raiz e ignora o de apps/web — o
+// maxDuration que estava lá nunca foi aplicado. Esta rota dorme 8s de debounce
+// antes de chamar a IA, então o limite padrão a mata no meio.
+export const maxDuration = 60
+export const dynamic = 'force-dynamic'
+
 function getSupabase() {
   return createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
