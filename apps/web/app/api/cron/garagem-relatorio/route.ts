@@ -153,9 +153,7 @@ async function handler(req: NextRequest) {
       ok: true, dry: true, enviariaPara: jids, veiculos: total,
       textoChars: texto.length, pdfUrl: pdfUrl ?? null, instancia: instanceName,
       chaves: { apiKey: !!apiKey, cronKey: !!cronKey },
-      previa: texto.split('
-').slice(0, 3).join('
-'),
+      previa: texto.slice(0, 140),
     })
   }
 
