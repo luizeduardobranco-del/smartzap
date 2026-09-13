@@ -554,6 +554,167 @@ function IntegrationsTab() {
       <div className="rounded-lg border border-blue-100 bg-blue-50 p-3 text-xs text-blue-800">
         <strong>Como funciona:</strong> Ao conectar o Google, você pode usar as ações &quot;Criar evento no Google Calendar&quot; e &quot;Enviar e-mail via Gmail&quot; nas suas automações.
       </div>
+
+      <ChavesApiSection />
+    </div>
+  )
+}
+
+// ─── Chaves de API ─────────────────────────────────────────────────────────
+
+/**
+ * Uma chave por sistema que o cliente conecta (WHITE ERP, site próprio, etc.).
+ * O texto puro só existe no instante da criação — depois só resta o hash, então
+ * a tela precisa deixar isso explícito antes de a pessoa fechar o aviso.
+ */
+function ChavesApiSection() {
+  const utils = trpc.useUtils()
+  const { data: chaves, isLoading } = trpc.apiKeys.list.useQuery()
+  const [nome, setNome] = useState('')
+  const [chaveNova, setChaveNova] = useState<string | null>(null)
+  const [copiado, setCopiado] = useState(false)
+  const [confirmarRevogar, setConfirmarRevogar] = useState<string | null>(null)
+
+  const criar = trpc.apiKeys.create.useMutation({
+    onSuccess: (res: any) => {
+      setChaveNova(res.chave)
+      setCopiado(false)
+      setNome('')
+      utils.apiKeys.list.invalidate()
+    },
+  })
+
+  const revogar = trpc.apiKeys.revoke.useMutation({
+    onSuccess: () => {
+      setConfirmarRevogar(null)
+      utils.apiKeys.list.invalidate()
+    },
+  })
+
+  async function copiar(texto: string) {
+    try {
+      await navigator.clipboard.writeText(texto)
+      setCopiado(true)
+    } catch {
+      setCopiado(false)
+    }
+  }
+
+  const ativas = (chaves ?? []).filter((c: any) => !c.revoked_at)
+
+  return (
+    <div className="space-y-4 border-t pt-6">
+      <div>
+        <h2 className="font-semibold">Chaves de API</h2>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Para conectar um sistema seu — como o WHITE ERP — e mandar mensagens pelo seu WhatsApp.
+          A chave já identifica a sua conta: nada mais precisa ser configurado do outro lado.
+        </p>
+      </div>
+
+      {/* Chave recém-criada: única chance de copiar */}
+      {chaveNova && (
+        <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 space-y-2">
+          <p className="text-sm font-medium text-amber-900">
+            Copie agora — esta chave não será mostrada de novo.
+          </p>
+          <div className="flex items-center gap-2">
+            <code className="flex-1 overflow-x-auto rounded-lg bg-white px-3 py-2 text-xs font-mono text-slate-800">
+              {chaveNova}
+            </code>
+            <button
+              onClick={() => copiar(chaveNova)}
+              className="shrink-0 rounded-lg bg-amber-600 px-3 py-2 text-xs font-medium text-white hover:bg-amber-700"
+            >
+              {copiado ? 'Copiado!' : 'Copiar'}
+            </button>
+          </div>
+          <button
+            onClick={() => setChaveNova(null)}
+            className="text-xs text-amber-800 underline"
+          >
+            Já guardei
+          </button>
+        </div>
+      )}
+
+      {/* Criar */}
+      <div className="flex flex-wrap items-end gap-2">
+        <div className="flex-1 min-w-[200px]">
+          <label className="mb-1 block text-sm font-medium">Nome da chave</label>
+          <input
+            value={nome}
+            onChange={(e) => setNome(e.target.value)}
+            placeholder="Ex: Minha loja no White ERP"
+            className="w-full rounded-lg border px-3 py-2 text-sm"
+          />
+        </div>
+        <button
+          onClick={() => criar.mutate({ name: nome })}
+          disabled={criar.isPending || nome.trim().length < 2}
+          className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-primary/90 disabled:opacity-60"
+        >
+          {criar.isPending ? 'Gerando...' : 'Gerar chave'}
+        </button>
+      </div>
+
+      {criar.error && <p className="text-sm text-red-500">{criar.error.message}</p>}
+
+      {/* Lista */}
+      {isLoading ? (
+        <div className="flex justify-center py-6">
+          <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+        </div>
+      ) : ativas.length === 0 ? (
+        <p className="text-sm text-muted-foreground italic">Nenhuma chave ativa.</p>
+      ) : (
+        <div className="space-y-2">
+          {ativas.map((c: any) => (
+            <div key={c.id} className="flex items-center justify-between gap-3 rounded-xl border p-3">
+              <div className="min-w-0">
+                <p className="text-sm font-medium truncate">{c.name}</p>
+                <p className="text-xs text-muted-foreground font-mono">
+                  {c.key_prefix}••••••••
+                  {c.last_used_at
+                    ? ` · usada em ${new Date(c.last_used_at).toLocaleString('pt-BR')}`
+                    : ' · nunca usada'}
+                </p>
+              </div>
+
+              {confirmarRevogar === c.id ? (
+                <div className="flex shrink-0 items-center gap-2">
+                  <button
+                    onClick={() => revogar.mutate({ id: c.id })}
+                    disabled={revogar.isPending}
+                    className="rounded-lg bg-red-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-red-700"
+                  >
+                    Revogar mesmo
+                  </button>
+                  <button
+                    onClick={() => setConfirmarRevogar(null)}
+                    className="rounded-lg border px-3 py-1.5 text-xs"
+                  >
+                    Cancelar
+                  </button>
+                </div>
+              ) : (
+                <button
+                  onClick={() => setConfirmarRevogar(c.id)}
+                  className="flex shrink-0 items-center gap-1 rounded-lg border border-red-200 px-3 py-1.5 text-xs text-red-600 hover:bg-red-50"
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                  Revogar
+                </button>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+
+      <div className="rounded-lg border border-blue-100 bg-blue-50 p-3 text-xs text-blue-800">
+        <strong>No WHITE ERP:</strong> Configurações → Notificações → cole a chave e clique em
+        Conectar. A tela mostra por qual número as mensagens vão sair antes de você ativar.
+      </div>
     </div>
   )
 }
