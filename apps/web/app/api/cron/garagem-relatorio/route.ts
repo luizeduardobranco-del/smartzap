@@ -84,6 +84,22 @@ async function handler(req: NextRequest) {
   console.log('[garagem-relatorio] rotograma', JSON.stringify({
     status: r.status, total: j?.total, textoChars: texto?.length ?? 0, temPdf: !!j?.pdfUrl,
   }))
+
+  // Relatório de ZERO veículo não vai para o grupo do cliente. Em 13/09 saiu um
+  // assim (PDF de 2.9 KB, em branco) enquanto o pátio tinha 23 carros: filtro
+  // que não casa, ou consulta que voltou vazia, produzem 200 com relatório
+  // vazio. Silêncio é melhor que lista errada — e o motivo fica no log, não
+  // no WhatsApp de quem contratou o pátio.
+  const total = Number(j?.total ?? 0)
+  if (!Number.isFinite(total) || total <= 0) {
+    console.warn('[garagem-relatorio] NAO ENVIADO: relatorio sem veiculos', JSON.stringify({
+      transportadora: transportadora ?? null, tipo: tipo ?? null, total: j?.total ?? null,
+    }))
+    return NextResponse.json({
+      ok: true, enviados: [], pulado: 'relatório sem veículos',
+      transportadora: transportadora ?? null, veiculos: total,
+    })
+  }
   const destinoCadastrado: string | undefined = j?.destino  // telefone da transportadora (quando filtrado)
   if (!texto) return NextResponse.json({ error: 'sem texto do relatório', detalhe: j }, { status: 502 })
 
