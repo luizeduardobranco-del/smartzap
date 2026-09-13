@@ -2,11 +2,13 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { EvolutionWhatsAppAdapter, MetaCloudWhatsAppAdapter } from '@zapagent/channel-adapters'
 import { runAgent } from '@zapagent/ai-engine'
-import { garagemEnabled, handleGaragemNfImage, handleGaragemNfText } from '@/lib/garagem-nf'
+import { garagemEnabled, handleGaragemNfImage, handleGaragemNfText, lerChaveCodigoBarras, lerChaveEmBlocos, extractNf } from '@/lib/garagem-nf'
 import { grupoNoEscopo, transcreverAudioGrupo, classificarImagemGrupo, logGrupoGaragem } from '@/lib/garagem-grupo'
+import { grupoSmNoEscopo, enviarNotaParaSm, chaveNoTexto, lerCanhoto, enviarCanhotoParaViagem } from '@/lib/sm-nota-grupo'
 import { grupoClienteNoEscopo, interpretarPedido, enviarPedidoGrupo, destinoPropostaJid, respostaConfirmacao } from '@/lib/garagem-pedido'
 import { grupoAbastecimentoNoEscopo, lerImagemAbastecimento, enviarAbastecimentoGrupo, statusAbastecimentoGrupo, marcarTanqueAbast } from '@/lib/abastecimento-grupo'
 import { findOrCreateOpenConversation } from '@/lib/conversations'
+import { tratarRespostaAgenda } from '@/lib/agenda/confirmacao-inbound'
 
 // Declarado NO CÓDIGO, não em apps/web/vercel.json: o projeto tem rootDirectory
 // nulo, então a Vercel lê o vercel.json da raiz e ignora o de apps/web — o
@@ -127,6 +129,84 @@ async function handleWebhook(payload: unknown) {
   // 2b. Garagem — ESCUTA DE GRUPO (modo teste): captura tudo e registra, sem responder.
   // Só para a org da garagem; outras orgs continuam ignorando mensagens de grupo.
   if (msg.isGroup) {
+    // Nota da FROTA → SM da gerenciadora. Estes grupos recebem a nota do que o
+    // caminhão está levando; a mesma foto no fluxo do pátio viraria agendamento
+    // de entrada, que é outro processo. Por isso vem primeiro e encerra aqui.
+    if (garagemEnabled(org) && grupoSmNoEscopo(msg.groupJid)) {
+      try {
+        const openaiKeySm = process.env.OPENAI_API_KEY
+        let chave: string | null = chaveNoTexto(msg.text)
+
+        if (!chave && msg.contentType === 'image') {
+          const media = await fetchEvolutionMedia(msg.externalId, msg.senderExternalId, msg.channelIdentifier, 'imageMessage', msg.groupJid)
+          if (media?.base64) {
+            // Mesma escada do pátio, do mais confiável para o menos: código de
+            // barras → leitura direta da chave → leitura em blocos de 4 dígitos.
+            chave = await lerChaveCodigoBarras(media.base64)
+            if (!chave && openaiKeySm) {
+              const campos = await extractNf(openaiKeySm, media.base64, media.mimetype ?? null)
+              if (campos?.chaveAcesso && campos.chaveAcesso.length === 44) chave = campos.chaveAcesso
+            }
+            if (!chave && openaiKeySm) chave = await lerChaveEmBlocos(openaiKeySm, media.base64, media.mimetype ?? null)
+          }
+        }
+
+        // MODO ESCUTA (padrão): lê a nota, lança na viagem e monta a prévia da SM,
+        // mas NÃO fala no grupo. A automação da SM ainda está sendo acertada com a
+        // Golden, e robô respondendo no grupo da frota vira ordem de serviço para o
+        // motorista antes da hora. Ligar as respostas: SM_RESPONDER_GRUPO=on.
+        const responderNoGrupo = (process.env.SM_RESPONDER_GRUPO ?? '').trim().toLowerCase() === 'on'
+        const falar = async (texto: string) => {
+          if (!responderNoGrupo || !msg.groupJid) return
+          const adpSm = new EvolutionWhatsAppAdapter(process.env.EVOLUTION_API_URL!, process.env.EVOLUTION_API_KEY!, msg.channelIdentifier)
+          await adpSm.sendMessage({
+            channelType: 'whatsapp', channelIdentifier: msg.channelIdentifier,
+            recipientExternalId: msg.groupJid, contentType: 'text', text: texto,
+          })
+        }
+
+        if (chave) {
+          const out = await enviarNotaParaSm({
+            chave,
+            grupoJid: msg.groupJid,
+            telefone: msg.senderExternalId,
+            remetente: msg.senderName ?? null,
+          })
+          if (out.reply) await falar(out.reply)
+          console.log('[webhook] nota->SM', chave.slice(-6), out.viagem ?? 'sem viagem', responderNoGrupo ? '(respondeu)' : '(modo escuta)')
+        } else if (msg.contentType === 'image') {
+          // Sem chave de acesso, a foto ainda pode ser um CANHOTO — o comprovante
+          // de entrega que o motorista manda depois de descarregar. Ele não tem
+          // chave; o que identifica a carga é o número da nota, impresso no centro
+          // e, mais confiável, nos 9 últimos dígitos da numeração do código de
+          // barras à direita.
+          let tratado = false
+          const media = await fetchEvolutionMedia(msg.externalId, msg.senderExternalId, msg.channelIdentifier, 'imageMessage', msg.groupJid)
+          if (media?.base64 && openaiKeySm) {
+            const c = await lerCanhoto(openaiKeySm, media.base64, media.mimetype ?? null)
+            if (c?.ehCanhoto && (c.nfNumero || c.codigoBarras)) {
+              const out = await enviarCanhotoParaViagem({
+                nfNumero: c.nfNumero, codigoBarras: c.codigoBarras,
+                fotoBase64: media.base64, mime: media.mimetype ?? null,
+                grupoJid: msg.groupJid, telefone: msg.senderExternalId,
+                remetente: msg.senderName ?? null, legenda: msg.text ?? null,
+              })
+              if (out.reply) await falar(out.reply)
+              console.log('[webhook] canhoto->viagem', c.codigoBarras?.slice(-9) || c.nfNumero, out.viagem ?? 'sem viagem', responderNoGrupo ? '(respondeu)' : '(modo escuta)')
+              tratado = true
+            }
+          }
+          if (!tratado) {
+            await falar('⚠️ Não consegui ler a *chave de acesso* dessa nota. Manda a foto do DANFE com o código de barras nítido, ou cola aqui os 44 dígitos da chave.')
+            console.log('[webhook] nota->SM: chave não lida e não é canhoto', responderNoGrupo ? '(avisou)' : '(modo escuta)')
+          }
+        }
+      } catch (err) {
+        console.error('[webhook] nota->SM erro:', err instanceof Error ? err.message : err)
+      }
+      return // grupo da frota tratado — não segue para o fluxo do pátio
+    }
+
     // Robô de ABASTECIMENTO — grupo dedicado: lê placa/tacógrafo/bomba/NF e grava no rotograma.
     if (garagemEnabled(org) && grupoAbastecimentoNoEscopo(msg.groupJid)) {
       try {
@@ -671,6 +751,47 @@ async function handleWebhook(payload: unknown) {
 
   // Modo humano: só a garagem responde — não roda automações nem o agente geral.
   if (humanMode) { console.log('[webhook] mode=human — sem agente geral'); return }
+
+  // 6c-bis. Resposta a pedido de confirmação da Agenda ("sim" / "não").
+  // Vem antes das automações de propósito: uma automação de palavra-chave em
+  // "sim" roubaria a resposta e a cadeira continuaria reservada.
+  try {
+    const agendaReply = await tratarRespostaAgenda({
+      supabase,
+      organizationId: channel.organization_id,
+      contactId,
+      texto: effectiveText ?? '',
+    })
+    if (agendaReply) {
+      await supabase.from('messages').insert({
+        conversation_id: conversationId,
+        organization_id: channel.organization_id,
+        role: 'assistant',
+        content: agendaReply.reply,
+        content_type: 'text',
+        sender_type: 'agenda',
+      })
+      await supabase.from('conversations').update({ last_message_at: new Date().toISOString() }).eq('id', conversationId)
+
+      const agendaAdapter = new EvolutionWhatsAppAdapter(
+        process.env.EVOLUTION_API_URL!,
+        process.env.EVOLUTION_API_KEY!,
+        msg.channelIdentifier
+      )
+      await agendaAdapter.sendMessage({
+        channelType: 'whatsapp',
+        channelIdentifier: msg.channelIdentifier,
+        recipientExternalId: msg.senderExternalId,
+        contentType: 'text',
+        text: agendaReply.reply,
+      })
+      console.log('[webhook] agenda: confirmação tratada')
+      return
+    }
+  } catch (err) {
+    console.error('[webhook] agenda confirmação error:', err instanceof Error ? err.message : err)
+    // segue o fluxo normal do agente
+  }
 
   // 6d. Run automations
   const automationResult = await runAutomations({

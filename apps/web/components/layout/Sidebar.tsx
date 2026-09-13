@@ -8,6 +8,7 @@ import type { User } from '@supabase/supabase-js'
 import {
   Bot, MessageSquare, Zap, BarChart3, Settings, Coins, LogOut,
   Kanban, Send, Users, ShieldCheck, ChevronLeft, ChevronRight, Menu, X, GitBranch, Handshake, ImagePlay,
+  CalendarCheck,
 } from 'lucide-react'
 
 const baseNavItems = [
@@ -18,6 +19,7 @@ const baseNavItems = [
   { href: '/funnels',       label: 'Funis',           icon: GitBranch,  module: null },
   { href: '/automations',   label: 'Automações',      icon: Zap,        module: null },
   { href: '/campaigns',     label: 'Disparos',        icon: Send,       module: null },
+  { href: '/agenda',        label: 'Agenda',          icon: CalendarCheck, module: null },
   { href: '/stories',       label: 'Stories',         icon: ImagePlay,  module: null },
   { href: '/analytics',     label: 'Analytics',       icon: BarChart3,  module: null },
   { href: '/credits',       label: 'Créditos',        icon: Coins,      module: null },
