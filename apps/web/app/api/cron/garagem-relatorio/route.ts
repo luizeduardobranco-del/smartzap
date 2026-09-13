@@ -9,7 +9,14 @@
  * externo pode chamar `?key=${CRON_SECRET}` (ou header x-cron-key). Se CRON_SECRET
  * não estiver setado, cai no GARAGEM_INTEGRATION_API_KEY.
  *
- * Envs: ROTOGRAMA_BASE_URL, GARAGEM_INTEGRATION_API_KEY, EVOLUTION_API_URL,
+ * Chave para falar com o rotograma: ROTOGRAMA_CRON_KEY vai no header
+ * `x-cron-key` (é a rg_config.garagem_cron_key do rotograma). A antiga
+ * GARAGEM_INTEGRATION_API_KEY continua indo em `x-api-key`, mas NÃO pode ser
+ * preenchida com a chave de cron: o rotograma rejeita esse valor nesse header
+ * (401), e os outros robôs dependem dela estar vazia — do outro lado a
+ * comparação vira '' === '' e passa. São chaves diferentes, de propósito.
+ *
+ * Envs: ROTOGRAMA_BASE_URL, ROTOGRAMA_CRON_KEY, GARAGEM_INTEGRATION_API_KEY, EVOLUTION_API_URL,
  * EVOLUTION_API_KEY, GARAGEM_RELATORIO_GROUP_JIDS (fallback GARAGEM_GROUP_JIDS),
  * GARAGEM_ORG_SLUGS, NEXT_PUBLIC_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, CRON_SECRET.
  */
@@ -33,7 +40,14 @@ async function handler(req: NextRequest) {
 
   const baseUrl = (process.env.ROTOGRAMA_BASE_URL ?? '').trim().replace(/\/+$/, '')
   const apiKey = (process.env.GARAGEM_INTEGRATION_API_KEY ?? '').trim()
-  if (!baseUrl || !apiKey) return NextResponse.json({ error: 'rotograma não configurado' }, { status: 500 })
+  const cronKey = (process.env.ROTOGRAMA_CRON_KEY ?? '').trim()
+  // Basta UMA das duas: sem chave nenhuma é que não dá para falar com o rotograma.
+  if (!baseUrl || (!apiKey && !cronKey)) {
+    return NextResponse.json(
+      { error: 'rotograma não configurado', detalhe: { baseUrl: !!baseUrl, apiKey: !!apiKey, cronKey: !!cronKey } },
+      { status: 500 }
+    )
+  }
 
   // Modo: ?tipo=manobristas → só veículos ATIVA RIO, enviado ao grupo dos manobristas.
   const params = new URL(req.url).searchParams
@@ -44,10 +58,21 @@ async function handler(req: NextRequest) {
   // 1) Texto do relatório (rotograma é a fonte da verdade).
   const r = await fetch(`${baseUrl}/api/garagem/nf-extraida`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey },
+    headers: {
+      'Content-Type': 'application/json',
+      'x-api-key': apiKey,
+      ...(cronKey ? { 'x-cron-key': cronKey } : {}),
+    },
     body: JSON.stringify({ action: 'relatorio-patio', transportadora }),
   })
   const j = await r.json().catch(() => null)
+  if (!r.ok) {
+    // 401 aqui é chave errada, não "pátio vazio" — o erro precisa dizer qual é.
+    return NextResponse.json(
+      { error: `rotograma respondeu ${r.status}`, detalhe: j },
+      { status: 502 }
+    )
+  }
   const texto: string | undefined = j?.texto
   const pdfUrl: string | undefined = j?.pdfUrl
   const destinoCadastrado: string | undefined = j?.destino  // telefone da transportadora (quando filtrado)
