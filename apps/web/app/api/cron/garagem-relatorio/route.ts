@@ -55,6 +55,12 @@ async function handler(req: NextRequest) {
   const manobristas = tipo === 'manobristas'
   const transportadora = manobristas ? 'ATIVA RIO' : (params.get('transportadora') || undefined)
 
+  // Sem isto não dá para saber POR QUE um relatório saiu vazio: o log só
+  // mostrava o status HTTP, e um filtro que não casa com nada devolve 200.
+  console.log('[garagem-relatorio] pedido', JSON.stringify({
+    tipo, transportadora, to: params.get('to'), url: req.url.replace(/([?&]key=)[^&]+/, '$1***'),
+  }))
+
   // 1) Texto do relatório (rotograma é a fonte da verdade).
   const r = await fetch(`${baseUrl}/api/garagem/nf-extraida`, {
     method: 'POST',
@@ -75,6 +81,9 @@ async function handler(req: NextRequest) {
   }
   const texto: string | undefined = j?.texto
   const pdfUrl: string | undefined = j?.pdfUrl
+  console.log('[garagem-relatorio] rotograma', JSON.stringify({
+    status: r.status, total: j?.total, textoChars: texto?.length ?? 0, temPdf: !!j?.pdfUrl,
+  }))
   const destinoCadastrado: string | undefined = j?.destino  // telefone da transportadora (quando filtrado)
   if (!texto) return NextResponse.json({ error: 'sem texto do relatório', detalhe: j }, { status: 502 })
 
@@ -131,6 +140,7 @@ async function handler(req: NextRequest) {
       console.error('[garagem-relatorio] erro ao enviar para', jid, e instanceof Error ? e.message : e)
     }
   }
+  console.log('[garagem-relatorio] enviado', JSON.stringify({ enviados, veiculos: j?.total }))
   return NextResponse.json({ ok: true, enviados, pdf: !!pdfUrl, pdfUrl, veiculos: j?.total })
 }
 
