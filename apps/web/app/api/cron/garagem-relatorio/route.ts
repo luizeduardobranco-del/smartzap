@@ -57,8 +57,13 @@ async function handler(req: NextRequest) {
 
   // Sem isto não dá para saber POR QUE um relatório saiu vazio: o log só
   // mostrava o status HTTP, e um filtro que não casa com nada devolve 200.
+  // ?dry=1 percorre tudo e NÃO envia. Existe porque não havia como testar esta
+  // rota sem publicar no grupo do cliente — e testar publicando já produziu
+  // relatório errado na frente de quem contratou o pátio.
+  const dry = params.get('dry') === '1'
+
   console.log('[garagem-relatorio] pedido', JSON.stringify({
-    tipo, transportadora, to: params.get('to'), url: req.url.replace(/([?&]key=)[^&]+/, '$1***'),
+    tipo, transportadora, dry, to: params.get('to'), url: req.url.replace(/([?&]key=)[^&]+/, '$1***'),
   }))
 
   // 1) Texto do relatório (rotograma é a fonte da verdade).
@@ -143,6 +148,17 @@ async function handler(req: NextRequest) {
       body: JSON.stringify({ number, mediatype: 'document', media: pdfUrl, fileName: 'posicao-patio.pdf', caption: '📄 Detalhamento completo — Posição do Pátio' }),
     })
   }
+  if (dry) {
+    return NextResponse.json({
+      ok: true, dry: true, enviariaPara: jids, veiculos: total,
+      textoChars: texto.length, pdfUrl: pdfUrl ?? null, instancia: instanceName,
+      chaves: { apiKey: !!apiKey, cronKey: !!cronKey },
+      previa: texto.split('
+').slice(0, 3).join('
+'),
+    })
+  }
+
   const enviados: string[] = []
   for (const jid of jids) {
     try {
