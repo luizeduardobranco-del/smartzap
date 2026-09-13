@@ -125,18 +125,64 @@ async function handler(req: NextRequest) {
   if (!evoUrl || !evoKey) return NextResponse.json({ error: 'Evolution não configurado' }, { status: 500 })
 
   // 3) Descobre a instância (channelIdentifier) da org da garagem.
+  //
+  // Esta era a causa das falhas de 13/09: as duas consultas abaixo descartavam
+  // o `error`, então banco fora do ar e "org não existe" davam no mesmo lugar —
+  // um 500 mudo, DEPOIS de o relatório já ter sido gerado. Nos logs aparecia o
+  // relatório pronto com 23 veículos e nenhuma linha de envio.
+  //
+  // Duas execuções simultâneas (os jobs das 16:00 disparam com 4s de diferença)
+  // falhavam juntas; a que rodava sozinha passava. Agora: o erro é registrado, e
+  // GARAGEM_CHANNEL_IDENTIFIER serve de rede de proteção quando a consulta falha.
   const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!)
   const slug = (process.env.GARAGEM_ORG_SLUGS ?? '').split(',').map((s) => s.trim()).filter(Boolean)[0]
-  let instanceName = (process.env.GARAGEM_CHANNEL_IDENTIFIER ?? '').trim()
-  if (!instanceName && slug) {
-    const { data: org } = await supabase.from('organizations').select('id').eq('slug', slug).limit(1)
+  let instanceName = ''
+  let motivoInstancia = 'ok'
+
+  if (slug) {
+    const { data: org, error: erroOrg } = await supabase
+      .from('organizations').select('id').eq('slug', slug).limit(1)
+
+    if (erroOrg) {
+      motivoInstancia = `consulta de organizations falhou: ${erroOrg.message}`
+      console.error('[garagem-relatorio]', motivoInstancia)
+    }
+
     const orgId = org?.[0]?.id
+    if (!orgId && !erroOrg) motivoInstancia = `organização "${slug}" não encontrada`
+
     if (orgId) {
-      const { data: ch } = await supabase.from('channels').select('credentials').eq('organization_id', orgId).eq('type', 'whatsapp').limit(1)
+      const { data: ch, error: erroCh } = await supabase
+        .from('channels').select('credentials').eq('organization_id', orgId).eq('type', 'whatsapp').limit(1)
+
+      if (erroCh) {
+        motivoInstancia = `consulta de channels falhou: ${erroCh.message}`
+        console.error('[garagem-relatorio]', motivoInstancia)
+      }
+
       instanceName = (ch?.[0]?.credentials as { instanceName?: string } | null)?.instanceName ?? ''
+      if (!instanceName && !erroCh) motivoInstancia = 'org sem canal WhatsApp cadastrado'
+    }
+  } else {
+    motivoInstancia = 'GARAGEM_ORG_SLUGS não configurada'
+  }
+
+  // Rede de proteção: instância fixa no ambiente, usada só quando a busca falha.
+  if (!instanceName) {
+    const doAmbiente = (process.env.GARAGEM_CHANNEL_IDENTIFIER ?? '').trim()
+    if (doAmbiente) {
+      console.warn('[garagem-relatorio] usando GARAGEM_CHANNEL_IDENTIFIER do ambiente', JSON.stringify({ motivo: motivoInstancia }))
+      instanceName = doAmbiente
     }
   }
-  if (!instanceName) return NextResponse.json({ error: 'instância (channelIdentifier) não encontrada' }, { status: 500 })
+
+  if (!instanceName) {
+    console.error('[garagem-relatorio] SEM INSTANCIA', JSON.stringify({ motivo: motivoInstancia, slug: slug ?? null }))
+    return NextResponse.json(
+      { error: 'instância (channelIdentifier) não encontrada', motivo: motivoInstancia },
+      { status: 500 }
+    )
+  }
 
   // 4) Publica: resumo em texto + PDF (dashboard) em anexo.
   const adapter = new EvolutionWhatsAppAdapter(evoUrl, evoKey, instanceName)
