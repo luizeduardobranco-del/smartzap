@@ -81,7 +81,23 @@ export async function findOrCreateOpenConversation(
     .select('id, mode')
     .single()
 
-  if (created) return { ...(created as OpenConversation), created: true }
+  if (created) {
+    // Primeira conversa com esse contato: agora sim ele é lead.
+    //
+    // Este é o único ponto por onde toda conversa nasce (webhook de entrada,
+    // disparo, alerta), então é aqui que o contato entra no CRM. Cadastrar ou
+    // importar contato NÃO cria lead: a agenda não é funil.
+    //
+    // `is('kanban_stage', null)` garante que um lead já qualificado nunca volte
+    // para "Novo" quando abrir uma conversa nova.
+    await supabase
+      .from('contacts')
+      .update({ kanban_stage: 'new' })
+      .eq('id', params.contactId)
+      .is('kanban_stage', null)
+
+    return { ...(created as OpenConversation), created: true }
+  }
 
   // Corrida: outro request criou a conversa aberta entre o select e o insert.
   if ((error as any)?.code === '23505') {

@@ -211,7 +211,11 @@ export const contactsRouter = router({
           name: input.name,
           phone,
           tags: allTags,
-          kanban_stage: 'new',
+          // kanban_stage fica NULO de propósito: agenda não é funil. O contato
+          // só entra no CRM quando houver contato de verdade — ele nos escreve
+          // (webhook) ou nós escrevemos para ele (disparo de campanha).
+          // Omitir a coluna no upsert também protege quem já está no funil:
+          // reimportar a lista não joga um lead qualificado de volta em "Novo".
           company_name: input.company_name ?? null,
           address: input.address ?? null,
           website: input.website ?? null,
@@ -253,7 +257,7 @@ export const contactsRouter = router({
           name: c.name.trim() || normalizePhone(c.phone),
           phone: normalizePhone(c.phone),
           tags: allTags,
-          kanban_stage: 'new',
+          // Ver comentário em `create`: importar contato não cria lead.
           company_name: c.company_name ?? null,
           address: c.address ?? null,
           website: c.website ?? null,

@@ -88,6 +88,9 @@ type Contact = {
   specialties?: string | null
 }
 
+// `kanban_stage` nulo = contato de agenda, fora do funil. Mostrar "Novo" aqui
+// faria a tela de contatos afirmar o contrário do que o CRM mostra.
+const SEM_FUNIL = 'Fora do funil'
 const stageLabel: Record<string, string> = {
   new: 'Novo', contacted: 'Contactado', qualified: 'Qualificado',
   proposal: 'Proposta', won: 'Ganho', lost: 'Perdido',
@@ -581,8 +584,8 @@ export function ContactsManager() {
                       </div>
                     </td>
                     <td className="px-4 py-3">
-                      <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${stageColor[c.kanban_stage ?? 'new'] ?? stageColor.new}`}>
-                        {stageLabel[c.kanban_stage ?? 'new'] ?? 'Novo'}
+                      <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${stageColor[c.kanban_stage ?? ''] ?? 'bg-slate-50 text-slate-400'}`}>
+                        {stageLabel[c.kanban_stage ?? ''] ?? SEM_FUNIL}
                       </span>
                     </td>
                     <td className="px-4 py-3 text-right">
@@ -967,8 +970,8 @@ function ListAccordion({ list, isOpen, onToggle, search, tagFilter, onTagClick }
                       </button>
                     ))}
                   </div>
-                  <span className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-medium ${stageColor[c.kanban_stage ?? 'new'] ?? stageColor.new}`}>
-                    {stageLabel[c.kanban_stage ?? 'new'] ?? 'Novo'}
+                  <span className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-medium ${stageColor[c.kanban_stage ?? ''] ?? 'bg-slate-50 text-slate-400'}`}>
+                    {stageLabel[c.kanban_stage ?? ''] ?? SEM_FUNIL}
                   </span>
                 </div>
               ))}

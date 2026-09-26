@@ -56,7 +56,7 @@ export async function getAdminStats() {
   }
 }
 
-export async function getOrgSettings(userId: string): Promise<{ hasAffiliates?: boolean } | null> {
+export async function getOrgSettings(userId: string): Promise<{ hasAffiliates?: boolean; hasMatriculas?: boolean } | null> {
   const supabase = getServiceClient()
   const { data: member } = await supabase
     .from('organization_members')
@@ -72,6 +72,7 @@ export async function getOrgSettings(userId: string): Promise<{ hasAffiliates?: 
   const settings = org?.settings as { enabled_modules?: string[] } | null
   return {
     hasAffiliates: !!(settings?.enabled_modules?.includes('affiliates')),
+    hasMatriculas: !!(settings?.enabled_modules?.includes('matriculas')),
   }
 }
 

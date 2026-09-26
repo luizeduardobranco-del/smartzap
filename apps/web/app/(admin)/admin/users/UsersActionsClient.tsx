@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Loader2, Ban, CheckCircle, KeyRound, Trash2, UserPlus, X } from 'lucide-react'
+import { Loader2, Ban, CheckCircle, KeyRound, Trash2, UserPlus, X, LogIn } from 'lucide-react'
 
 interface UserActionsProps {
   userId: string
@@ -34,6 +34,34 @@ export function UserActionsClient({ userId, email, isBanned }: UserActionsProps)
     }
   }
 
+  /**
+   * Abre a conta do cliente para suporte. O motivo vai para o log de acesso —
+   * é ele que diferencia suporte de bisbilhotice, então não é opcional.
+   */
+  async function entrarComo() {
+    const motivo = prompt(`Entrar na conta de ${email} em modo suporte.
+
+Qual o motivo do acesso? (fica registrado)`)
+    if (!motivo || motivo.trim().length < 5) return
+
+    setLoading('impersonate')
+    try {
+      const res = await fetch('/api/admin/impersonate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId, motivo }),
+      })
+      const json = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        alert([json?.error, json?.detalhe, json?.codigo].filter(Boolean).join(' — ') || 'Não foi possível abrir a sessão.')
+        return
+      }
+      window.location.href = json?.redirect ?? '/agents'
+    } finally {
+      setLoading(null)
+    }
+  }
+
   async function deleteUser() {
     if (!confirm(`Tem certeza que deseja excluir o usuário ${email}? Esta ação não pode ser desfeita.`)) return
     setLoading('delete')
@@ -48,6 +76,14 @@ export function UserActionsClient({ userId, email, isBanned }: UserActionsProps)
 
   return (
     <div className="flex items-center gap-1">
+      <button
+        onClick={entrarComo}
+        disabled={loading !== null}
+        title="Entrar como este usuário (modo suporte)"
+        className="rounded p-1.5 text-slate-500 hover:bg-amber-50 hover:text-amber-600 disabled:opacity-50"
+      >
+        {loading === 'impersonate' ? <Loader2 className="h-4 w-4 animate-spin" /> : <LogIn className="h-4 w-4" />}
+      </button>
       {done && (
         <span className="text-xs text-green-600 font-medium mr-1">{done}</span>
       )}

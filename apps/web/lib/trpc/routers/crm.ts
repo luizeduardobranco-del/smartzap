@@ -22,6 +22,11 @@ export const crmRouter = router({
           conversations(id, last_message_at, status, mode, agents(id, name))
         `)
         .eq('organization_id', member.organization_id)
+        // Contato de agenda (importado ou digitado) tem kanban_stage nulo e não
+        // é lead. Ele entra no quadro quando houver conversa ou disparo.
+        // `.not('kanban_stage', 'is', null)` em vez de `.neq`, porque no
+        // PostgREST qualquer comparação com NULL descarta a linha em silêncio.
+        .not('kanban_stage', 'is', null)
         .order('created_at', { ascending: false })
 
       if (input.stage) query = query.eq('kanban_stage', input.stage)
