@@ -1424,12 +1424,16 @@ async function runAutomations(ctx: {
 
     if (!automations?.length) return { skipAI: false }
 
-    const nowHour = new Date().getHours()
+    // A Vercel roda em UTC; o expediente configurado é no horário de Brasília.
+    const nowHour = parseInt(
+      new Intl.DateTimeFormat('pt-BR', { timeZone: 'America/Sao_Paulo', hour: 'numeric', hour12: false }).format(new Date()),
+      10
+    ) % 24
     let skipAI = false
 
     for (const automation of automations) {
-      const tc = automation.trigger_config as Record<string, unknown>
-      const ac = automation.action_config as Record<string, unknown>
+      const tc = (automation.trigger_config ?? {}) as Record<string, unknown>
+      const ac = (automation.action_config ?? {}) as Record<string, unknown>
 
       // Check trigger
       let triggered = false
@@ -1454,50 +1458,98 @@ async function runAutomations(ctx: {
 
       console.log(`[webhook] automation triggered: ${automation.name} (${automation.trigger_type} → ${automation.action_type})`)
 
-      // Execute action
-      if (automation.action_type === 'send_message' && ac.message) {
-        const adapter = new EvolutionWhatsAppAdapter(ctx.evolutionApiUrl, ctx.evolutionApiKey, ctx.channelIdentifier)
-        await adapter.sendMessage({
-          channelType: 'whatsapp',
-          channelIdentifier: ctx.channelIdentifier,
-          recipientExternalId: ctx.senderExternalId,
-          contentType: 'text',
-          text: ac.message as string,
-        })
-        // Save automation message in DB
-        await ctx.supabase.from('messages').insert({
-          conversation_id: ctx.conversationId,
-          organization_id: ctx.organizationId,
-          role: 'assistant',
-          content: ac.message as string,
-          content_type: 'text',
-          sender_type: 'agent',
-        })
-        await ctx.supabase.from('conversations').update({ last_message_at: new Date().toISOString() }).eq('id', ctx.conversationId)
-        skipAI = true
-      } else if (automation.action_type === 'add_tag' && ac.tag) {
-        const tag = ac.tag as string
-        const { data: contact } = await ctx.supabase
-          .from('contacts')
-          .select('tags')
-          .eq('id', ctx.contactId)
-          .single()
-        const existing: string[] = contact?.tags ?? []
-        if (!existing.includes(tag)) {
-          await ctx.supabase.from('contacts').update({ tags: [...existing, tag] }).eq('id', ctx.contactId)
+      // Cada automação roda isolada: uma falha não pode impedir as seguintes,
+      // e toda execução vira linha em automation_runs (sucesso ou erro).
+      const startedAt = new Date().toISOString()
+      const steps: Record<string, unknown>[] = [{
+        step: 'trigger',
+        type: automation.trigger_type,
+        ...(automation.trigger_type === 'keyword' ? { text: ctx.messageText.slice(0, 200) } : {}),
+        ...(automation.trigger_type === 'off_hours' ? { hour: nowHour } : {}),
+      }]
+      let status: 'completed' | 'failed' = 'completed'
+      let errorMessage: string | null = null
+
+      try {
+        const check = (res: { error: { message: string } | null }, what: string) => {
+          if (res.error) throw new Error(`${what}: ${res.error.message}`)
         }
-      } else if (automation.action_type === 'change_stage' && ac.stage) {
-        await ctx.supabase.from('contacts').update({ kanban_stage: ac.stage }).eq('id', ctx.contactId)
-      } else if (automation.action_type === 'handoff') {
-        await ctx.supabase.from('conversations').update({ mode: 'human' }).eq('id', ctx.conversationId)
-        skipAI = true
+
+        if (automation.action_type === 'send_message') {
+          if (!ac.message) throw new Error('Mensagem vazia na configuração da ação')
+          const adapter = new EvolutionWhatsAppAdapter(ctx.evolutionApiUrl, ctx.evolutionApiKey, ctx.channelIdentifier)
+          await adapter.sendMessage({
+            channelType: 'whatsapp',
+            channelIdentifier: ctx.channelIdentifier,
+            recipientExternalId: ctx.senderExternalId,
+            contentType: 'text',
+            text: ac.message as string,
+          })
+          // Save automation message in DB
+          check(await ctx.supabase.from('messages').insert({
+            conversation_id: ctx.conversationId,
+            organization_id: ctx.organizationId,
+            role: 'assistant',
+            content: ac.message as string,
+            content_type: 'text',
+            sender_type: 'agent',
+          }), 'gravar mensagem')
+          await ctx.supabase.from('conversations').update({ last_message_at: new Date().toISOString() }).eq('id', ctx.conversationId)
+          steps.push({ step: 'action', type: 'send_message', result: 'enviada' })
+          skipAI = true
+        } else if (automation.action_type === 'add_tag') {
+          if (!ac.tag) throw new Error('Tag vazia na configuração da ação')
+          const tag = ac.tag as string
+          const { data: contact } = await ctx.supabase
+            .from('contacts')
+            .select('tags')
+            .eq('id', ctx.contactId)
+            .single()
+          const existing: string[] = contact?.tags ?? []
+          if (!existing.includes(tag)) {
+            check(await ctx.supabase.from('contacts').update({ tags: [...existing, tag] }).eq('id', ctx.contactId), 'adicionar tag')
+            steps.push({ step: 'action', type: 'add_tag', tag, result: 'adicionada' })
+          } else {
+            steps.push({ step: 'action', type: 'add_tag', tag, result: 'já existia' })
+          }
+        } else if (automation.action_type === 'change_stage') {
+          if (!ac.stage) throw new Error('Etapa vazia na configuração da ação')
+          const { data: before } = await ctx.supabase.from('contacts').select('kanban_stage').eq('id', ctx.contactId).maybeSingle()
+          check(await ctx.supabase.from('contacts').update({ kanban_stage: ac.stage }).eq('id', ctx.contactId), 'mover etapa')
+          steps.push({ step: 'action', type: 'change_stage', from: before?.kanban_stage ?? null, to: ac.stage })
+        } else if (automation.action_type === 'handoff') {
+          check(await ctx.supabase.from('conversations').update({ mode: 'human' }).eq('id', ctx.conversationId), 'transferir para humano')
+          steps.push({ step: 'action', type: 'handoff', result: 'modo humano' })
+          skipAI = true
+        } else {
+          throw new Error(`A ação "${automation.action_type}" ainda não é executada pelo motor`)
+        }
+      } catch (err) {
+        status = 'failed'
+        errorMessage = err instanceof Error ? err.message : String(err)
+        console.error(`[webhook] automation ${automation.id} failed:`, errorMessage)
       }
 
-      // Increment executions counter
-      await ctx.supabase
-        .from('automations')
-        .update({ executions_count: (automation.executions_count ?? 0) + 1 })
-        .eq('id', automation.id)
+      // Histórico e contador: nunca podem derrubar o atendimento.
+      try {
+        const { error: runErr } = await ctx.supabase.from('automation_runs').insert({
+          automation_id: automation.id,
+          organization_id: ctx.organizationId,
+          conversation_id: ctx.conversationId,
+          status,
+          steps_log: steps,
+          error_message: errorMessage,
+          started_at: startedAt,
+          completed_at: new Date().toISOString(),
+        })
+        if (runErr) console.error('[webhook] automation_runs insert error:', runErr.message)
+        await ctx.supabase
+          .from('automations')
+          .update({ executions_count: (automation.executions_count ?? 0) + 1, last_run_at: new Date().toISOString() })
+          .eq('id', automation.id)
+      } catch (err) {
+        console.error('[webhook] automation log error:', err instanceof Error ? err.message : err)
+      }
     }
 
     return { skipAI }

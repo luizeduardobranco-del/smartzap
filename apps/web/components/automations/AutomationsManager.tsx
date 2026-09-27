@@ -7,7 +7,8 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import {
   Zap, Plus, Pencil, Trash2, Loader2, X, ChevronDown, ChevronUp,
   MessageSquare, Tag, Kanban, UserCheck, Hash, Clock, Sparkles,
-  Mail, Calendar, Webhook, Timer, UserPlus, TrendingUp, Info,
+  Mail, Calendar, Webhook, Timer, UserPlus, TrendingUp, Info, History, AlertTriangle,
+  CheckCircle2, XCircle,
 } from 'lucide-react'
 import { trpc } from '@/lib/trpc/client'
 
@@ -42,6 +43,10 @@ const AUTOMATION_RECIPES = [
   { trigger: 'contact_created', action: 'create_calendar_event', label: 'Agendar onboarding', desc: 'Novo contato → cria evento de onboarding no calendário' },
   { trigger: 'keyword', action: 'send_webhook', label: 'Integração com ERP', desc: 'Palavra "pedido" → dispara webhook no ERP' },
 ]
+
+// O que o motor (webhook do WhatsApp) executa de fato hoje. O resto é salvo mas não dispara.
+const ENGINE_TRIGGERS = new Set(['keyword', 'first_message', 'off_hours'])
+const ENGINE_ACTIONS = new Set(['send_message', 'add_tag', 'change_stage', 'handoff'])
 
 const CRM_STAGES = [
   { value: 'new', label: 'Novo' },
@@ -82,7 +87,8 @@ type Automation = {
   agent_id: string | null; trigger_type: string
   trigger_config: Record<string, unknown>; action_type: string
   action_config: Record<string, unknown>; is_active: boolean
-  executions_count: number; agents: { name: string } | null
+  executions_count: number; last_run_at: string | null
+  agents: { name: string } | null
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -141,6 +147,7 @@ export function AutomationsManager() {
   const [editing, setEditing] = useState<Automation | null>(null)
   const [deleteId, setDeleteId] = useState<string | null>(null)
   const [guideOpen, setGuideOpen] = useState(false)
+  const [historyId, setHistoryId] = useState<string | null>(null)
   const utils = trpc.useUtils()
 
   const { data: automations = [], isLoading } = trpc.automations.list.useQuery()
@@ -271,8 +278,10 @@ export function AutomationsManager() {
           {(automations as Automation[]).map((a) => {
             const TIcon = TriggerIcon(a.trigger_type)
             const AIcon = ActionIcon(a.action_type)
+            const naoExecuta = !ENGINE_TRIGGERS.has(a.trigger_type) || !ENGINE_ACTIONS.has(a.action_type)
             return (
-              <div key={a.id} className={`flex items-center gap-4 rounded-xl border bg-white p-4 transition-opacity ${!a.is_active ? 'opacity-60' : ''}`}>
+              <div key={a.id} className={`rounded-xl border bg-white transition-opacity ${!a.is_active ? 'opacity-60' : ''}`}>
+              <div className="flex items-center gap-4 p-4">
                 <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg ${triggerStyle(a.trigger_type)}`}>
                   <TIcon className="h-5 w-5" />
                 </div>
@@ -286,10 +295,26 @@ export function AutomationsManager() {
                     <span>→</span>
                     <span className="flex items-center gap-1"><AIcon className="h-3 w-3" />{actionLabel(a.action_type)}</span>
                     {a.executions_count > 0 && <span className="ml-2 text-muted-foreground/60">{a.executions_count} execuções</span>}
+                    {a.last_run_at && <span className="text-muted-foreground/60">· última em {formatarData(a.last_run_at)}</span>}
                   </div>
                   {a.description && <p className="mt-0.5 text-xs text-muted-foreground">{a.description}</p>}
+                  {naoExecuta && (
+                    <p className="mt-1 flex items-center gap-1 text-xs text-amber-700">
+                      <AlertTriangle className="h-3 w-3" />
+                      {!ENGINE_TRIGGERS.has(a.trigger_type)
+                        ? `O gatilho "${triggerLabel(a.trigger_type)}" ainda não dispara automaticamente`
+                        : `A ação "${actionLabel(a.action_type)}" ainda não é executada; cada disparo fica registrado como falha`}
+                    </p>
+                  )}
                 </div>
                 <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => setHistoryId(historyId === a.id ? null : a.id)}
+                    title="Histórico de execuções"
+                    className={`rounded-lg p-1.5 hover:bg-muted hover:text-foreground ${historyId === a.id ? 'bg-muted text-foreground' : 'text-muted-foreground'}`}
+                  >
+                    <History className="h-4 w-4" />
+                  </button>
                   <button
                     onClick={() => toggle.mutate({ id: a.id, isActive: !a.is_active })}
                     disabled={toggle.isPending}
@@ -304,6 +329,8 @@ export function AutomationsManager() {
                     <Trash2 className="h-4 w-4" />
                   </button>
                 </div>
+              </div>
+              {historyId === a.id && <RunsPanel automationId={a.id} />}
               </div>
             )
           })}
@@ -343,6 +370,65 @@ export function AutomationsManager() {
           }}
           isSaving={create.isPending || update.isPending}
         />
+      )}
+    </div>
+  )
+}
+
+// ─── Histórico de execuções ────────────────────────────────────────────────────
+
+function formatarData(iso: string) {
+  return new Date(iso).toLocaleString('pt-BR', {
+    timeZone: 'America/Sao_Paulo', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit',
+  })
+}
+
+const STAGE_LABEL = Object.fromEntries(CRM_STAGES.map((s) => [s.value, s.label]))
+
+function descreverPassos(steps: unknown): string {
+  if (!Array.isArray(steps)) return ''
+  const action = steps.find((s: any) => s?.step === 'action') as Record<string, any> | undefined
+  if (!action) return ''
+  if (action.type === 'change_stage') {
+    const de = action.from ? STAGE_LABEL[action.from] ?? action.from : 'sem etapa'
+    return `${de} → ${STAGE_LABEL[action.to] ?? action.to}`
+  }
+  if (action.type === 'add_tag') return `tag "${action.tag}" ${action.result}`
+  return String(action.result ?? '')
+}
+
+function RunsPanel({ automationId }: { automationId: string }) {
+  const { data: runs = [], isLoading } = trpc.automations.runs.useQuery({ automationId, limit: 30 })
+
+  return (
+    <div className="border-t bg-muted/20 px-4 py-3">
+      {isLoading ? (
+        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+          <Loader2 className="h-3.5 w-3.5 animate-spin" /> Carregando histórico...
+        </div>
+      ) : runs.length === 0 ? (
+        <p className="text-xs text-muted-foreground">
+          Nenhuma execução registrada ainda. O histórico começou a ser gravado em 27/09/2026; execuções anteriores só aparecem no contador.
+        </p>
+      ) : (
+        <ul className="space-y-1.5">
+          {runs.map((r: any) => {
+            const contato = r.conversations?.contacts
+            const ok = r.status === 'completed'
+            return (
+              <li key={r.id} className="flex items-start gap-2 text-xs">
+                {ok
+                  ? <CheckCircle2 className="mt-0.5 h-3.5 w-3.5 shrink-0 text-green-600" />
+                  : <XCircle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-red-500" />}
+                <span className="w-24 shrink-0 text-muted-foreground">{formatarData(r.started_at)}</span>
+                <span className="w-40 shrink-0 truncate font-medium">{contato?.name || contato?.phone || 'Contato removido'}</span>
+                <span className={`min-w-0 flex-1 ${ok ? 'text-muted-foreground' : 'text-red-600'}`}>
+                  {ok ? descreverPassos(r.steps_log) : r.error_message}
+                </span>
+              </li>
+            )
+          })}
+        </ul>
       )}
     </div>
   )

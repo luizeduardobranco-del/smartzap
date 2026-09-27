@@ -71,6 +71,22 @@ export const automationsRouter = router({
     return data ?? []
   }),
 
+  runs: protectedProcedure
+    .input(z.object({ automationId: z.string().uuid(), limit: z.number().min(1).max(100).default(30) }))
+    .query(async ({ ctx, input }) => {
+      const orgId = await getOrgId(ctx)
+      const db = getServiceClient()
+      const { data, error } = await db
+        .from('automation_runs')
+        .select('id, status, started_at, completed_at, error_message, steps_log, conversations(contacts(name, phone))')
+        .eq('organization_id', orgId)
+        .eq('automation_id', input.automationId)
+        .order('started_at', { ascending: false })
+        .limit(input.limit)
+      if (error) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: error.message })
+      return data ?? []
+    }),
+
   create: protectedProcedure
     .input(automationSchema)
     .mutation(async ({ ctx, input }) => {
@@ -137,6 +153,12 @@ export const automationsRouter = router({
     .mutation(async ({ ctx, input }) => {
       const orgId = await getOrgId(ctx)
       const db = getServiceClient()
+      // automation_runs.automation_id não tem ON DELETE CASCADE: o histórico sai antes.
+      const { data: own } = await db
+        .from('automations').select('id').eq('id', input.id).eq('organization_id', orgId).maybeSingle()
+      if (!own) throw new TRPCError({ code: 'NOT_FOUND' })
+      const { error: runsErr } = await db.from('automation_runs').delete().eq('automation_id', input.id)
+      if (runsErr) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: runsErr.message })
       const { error } = await db
         .from('automations')
         .delete()
