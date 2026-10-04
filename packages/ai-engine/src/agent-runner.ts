@@ -52,15 +52,27 @@ export async function runAgent(input: AgentRunInput): Promise<AgentRunResult> {
   })
 
   // Check if handoff trigger was mentioned by user
-  const shouldHandoffToHuman = personality.humanHandoffTrigger
+  const userTriggered = personality.humanHandoffTrigger
     ? userMessage.toLowerCase().includes(personality.humanHandoffTrigger.toLowerCase())
     : false
 
+  // O próprio agente pode pedir a transferência escrevendo o marcador na resposta
+  // (ex.: triagem de cliente atual → financeiro). O marcador nunca chega ao cliente.
+  const agentTriggered = HANDOFF_MARKER.test(result.content ?? '')
+  const content = agentTriggered
+    ? (result.content ?? '').replace(HANDOFF_MARKER_ALL, '').replace(/[ \t]+\n/g, '\n').trim()
+      || 'Vou te passar agora para o atendimento.'
+    : result.content
+
   return {
     ...result,
-    shouldHandoffToHuman,
+    content,
+    shouldHandoffToHuman: userTriggered || agentTriggered,
   }
 }
+
+const HANDOFF_MARKER = /\[\[\s*ATENDENTE\s*\]\]/i
+const HANDOFF_MARKER_ALL = /\[\[\s*ATENDENTE\s*\]\]/gi
 
 function buildSystemPrompt(personality: AgentPersonality, aiConfig: AgentAIConfig, retrievedContext?: string, campaignContext?: string): string {
   const toneInstructions: Record<string, string> = {
