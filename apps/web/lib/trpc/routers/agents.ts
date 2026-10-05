@@ -118,12 +118,20 @@ export const agentsRouter = router({
     }))
     .mutation(async ({ ctx, input }) => {
       const { id, aiConfig, behaviorConfig, ...rest } = input
+      // Mescla com o que já está gravado: flags ligadas pelo suporte (ex.: ignoreImages)
+      // não existem no formulário e sumiriam a cada "Salvar".
+      let mergedBehavior: Record<string, unknown> | undefined
+      if (behaviorConfig) {
+        const { data: atual } = await ctx.supabase
+          .from('agents').select('behavior_config').eq('id', id).maybeSingle()
+        mergedBehavior = { ...((atual?.behavior_config as Record<string, unknown>) ?? {}), ...behaviorConfig }
+      }
       const { data, error } = await ctx.supabase
         .from('agents')
         .update({
           ...rest,
           ...(aiConfig ? { ai_config: aiConfig } : {}),
-          ...(behaviorConfig ? { behavior_config: behaviorConfig } : {}),
+          ...(mergedBehavior ? { behavior_config: mergedBehavior } : {}),
           updated_at: new Date().toISOString(),
         })
         .eq('id', id)

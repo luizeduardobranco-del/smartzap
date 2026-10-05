@@ -9,6 +9,7 @@ import { grupoClienteNoEscopo, interpretarPedido, enviarPedidoGrupo, destinoProp
 import { grupoAbastecimentoNoEscopo, lerImagemAbastecimento, enviarAbastecimentoGrupo, statusAbastecimentoGrupo, marcarTanqueAbast } from '@/lib/abastecimento-grupo'
 import { findOrCreateOpenConversation } from '@/lib/conversations'
 import { tratarRespostaAgenda } from '@/lib/agenda/confirmacao-inbound'
+import { avisarDesconexao, avisarReconexao } from '@/lib/alerta-desconexao'
 
 // Declarado NO CÓDIGO, não em apps/web/vercel.json: o projeto tem rootDirectory
 // nulo, então a Vercel lê o vercel.json da raiz e ignora o de apps/web — o
@@ -568,8 +569,18 @@ async function handleWebhook(payload: unknown) {
     }
   }
 
-  // 6c. Handle image — vision via GPT-4o
+  // 6c-0. Agente com behavior_config.ignoreImages: não lê a imagem (nem cobra os 10
+  // créditos da visão). Com legenda, segue como texto; sem legenda, fica só gravada.
+  let ignorarImagem = false
   if (msg.contentType === 'image') {
+    const { data: agentImg } = await supabase
+      .from('agents').select('behavior_config').eq('id', channel.agent_id).maybeSingle()
+    ignorarImagem = (agentImg?.behavior_config as any)?.ignoreImages === true
+    if (ignorarImagem) console.log('[webhook] image: agente com ignoreImages, visão desligada')
+  }
+
+  // 6c. Handle image — vision via GPT-4o
+  if (msg.contentType === 'image' && !ignorarImagem) {
     if (!openaiKey) {
       console.warn('[webhook] image: no OpenAI key for vision, skipping AI')
       return
@@ -1342,7 +1353,7 @@ async function handleConnectionUpdate(p: Record<string, unknown>) {
   // Find the channel by instanceName
   const { data: channels } = await supabase
     .from('channels')
-    .select('id, organization_id, status')
+    .select('id, organization_id, agent_id, status, config')
     .eq('type', 'whatsapp')
     .filter('credentials->>instanceName', 'eq', instanceName)
     .limit(1)
@@ -1353,14 +1364,27 @@ async function handleConnectionUpdate(p: Record<string, unknown>) {
     return
   }
 
+  const config = (channel.config ?? {}) as Record<string, unknown>
+  // O Evolution manda o número conectado (wuid) no "open"; guardamos para o alerta.
+  const wuid = ((data as any)?.wuid ?? (data?.instance as any)?.wuid ?? '') as string
+  const numeroOpen = wuid ? wuid.split('@')[0].split(':')[0] : ''
+  const numeroCanal = numeroOpen || ((config.phone as string | null) ?? null)
+
   if (state === 'open') {
     // Connection established — mark as connected
     if (channel.status !== 'connected') {
       await supabase
         .from('channels')
-        .update({ status: 'connected', connected_at: new Date().toISOString() })
+        .update({
+          status: 'connected',
+          connected_at: new Date().toISOString(),
+          ...(numeroOpen ? { config: { ...config, phone: numeroOpen } } : {}),
+        })
         .eq('id', channel.id)
       console.log(`[webhook/connection] channel ${channel.id} → connected`)
+      await avisarReconexao(supabase, channel, numeroCanal)
+    } else if (numeroOpen && config.phone !== numeroOpen) {
+      await supabase.from('channels').update({ config: { ...config, phone: numeroOpen } }).eq('id', channel.id)
     }
   } else if (['close', 'closing', 'qrcode', 'notLogged'].includes(state) || state === '') {
     // Connection lost — mark as disconnected and create alert
@@ -1395,6 +1419,9 @@ async function handleConnectionUpdate(p: Record<string, unknown>) {
         .from('organizations')
         .update({ settings: { ...settings, channelAlerts: filtered.slice(0, 10) } })
         .eq('id', channel.organization_id)
+
+      // Estado vazio é payload estranho, não queda confirmada: marca, mas não acorda ninguém.
+      if (state) await avisarDesconexao(supabase, channel, numeroCanal)
     }
   }
 }
