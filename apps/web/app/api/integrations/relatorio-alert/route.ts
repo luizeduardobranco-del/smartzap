@@ -99,7 +99,7 @@ export async function POST(request: NextRequest) {
     .select('id, organization_id, agent_id, credentials, type')
     .eq('type', 'whatsapp')
     .eq('status', 'connected')
-    .limit(1)
+    .order('created_at', { ascending: true })
   if (orgId) q = q.eq('organization_id', orgId)
 
   const { data: canais, error: canalErr } = await q
@@ -107,7 +107,26 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Nenhum canal WhatsApp conectado encontrado' }, { status: 404 })
   }
 
-  const canal = canais[0]
+  // `status = connected` é o que o banco lembra, não o estado do WhatsApp: uma
+  // instância Evolution que caiu continua "connected" aqui e o envio volta 500
+  // do gateway (06/10/2026: "Teste Luiz Marques" fechada era a escolhida e toda
+  // mensagem do WHITE FLEET falhava). Pergunta ao gateway e usa a primeira
+  // instância realmente aberta. Canal Meta não tem sessão a cair.
+  let canal: (typeof canais)[number] | null = null
+  for (const c of canais) {
+    const cred = c.credentials as Record<string, string>
+    if (cred.provider === 'meta' || cred.phoneNumberId) { canal = c; break }
+    const estado = await new EvolutionWhatsAppAdapter(
+      process.env.EVOLUTION_API_URL!, process.env.EVOLUTION_API_KEY!, cred.instanceName,
+    ).getConnectionState().catch(() => 'close' as const)
+    if (estado === 'open') { canal = c; break }
+  }
+  if (!canal) {
+    return NextResponse.json(
+      { error: 'O WhatsApp está desconectado: nenhuma instância aberta. Reconecte o número no WHITE ZAP.' },
+      { status: 503 })
+  }
+
   const credentials = canal.credentials as Record<string, string>
   const organizationId = canal.organization_id
 
