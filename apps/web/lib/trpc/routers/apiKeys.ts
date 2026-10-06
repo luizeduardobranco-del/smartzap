@@ -1,7 +1,7 @@
 import { z } from 'zod'
 import { TRPCError } from '@trpc/server'
 import { router, protectedProcedure } from '../init'
-import { gerarChave } from '@/lib/api-key-auth'
+import { gerarChave, gerarCodigoConexao, hashDaChave } from '@/lib/api-key-auth'
 
 /**
  * Chaves de API da organização — é assim que o cliente liga um sistema dele
@@ -57,6 +57,40 @@ export const apiKeysRouter = router({
       // Única vez que o texto puro sai daqui.
       return { ...data, chave }
     }),
+
+  /**
+   * Código de conexão para o WHITE FLEET: curto, de uso único, vale 24 h.
+   * O sistema de lá troca o código por uma chave desta organização.
+   */
+  criarCodigoConexao: protectedProcedure.mutation(async ({ ctx }) => {
+    const orgId = await getOrgId(ctx)
+    const codigo = gerarCodigoConexao()
+    const { data, error } = await ctx.supabase
+      .from('connection_codes')
+      .insert({
+        organization_id: orgId,
+        code_hash: hashDaChave(codigo),
+        created_by: ctx.user.id,
+      })
+      .select('expires_at')
+      .single()
+
+    if (error) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: error.message })
+    return { codigo, expiraEm: data.expires_at as string }
+  }),
+
+  /** Conexões feitas por código (para o cliente ver quem está ligado à conta). */
+  conexoes: protectedProcedure.query(async ({ ctx }) => {
+    const orgId = await getOrgId(ctx)
+    const { data } = await ctx.supabase
+      .from('connection_codes')
+      .select('id, sistema, used_at, used_by, api_key_id, expires_at, created_at')
+      .eq('organization_id', orgId)
+      .not('used_at', 'is', null)
+      .order('used_at', { ascending: false })
+      .limit(50)
+    return data ?? []
+  }),
 
   revoke: protectedProcedure
     .input(z.object({ id: z.string().uuid() }))

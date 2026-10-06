@@ -555,7 +555,76 @@ function IntegrationsTab() {
         <strong>Como funciona:</strong> Ao conectar o Google, você pode usar as ações &quot;Criar evento no Google Calendar&quot; e &quot;Enviar e-mail via Gmail&quot; nas suas automações.
       </div>
 
+      <ConectarWhiteFleetSection />
       <ChavesApiSection />
+    </div>
+  )
+}
+
+// ─── Conectar ao WHITE FLEET ───────────────────────────────────────────────
+
+/**
+ * Código curto de uso único (24 h) para ligar esta conta ao WHITE FLEET: lá, o
+ * cliente digita o código e as mensagens do rastreamento (tarefas, motorista,
+ * relatórios) passam a sair pelo WhatsApp desta conta.
+ */
+function ConectarWhiteFleetSection() {
+  const { data: conexoes } = trpc.apiKeys.conexoes.useQuery()
+  const [codigo, setCodigo] = useState<{ codigo: string; expiraEm: string } | null>(null)
+  const [copiado, setCopiado] = useState(false)
+
+  const gerar = trpc.apiKeys.criarCodigoConexao.useMutation({
+    onSuccess: (res: any) => { setCodigo(res); setCopiado(false) },
+  })
+
+  async function copiar() {
+    if (!codigo) return
+    try { await navigator.clipboard.writeText(codigo.codigo); setCopiado(true) } catch { setCopiado(false) }
+  }
+
+  return (
+    <div className="space-y-4 border-t pt-6">
+      <div>
+        <h2 className="font-semibold">Conectar ao WHITE FLEET</h2>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Gere um código e digite-o no WHITE FLEET, em Minha conta. As mensagens do rastreamento passam a
+          sair pelo WhatsApp desta conta. O código vale por 24 horas e só pode ser usado uma vez.
+        </p>
+      </div>
+
+      {codigo ? (
+        <div className="rounded-xl border border-blue-200 bg-blue-50 p-4 space-y-2">
+          <div className="flex items-center gap-3">
+            <code className="text-2xl font-mono font-semibold tracking-widest text-slate-900">{codigo.codigo}</code>
+            <button onClick={copiar}
+              className="rounded-lg bg-primary px-3 py-1.5 text-xs font-medium text-white hover:bg-primary/90">
+              {copiado ? 'Copiado!' : 'Copiar'}
+            </button>
+          </div>
+          <p className="text-xs text-blue-900">
+            Vale até {new Date(codigo.expiraEm).toLocaleString('pt-BR')}.
+          </p>
+        </div>
+      ) : (
+        <button onClick={() => gerar.mutate()} disabled={gerar.isPending}
+          className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-primary/90 disabled:opacity-60">
+          {gerar.isPending ? 'Gerando...' : 'Gerar código de conexão'}
+        </button>
+      )}
+      {gerar.error && <p className="text-sm text-red-500">{gerar.error.message}</p>}
+
+      {(conexoes ?? []).length > 0 && (
+        <div className="space-y-1">
+          <p className="text-xs font-medium text-muted-foreground">Contas conectadas</p>
+          {(conexoes ?? []).map((c: any) => (
+            <p key={c.id} className="text-sm">
+              {c.used_by} <span className="text-xs text-muted-foreground">
+                · desde {new Date(c.used_at).toLocaleDateString('pt-BR')} · para desligar, revogue a chave &quot;WHITE FLEET&quot; abaixo
+              </span>
+            </p>
+          ))}
+        </div>
+      )}
     </div>
   )
 }

@@ -21,6 +21,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { EvolutionWhatsAppAdapter, MetaCloudWhatsAppAdapter } from '@zapagent/channel-adapters'
 import { findOrCreateOpenConversation } from '@/lib/conversations'
+import { autenticarChaveApi, canalWhatsappDaOrg } from '@/lib/api-key-auth'
 
 export const dynamic = 'force-dynamic'
 export const maxDuration = 60
@@ -43,19 +44,13 @@ interface RelatorioPayload {
 
 export async function POST(request: NextRequest) {
   // ── 1. Autenticação ──────────────────────────────────────────────────────────
-  // Aceita a chave própria e, como alternativa, a do WHITE TRACKERS: é o mesmo
-  // produto do outro lado, e exigir uma chave nova só para relatório
-  // adicionaria um segredo a girar sem ganho de isolamento.
-  const apiKey = request.headers.get('x-api-key')
-  const esperadas = [
-    process.env.RELATORIO_INTEGRATION_API_KEY,
-    process.env.TRACKER_INTEGRATION_API_KEY,
-  ].filter(Boolean)
-
-  if (esperadas.length === 0) {
-    return NextResponse.json({ error: 'Integração não configurada no servidor' }, { status: 500 })
-  }
-  if (!apiKey || !esperadas.includes(apiKey)) {
+  // Chave de organização (wz_live_..., criada pelo código de conexão do WHITE
+  // FLEET): a mensagem sai pelo WhatsApp DAQUELA conta e o slug do corpo é
+  // ignorado. Chave de ambiente (a própria e a do WHITE TRACKERS): plataforma,
+  // sai pelo primeiro número conectado ou pela organização informada.
+  const origem = await autenticarChaveApi(request,
+    ['RELATORIO_INTEGRATION_API_KEY', 'TRACKER_INTEGRATION_API_KEY'])
+  if (!origem) {
     return NextResponse.json({ error: 'API key inválida ou ausente' }, { status: 401 })
   }
 
@@ -82,7 +77,7 @@ export async function POST(request: NextRequest) {
   const supabase = getSupabase()
 
   // ── 3. Canal WhatsApp conectado ──────────────────────────────────────────────
-  let orgId = payload.organizationId || null
+  let orgId = origem.organizationId ?? payload.organizationId ?? null
   if (!orgId && payload.organizationSlug) {
     const { data: org } = await supabase
       .from('organizations').select('id').eq('slug', payload.organizationSlug).maybeSingle()
@@ -94,33 +89,7 @@ export async function POST(request: NextRequest) {
     orgId = org.id
   }
 
-  let q = supabase
-    .from('channels')
-    .select('id, organization_id, agent_id, credentials, type')
-    .eq('type', 'whatsapp')
-    .eq('status', 'connected')
-    .order('created_at', { ascending: true })
-  if (orgId) q = q.eq('organization_id', orgId)
-
-  const { data: canais, error: canalErr } = await q
-  if (canalErr || !canais?.length) {
-    return NextResponse.json({ error: 'Nenhum canal WhatsApp conectado encontrado' }, { status: 404 })
-  }
-
-  // `status = connected` é o que o banco lembra, não o estado do WhatsApp: uma
-  // instância Evolution que caiu continua "connected" aqui e o envio volta 500
-  // do gateway (06/10/2026: "Teste Luiz Marques" fechada era a escolhida e toda
-  // mensagem do WHITE FLEET falhava). Pergunta ao gateway e usa a primeira
-  // instância realmente aberta. Canal Meta não tem sessão a cair.
-  let canal: (typeof canais)[number] | null = null
-  for (const c of canais) {
-    const cred = c.credentials as Record<string, string>
-    if (cred.provider === 'meta' || cred.phoneNumberId) { canal = c; break }
-    const estado = await new EvolutionWhatsAppAdapter(
-      process.env.EVOLUTION_API_URL!, process.env.EVOLUTION_API_KEY!, cred.instanceName,
-    ).getConnectionState().catch(() => 'close' as const)
-    if (estado === 'open') { canal = c; break }
-  }
+  const canal = await canalWhatsappDaOrg(orgId)
   if (!canal) {
     return NextResponse.json(
       { error: 'O WhatsApp está desconectado: nenhuma instância aberta. Reconecte o número no WHITE ZAP.' },
