@@ -828,7 +828,7 @@ async function handleWebhook(payload: unknown) {
   // 7. Fetch agent config
   const { data: agent } = await supabase
     .from('agents')
-    .select('personality, ai_config, behavior_config')
+    .select('name, personality, ai_config, behavior_config')
     .eq('id', channel.agent_id)
     .single()
 
@@ -944,18 +944,28 @@ async function handleWebhook(payload: unknown) {
   }
 
   console.log('[webhook] AI result:', aiResult?.content?.slice(0, 80))
-  if (!aiResult?.content) { console.warn('[webhook] AI returned no content'); return }
+  const behavior = (agent.behavior_config ?? {}) as Record<string, any>
+  // [[IMAGEM:chave]] → URL cadastrada em behavior_config.imagens; chave desconhecida é ignorada.
+  const agentImages = (aiResult?.images ?? [])
+    .map((k) => ({ chave: k, url: behavior.imagens?.[k] as string | undefined }))
+    .filter((i): i is { chave: string; url: string } => {
+      if (!i.url) console.warn(`[webhook] imagem "${i.chave}" pedida pelo agente não está cadastrada`)
+      return !!i.url
+    })
+  if (!aiResult?.content && !agentImages.length) { console.warn('[webhook] AI returned no content'); return }
 
   // 11. Save AI response to DB
-  await supabase.from('messages').insert({
-    conversation_id: conversationId,
-    organization_id: channel.organization_id,
-    role: 'assistant',
-    content: aiResult.content,
-    content_type: 'text',
-    sender_type: 'agent',
-    ai_model: aiResult.model,
-  })
+  if (aiResult.content) {
+    await supabase.from('messages').insert({
+      conversation_id: conversationId,
+      organization_id: channel.organization_id,
+      role: 'assistant',
+      content: aiResult.content,
+      content_type: 'text',
+      sender_type: 'agent',
+      ai_model: aiResult.model,
+    })
+  }
 
   await supabase
     .from('conversations')
@@ -968,15 +978,55 @@ async function handleWebhook(payload: unknown) {
     process.env.EVOLUTION_API_KEY!,
     msg.channelIdentifier
   )
-  await sendAdapter.sendMessage({
-    channelType: 'whatsapp',
-    channelIdentifier: msg.channelIdentifier,
-    recipientExternalId: msg.senderExternalId,
-    contentType: 'text',
-    text: aiResult.content,
-  })
+  if (aiResult.content) {
+    await sendAdapter.sendMessage({
+      channelType: 'whatsapp',
+      channelIdentifier: msg.channelIdentifier,
+      recipientExternalId: msg.senderExternalId,
+      contentType: 'text',
+      text: aiResult.content,
+    })
+    console.log('[webhook] message sent via WhatsApp')
+  }
 
-  console.log('[webhook] message sent via WhatsApp')
+  // 12a. Imagens pedidas pelo agente (ex.: folder do orçamento), depois do texto.
+  for (const img of agentImages) {
+    try {
+      await sendAdapter.sendImage(msg.senderExternalId, img.url)
+      await supabase.from('messages').insert({
+        conversation_id: conversationId,
+        organization_id: channel.organization_id,
+        role: 'assistant',
+        content: `[imagem: ${img.chave}]`,
+        content_type: 'image',
+        media_url: img.url,
+        sender_type: 'agent',
+      })
+      console.log(`[webhook] imagem do agente enviada: ${img.chave}`)
+    } catch (err) {
+      console.warn(`[webhook] falha ao enviar imagem ${img.chave}:`, err instanceof Error ? err.message : err)
+    }
+  }
+
+  // 12c. Resumo do lead ([[LEAD]]) para os telefones da equipe, pelo próprio número do canal.
+  const telefonesResumo: string[] = Array.isArray(behavior.resumoLead?.telefones) ? behavior.resumoLead.telefones : []
+  if (aiResult.leadSummary && telefonesResumo.length) {
+    const texto = `📋 Resumo de contato (${agent.name ?? 'agente'})\n\n${aiResult.leadSummary}\nWhatsApp do contato: +${msg.senderExternalId}`
+    for (const tel of telefonesResumo) {
+      try {
+        await sendAdapter.sendMessage({
+          channelType: 'whatsapp',
+          channelIdentifier: msg.channelIdentifier,
+          recipientExternalId: String(tel).replace(/\D/g, ''),
+          contentType: 'text',
+          text: texto,
+        })
+        console.log('[webhook] resumo do lead enviado para a equipe')
+      } catch (err) {
+        console.warn('[webhook] falha ao enviar resumo do lead:', err instanceof Error ? err.message : err)
+      }
+    }
+  }
 
   // 12b. Send product images from knowledge base
   for (const imageUrl of imageUrlsFromKnowledge) {

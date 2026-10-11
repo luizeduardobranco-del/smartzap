@@ -17,6 +17,8 @@ export interface AgentRunInput {
   userMessage: string
   retrievedContext?: string // RAG context
   campaignContext?: string  // Campaign context — injected before system prompt
+  /** Só para testes: simula a data de hoje (promoções com prazo). */
+  today?: Date
   env: {
     openaiApiKey?: string
     anthropicApiKey?: string
@@ -26,13 +28,19 @@ export interface AgentRunInput {
 
 export interface AgentRunResult extends CompletionResult {
   shouldHandoffToHuman: boolean
+  /** Chaves de [[IMAGEM:chave]] pedidas pelo agente; quem chama resolve para URL. */
+  images: string[]
+  /** Conteúdo de [[LEAD]]...[[/LEAD]]: resumo para a equipe, nunca vai ao cliente. */
+  leadSummary: string | null
 }
 
 export async function runAgent(input: AgentRunInput): Promise<AgentRunResult> {
   const { personality, aiConfig, conversationHistory, userMessage, retrievedContext, campaignContext, env } = input
 
   // Build system prompt
+  // O modelo não sabe a data: sem isto, promoção "até 10/11" nunca vence.
   const systemPrompt = buildSystemPrompt(personality, aiConfig, retrievedContext, campaignContext)
+    + `\n\n## Data de hoje\nHoje é ${hojeBrasilia(input.today)} (horário de Brasília).`
 
   // Build messages array
   const messages: ChatMessage[] = [
@@ -58,21 +66,43 @@ export async function runAgent(input: AgentRunInput): Promise<AgentRunResult> {
 
   // O próprio agente pode pedir a transferência escrevendo o marcador na resposta
   // (ex.: triagem de cliente atual → financeiro). O marcador nunca chega ao cliente.
-  const agentTriggered = HANDOFF_MARKER.test(result.content ?? '')
-  const content = agentTriggered
-    ? (result.content ?? '').replace(HANDOFF_MARKER_ALL, '').replace(/[ \t]+\n/g, '\n').trim()
-      || 'Vou te passar agora para o atendimento.'
-    : result.content
+  let raw = result.content ?? ''
+  const agentTriggered = HANDOFF_MARKER.test(raw)
+
+  // [[LEAD]]...[[/LEAD]]; sem o fechamento, corta até o fim para nada vazar ao cliente.
+  let leadSummary: string | null = null
+  const lead = raw.match(LEAD_BLOCK) ?? raw.match(LEAD_OPEN_TO_END)
+  if (lead) {
+    leadSummary = lead[1].trim() || null
+    raw = raw.replace(lead[0], '')
+  }
+
+  const images = [...raw.matchAll(IMAGE_MARKER_ALL)].map((m) => m[1].toLowerCase())
+  raw = raw.replace(IMAGE_MARKER_ALL, '')
+
+  const cleaned = raw.replace(HANDOFF_MARKER_ALL, '').replace(/[ \t]+\n/g, '\n').replace(/\n{3,}/g, '\n\n').trim()
+  const content = cleaned || (agentTriggered ? 'Vou te passar agora para o atendimento.' : '')
 
   return {
     ...result,
     content,
     shouldHandoffToHuman: userTriggered || agentTriggered,
+    images: [...new Set(images)],
+    leadSummary,
   }
 }
 
 const HANDOFF_MARKER = /\[\[\s*ATENDENTE\s*\]\]/i
 const HANDOFF_MARKER_ALL = /\[\[\s*ATENDENTE\s*\]\]/gi
+const IMAGE_MARKER_ALL = /\[\[\s*IMAGEM\s*:\s*([a-z0-9_-]+)\s*\]\]/gi
+const LEAD_BLOCK = /\[\[\s*LEAD\s*\]\]([\s\S]*?)\[\[\s*\/\s*LEAD\s*\]\]/i
+const LEAD_OPEN_TO_END = /\[\[\s*LEAD\s*\]\]([\s\S]*)$/i
+
+function hojeBrasilia(d = new Date()) {
+  return d.toLocaleDateString('pt-BR', {
+    timeZone: 'America/Sao_Paulo', weekday: 'long', day: '2-digit', month: '2-digit', year: 'numeric',
+  })
+}
 
 function buildSystemPrompt(personality: AgentPersonality, aiConfig: AgentAIConfig, retrievedContext?: string, campaignContext?: string): string {
   const toneInstructions: Record<string, string> = {

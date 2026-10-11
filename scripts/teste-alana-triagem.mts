@@ -51,7 +51,7 @@ let falhas = 0
 for (const c of casos) {
   const r = await runAgent({
     personality,
-    aiConfig: { provider: 'openai', model: 'gpt-4o-mini', temperature: 0.7, maxTokens: 1000 } as any,
+    aiConfig: { provider: 'openai', model: process.env.MODELO ?? 'gpt-4o', temperature: 0.7, maxTokens: 1000 } as any,
     behaviorConfig: {} as any,
     conversationHistory: c.historico ?? [],
     userMessage: c.msg,
