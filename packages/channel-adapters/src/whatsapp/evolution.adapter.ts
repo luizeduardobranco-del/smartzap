@@ -157,6 +157,20 @@ export class EvolutionWhatsAppAdapter implements ChannelAdapter {
     return { externalId: response.data.key?.id ?? '' }
   }
 
+  async sendVideo(
+    phone: string,
+    videoUrl: string,
+    caption?: string
+  ): Promise<{ externalId: string }> {
+    const url = `${this.apiUrl}/message/sendMedia/${this.instanceName}`
+    const response = await axios.post(
+      url,
+      { number: phone, mediatype: 'video', mimetype: 'video/mp4', media: videoUrl, caption },
+      { headers: { apikey: this.apiKey } }
+    )
+    return { externalId: response.data.key?.id ?? '' }
+  }
+
   async createInstance(webhookUrl: string): Promise<void> {
     await axios.post(
       `${this.apiUrl}/instance/create`,

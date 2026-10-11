@@ -30,6 +30,8 @@ export interface AgentRunResult extends CompletionResult {
   shouldHandoffToHuman: boolean
   /** Chaves de [[IMAGEM:chave]] pedidas pelo agente; quem chama resolve para URL. */
   images: string[]
+  /** [[IMAGEM:chave]] e [[VIDEO:chave]] na ordem em que aparecem na resposta. */
+  media: { tipo: 'imagem' | 'video'; chave: string }[]
   /** Conteúdo de [[LEAD]]...[[/LEAD]]: resumo para a equipe, nunca vai ao cliente. */
   leadSummary: string | null
 }
@@ -77,8 +79,13 @@ export async function runAgent(input: AgentRunInput): Promise<AgentRunResult> {
     raw = raw.replace(lead[0], '')
   }
 
-  const images = [...raw.matchAll(IMAGE_MARKER_ALL)].map((m) => m[1].toLowerCase())
-  raw = raw.replace(IMAGE_MARKER_ALL, '')
+  const media: { tipo: 'imagem' | 'video'; chave: string }[] = []
+  for (const m of raw.matchAll(MEDIA_MARKER_ALL)) {
+    const item = { tipo: /^v/i.test(m[1]) ? 'video' as const : 'imagem' as const, chave: m[2].toLowerCase() }
+    if (!media.some((x) => x.tipo === item.tipo && x.chave === item.chave)) media.push(item)
+  }
+  const images = media.filter((x) => x.tipo === 'imagem').map((x) => x.chave)
+  raw = raw.replace(MEDIA_MARKER_ALL, '')
 
   const cleaned = raw.replace(HANDOFF_MARKER_ALL, '').replace(/[ \t]+\n/g, '\n').replace(/\n{3,}/g, '\n\n').trim()
   const content = cleaned || (agentTriggered ? 'Vou te passar agora para o atendimento.' : '')
@@ -87,14 +94,15 @@ export async function runAgent(input: AgentRunInput): Promise<AgentRunResult> {
     ...result,
     content,
     shouldHandoffToHuman: userTriggered || agentTriggered,
-    images: [...new Set(images)],
+    images,
+    media,
     leadSummary,
   }
 }
 
 const HANDOFF_MARKER = /\[\[\s*ATENDENTE\s*\]\]/i
 const HANDOFF_MARKER_ALL = /\[\[\s*ATENDENTE\s*\]\]/gi
-const IMAGE_MARKER_ALL = /\[\[\s*IMAGEM\s*:\s*([a-z0-9_-]+)\s*\]\]/gi
+const MEDIA_MARKER_ALL = /\[\[\s*(IMAGEM|VIDEO|VÍDEO)\s*:\s*([a-z0-9_-]+)\s*\]\]/gi
 const LEAD_BLOCK = /\[\[\s*LEAD\s*\]\]([\s\S]*?)\[\[\s*\/\s*LEAD\s*\]\]/i
 const LEAD_OPEN_TO_END = /\[\[\s*LEAD\s*\]\]([\s\S]*)$/i
 

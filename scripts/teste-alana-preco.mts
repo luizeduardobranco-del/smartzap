@@ -30,6 +30,7 @@ const DEPOIS = new Date('2026-11-12T15:00:00Z')
 type Caso = {
   nome: string; hist: Msg[]; hoje: Date
   exige: RegExp[]; proibe: RegExp[]; imagem: string | null; lead: boolean
+  videos?: string[]; msg?: string
 }
 const casos: Caso[] = [
   { nome: 'Grajaú ida e volta, promo', hist: ate('Grajau', 'Somente 1', 'ida e volta'), hoje: ANTES,
@@ -43,7 +44,11 @@ const casos: Caso[] = [
   { nome: 'Irmãos (sem valor)', hist: ate('Grajau', 'São 2, irmãos', 'ida e volta'), hoje: ANTES,
     exige: [/irm/i], proibe: [/R\$\s*\d/, /20\s*%/], imagem: null, lead: false },
   { nome: 'Grajaú ida e volta, promo vencida', hist: ate('Grajau', 'Somente 1', 'ida e volta'), hoje: DEPOIS,
-    exige: [/650/], proibe: [/595/, /promo/i], imagem: 'tijuca', lead: true },
+    // Depois de 10/11 o folder (que anuncia a promoção) não vai mais; os vídeos continuam.
+    exige: [/650/], proibe: [/595/, /promo/i], imagem: null, lead: true, videos: ['garagem', 'seguranca'] },
+  { nome: 'Pergunta sobre monitoras', hoje: ANTES, msg: 'e como são as monitoras? meu filho é pequeno',
+    hist: ate('Grajau', 'Somente 1', 'ida e volta').slice(0, 6),
+    exige: [/monitora/i], proibe: [], imagem: null, lead: false, videos: ['monitoras'] },
 ]
 // "idade" como palavra inteira: a apresentação tem "unidade" e "disponibilidade".
 const sempreProibido = [/informad[oa]/i, /\[\[/, /\]\]/, /(^|[^a-zà-ú])idade/i]
@@ -57,7 +62,7 @@ for (const c of casos) {
       aiConfig: { provider: 'openai', model: process.env.MODELO ?? 'gpt-4o', temperature: 0.7, maxTokens: 1000 } as any,
       behaviorConfig: {} as any,
       conversationHistory: c.hist,
-      userMessage: 'Atrasos',
+      userMessage: c.msg ?? 'Atrasos',
       today: c.hoje,
       env: { openaiApiKey: process.env.OPENAI_API_KEY },
     })
@@ -69,6 +74,11 @@ for (const c of casos) {
     ]
     const imgs = r.images.join(',') || null
     if (imgs !== c.imagem) erros.push(`imagem=${imgs} (esperado ${c.imagem})`)
+    const vids = r.media.filter((m) => m.tipo === 'video').map((m) => m.chave)
+    // A proposta vem junto com a apresentação: os dois vídeos de apresentação precisam ir.
+    const esperados = c.videos ?? (c.imagem ? ['garagem', 'seguranca'] : [])
+    for (const v of esperados) if (!vids.includes(v)) erros.push(`faltou vídeo ${v} (veio: ${vids.join(',') || 'nenhum'})`)
+    if (!c.imagem && !c.videos && vids.length) erros.push(`vídeo indevido: ${vids.join(',')}`)
     if (c.lead && !r.leadSummary) erros.push('sem resumo [[LEAD]]')
     if (erros.length) falhas++
     console.log(`${erros.length ? 'ERRO' : 'OK  '} [${c.nome}] rodada ${i}${erros.length ? ' → ' + erros.join('; ') : ''}`)

@@ -10,6 +10,7 @@ import { grupoAbastecimentoNoEscopo, lerImagemAbastecimento, enviarAbastecimento
 import { findOrCreateOpenConversation } from '@/lib/conversations'
 import { tratarRespostaAgenda } from '@/lib/agenda/confirmacao-inbound'
 import { avisarDesconexao, avisarReconexao } from '@/lib/alerta-desconexao'
+import { midiasPorTexto, precisaResumo, extrairResumo } from '@/lib/agente-garantias'
 
 // Declarado NO CÓDIGO, não em apps/web/vercel.json: o projeto tem rootDirectory
 // nulo, então a Vercel lê o vercel.json da raiz e ignora o de apps/web — o
@@ -945,11 +946,13 @@ async function handleWebhook(payload: unknown) {
 
   console.log('[webhook] AI result:', aiResult?.content?.slice(0, 80))
   const behavior = (agent.behavior_config ?? {}) as Record<string, any>
-  // [[IMAGEM:chave]] → URL cadastrada em behavior_config.imagens; chave desconhecida é ignorada.
-  const agentImages = (aiResult?.images ?? [])
-    .map((k) => ({ chave: k, url: behavior.imagens?.[k] as string | undefined }))
-    .filter((i): i is { chave: string; url: string } => {
-      if (!i.url) console.warn(`[webhook] imagem "${i.chave}" pedida pelo agente não está cadastrada`)
+  // [[IMAGEM:chave]] / [[VIDEO:chave]] → URL cadastrada em behavior_config.imagens / .videos;
+  // chave desconhecida é ignorada.
+  const pedidas = aiResult?.media ?? []
+  const agentImages = [...pedidas, ...midiasPorTexto(aiResult?.content ?? '', behavior.midiaPorTexto, pedidas)]
+    .map((m) =>({ ...m, url: (m.tipo === 'video' ? behavior.videos : behavior.imagens)?.[m.chave] as string | undefined }))
+    .filter((i): i is { tipo: 'imagem' | 'video'; chave: string; url: string } => {
+      if (!i.url) console.warn(`[webhook] ${i.tipo} "${i.chave}" pedida pelo agente não está cadastrada`)
       return !!i.url
     })
   if (!aiResult?.content && !agentImages.length) { console.warn('[webhook] AI returned no content'); return }
@@ -989,16 +992,17 @@ async function handleWebhook(payload: unknown) {
     console.log('[webhook] message sent via WhatsApp')
   }
 
-  // 12a. Imagens pedidas pelo agente (ex.: folder do orçamento), depois do texto.
+  // 12a. Mídias pedidas pelo agente (folder, vídeos), depois do texto e na ordem pedida.
   for (const img of agentImages) {
     try {
-      await sendAdapter.sendImage(msg.senderExternalId, img.url)
+      if (img.tipo === 'video') await sendAdapter.sendVideo(msg.senderExternalId, img.url)
+      else await sendAdapter.sendImage(msg.senderExternalId, img.url)
       await supabase.from('messages').insert({
         conversation_id: conversationId,
         organization_id: channel.organization_id,
         role: 'assistant',
-        content: `[imagem: ${img.chave}]`,
-        content_type: 'image',
+        content: `[${img.tipo}: ${img.chave}]`,
+        content_type: img.tipo === 'video' ? 'video' : 'image',
         media_url: img.url,
         sender_type: 'agent',
       })
@@ -1010,8 +1014,19 @@ async function handleWebhook(payload: unknown) {
 
   // 12c. Resumo do lead ([[LEAD]]) para os telefones da equipe, pelo próprio número do canal.
   const telefonesResumo: string[] = Array.isArray(behavior.resumoLead?.telefones) ? behavior.resumoLead.telefones : []
-  if (aiResult.leadSummary && telefonesResumo.length) {
-    const texto = `📋 Resumo de contato (${agent.name ?? 'agente'})\n\n${aiResult.leadSummary}\nWhatsApp do contato: +${msg.senderExternalId}`
+  let leadSummary = aiResult.leadSummary
+  if (!leadSummary && telefonesResumo.length && openaiKey && precisaResumo(aiResult.content, behavior.resumoLead?.gatilhos)) {
+    // O modelo esqueceu o [[LEAD]] numa proposta/consulta: extrai da conversa.
+    leadSummary = await extrairResumo({
+      openaiKey,
+      historico: [...conversationHistory, { role: 'user' as const, content: effectiveText ?? '' }],
+      ultimaResposta: aiResult.content,
+    })
+      .catch(() => null)
+    if (leadSummary) console.log('[webhook] resumo do lead extraído pelo sistema (agente não mandou [[LEAD]])')
+  }
+  if (leadSummary && telefonesResumo.length) {
+    const texto = `📋 Resumo de contato (${agent.name ?? 'agente'})\n\n${leadSummary}\nWhatsApp do contato: +${msg.senderExternalId}`
     for (const tel of telefonesResumo) {
       try {
         await sendAdapter.sendMessage({
