@@ -128,14 +128,17 @@ export async function canalWhatsappDaOrg(organizationId: string | null) {
 
   let query = supabase
     .from('channels')
-    .select('id, organization_id, agent_id, credentials, type, name, status')
+    // channels não tem coluna `name`: pedir ela fazia a consulta falhar calada e
+    // devolver "sem WhatsApp" para todo mundo (06/10–14/10/2026, nada saiu).
+    .select('id, organization_id, agent_id, credentials, type, status')
     .eq('type', 'whatsapp')
     .eq('status', 'connected')
     .order('created_at', { ascending: true })
 
   if (organizationId) query = query.eq('organization_id', organizationId)
 
-  const { data } = await query
+  const { data, error } = await query
+  if (error) throw new Error(`Falha ao ler os canais de WhatsApp: ${error.message}`)
   for (const c of data ?? []) {
     const cred = (c.credentials ?? {}) as Record<string, string>
     if (cred.provider === 'meta' || cred.phoneNumberId) return c

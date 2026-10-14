@@ -51,7 +51,7 @@ async function handler(request: NextRequest) {
     tipo: origem.tipo,
     organizacao,
     canal: canal
-      ? { id: canal.id, nome: canal.name ?? null, instancia, numero, status: canal.status }
+      ? { id: canal.id, nome: instancia ?? null, instancia, numero, status: canal.status }
       : null,
     // Sem canal conectado a chave vale, mas nenhuma mensagem sai: o cliente
     // precisa ver isso no momento de conectar, não depois.
