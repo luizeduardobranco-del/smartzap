@@ -11,6 +11,7 @@ import { findOrCreateOpenConversation } from '@/lib/conversations'
 import { tratarRespostaAgenda } from '@/lib/agenda/confirmacao-inbound'
 import { avisarDesconexao, avisarReconexao } from '@/lib/alerta-desconexao'
 import { midiasPorTexto, precisaResumo, extrairResumo } from '@/lib/agente-garantias'
+import { centralAtiva, repassarEntrada, repassarSaida, anotarMensagem, tipoCentral, RespostaCentral } from '@/lib/central-rotograma'
 
 // Declarado NO CÓDIGO, não em apps/web/vercel.json: o projeto tem rootDirectory
 // nulo, então a Vercel lê o vercel.json da raiz e ignora o de apps/web — o
@@ -457,11 +458,65 @@ async function handleWebhook(payload: unknown) {
     .update({ last_message_at: new Date().toISOString() })
     .eq('id', conversationId)
 
+  // 5b. Central do Motorista (rotograma da Ativa Rio). Só para as instâncias em
+  // CENTRAL_ROTOGRAMA_INSTANCIAS: a mensagem vai, com a mídia, para o rotograma,
+  // que é quem diz se o robô pode responder (a torre pode ter assumido por lá).
+  const usaCentral = !msg.isGroup && centralAtiva(msg.channelIdentifier)
+  let central: RespostaCentral | null = null
+  if (usaCentral) {
+    const tipoMidia = msg.contentType === 'image' ? 'imageMessage'
+      : msg.contentType === 'audio' ? 'audioMessage'
+        : msg.contentType === 'document' ? 'documentMessage' : null
+    const midia = tipoMidia
+      ? await fetchEvolutionMedia(msg.externalId, msg.senderExternalId, msg.channelIdentifier, tipoMidia)
+      : null
+    central = await repassarEntrada({
+      instancia: msg.channelIdentifier,
+      telefone: msg.senderExternalId,
+      nome: msg.senderName ?? null,
+      tipo: tipoCentral(msg.contentType),
+      texto: msg.text ?? null,
+      externoId: msg.externalId,
+      em: msg.timestamp,
+      midiaBase64: midia?.base64 ?? null,
+      mime: midia?.mimetype ?? msg.mimeType ?? null,
+      nomeArquivo: msg.filename ?? null,
+    })
+    if (central?.roboPodeResponder === false) {
+      console.log('[webhook] central: a torre está com a conversa, robô calado')
+      return
+    }
+    if (central && !central.conhecido && central.sugestao) {
+      // Número fora do cadastro de motoristas: avisa uma vez e não conversa
+      const { count: jaRespondeu } = await supabase.from('messages')
+        .select('id', { count: 'exact', head: true })
+        .eq('conversation_id', conversationId).eq('role', 'assistant')
+      if (!jaRespondeu) {
+        const aviso = new EvolutionWhatsAppAdapter(process.env.EVOLUTION_API_URL!, process.env.EVOLUTION_API_KEY!, msg.channelIdentifier)
+        const env = await aviso.sendMessage({
+          channelType: 'whatsapp', channelIdentifier: msg.channelIdentifier,
+          recipientExternalId: msg.senderExternalId, contentType: 'text', text: central.sugestao,
+        }).catch(() => null)
+        await supabase.from('messages').insert({
+          conversation_id: conversationId, organization_id: channel.organization_id,
+          role: 'assistant', content: central.sugestao, content_type: 'text', sender_type: 'agent',
+        })
+        await repassarSaida({ instancia: msg.channelIdentifier, telefone: msg.senderExternalId, texto: central.sugestao, externoId: env?.externalId })
+      }
+      return
+    }
+    // A torre devolveu a conversa ao robô no rotograma: aqui ela volta para a IA também
+    if (central && conversationMode === 'human') {
+      await supabase.from('conversations').update({ mode: 'ai' }).eq('id', conversationId)
+    }
+  }
+
   // 6. Skip AI if human mode or document.
   // EXCEÇÃO: em orgs da garagem, o fluxo de NF (agendamento) precisa rodar MESMO em modo
   // humano — senão remetentes que foram notificados (garagem-alert coloca a conversa em
   // 'human') nunca mais conseguem agendar pelo robô. Só o agente GERAL respeita o human.
-  const humanMode = conversationMode === 'human'
+  // Na central do rotograma quem manda é o rotograma (5b): se ele liberou, o robô fala.
+  const humanMode = conversationMode === 'human' && !(usaCentral && central?.roboPodeResponder)
   if (humanMode && !garagemEnabled(org)) { console.log('[webhook] mode=human, skipping AI'); return }
   if (!savedMsg) { console.log('[webhook] savedMsg null, skipping AI'); return }
   if (msg.contentType === 'document') { console.log('[webhook] document, skipping AI'); return }
@@ -555,6 +610,9 @@ async function handleWebhook(payload: unknown) {
                 .from('messages')
                 .update({ content: effectiveText })
                 .eq('id', savedMsg.id)
+            }
+            if (usaCentral) {
+              await anotarMensagem({ instancia: msg.channelIdentifier, externoId: msg.externalId, transcricao: effectiveText })
             }
           }
         } else {
@@ -982,7 +1040,7 @@ async function handleWebhook(payload: unknown) {
     msg.channelIdentifier
   )
   if (aiResult.content) {
-    await sendAdapter.sendMessage({
+    const enviado = await sendAdapter.sendMessage({
       channelType: 'whatsapp',
       channelIdentifier: msg.channelIdentifier,
       recipientExternalId: msg.senderExternalId,
@@ -990,6 +1048,9 @@ async function handleWebhook(payload: unknown) {
       text: aiResult.content,
     })
     console.log('[webhook] message sent via WhatsApp')
+    if (usaCentral) {
+      await repassarSaida({ instancia: msg.channelIdentifier, telefone: msg.senderExternalId, texto: aiResult.content, externoId: enviado?.externalId })
+    }
   }
 
   // 12a. Mídias pedidas pelo agente (folder, vídeos), depois do texto e na ordem pedida.
@@ -1092,6 +1153,14 @@ async function handleWebhook(payload: unknown) {
       .update({ mode: 'human' })
       .eq('id', conversationId)
     console.log('[webhook] conversation switched to human mode')
+    // Central do rotograma: a conversa sobe como "aguardando torre"
+    if (usaCentral) {
+      await repassarSaida({
+        instancia: msg.channelIdentifier, telefone: msg.senderExternalId, precisaTorre: true,
+        texto: handoffMsg || 'O robô pediu ajuda da torre nesta conversa.',
+        tipo: handoffMsg ? 'texto' : 'sistema',
+      })
+    }
   }
 }
 
@@ -1748,7 +1817,7 @@ async function fetchEvolutionMedia(
   messageId: string,
   senderPhone: string,
   instanceName: string,
-  messageType: 'imageMessage' | 'audioMessage',
+  messageType: 'imageMessage' | 'audioMessage' | 'documentMessage',
   groupJid?: string
 ): Promise<{ base64: string; mimetype: string } | null> {
   try {
