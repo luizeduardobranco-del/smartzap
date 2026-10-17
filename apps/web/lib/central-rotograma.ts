@@ -30,11 +30,28 @@ export interface RespostaCentral {
   viagem?: { id: string; numero: string; status: string } | null
 }
 
-export function centralAtiva(instancia: string | undefined | null): boolean {
-  if (!instancia) return false
-  const lista = (process.env.CENTRAL_ROTOGRAMA_INSTANCIAS ?? '')
-    .split(',').map((s) => s.trim()).filter(Boolean)
-  return lista.includes(instancia)
+const lista = (env: string | undefined) => (env ?? '').split(',').map((s) => s.trim()).filter(Boolean)
+
+/**
+ * A conversa é da Central do Motorista? Liga de três jeitos, qualquer um basta:
+ *   · pelo AGENTE (o jeito combinado com o Luiz: o robô é o agente Felipe da conta
+ *     da Ativa Rio): behavior_config.centralRotograma = true, ou o id do agente em
+ *     CENTRAL_ROTOGRAMA_AGENTES. Qualquer chip ligado a esse agente vira canal da central;
+ *   · pela instância do Evolution, em CENTRAL_ROTOGRAMA_INSTANCIAS.
+ */
+export function centralAtiva(
+  instancia: string | undefined | null,
+  agente?: { id?: string | null; behavior_config?: unknown } | null,
+): boolean {
+  if (agente?.id && lista(process.env.CENTRAL_ROTOGRAMA_AGENTES).includes(agente.id)) return true
+  if ((agente?.behavior_config as { centralRotograma?: boolean } | null)?.centralRotograma === true) return true
+  return !!instancia && lista(process.env.CENTRAL_ROTOGRAMA_INSTANCIAS).includes(instancia)
+}
+
+/** Chave lida da foto do DANFE (ou digitada) → rotograma grava na viagem do motorista. */
+export function enviarNotaCentral(m: { instancia: string; telefone: string; chave: string }) {
+  return postar({ acao: 'nota', canal: m.instancia, telefone: m.telefone, chave: m.chave }) as
+    Promise<(RespostaCentral & { reply?: string; precisaTorre?: boolean }) | null>
 }
 
 function destino(): { url: string; chave: string } | null {

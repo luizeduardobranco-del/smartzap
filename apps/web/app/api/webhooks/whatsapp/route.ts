@@ -11,7 +11,7 @@ import { findOrCreateOpenConversation } from '@/lib/conversations'
 import { tratarRespostaAgenda } from '@/lib/agenda/confirmacao-inbound'
 import { avisarDesconexao, avisarReconexao } from '@/lib/alerta-desconexao'
 import { midiasPorTexto, precisaResumo, extrairResumo } from '@/lib/agente-garantias'
-import { centralAtiva, repassarEntrada, repassarSaida, anotarMensagem, tipoCentral, RespostaCentral } from '@/lib/central-rotograma'
+import { centralAtiva, repassarEntrada, repassarSaida, anotarMensagem, tipoCentral, enviarNotaCentral, RespostaCentral } from '@/lib/central-rotograma'
 
 // Declarado NO CÓDIGO, não em apps/web/vercel.json: o projeto tem rootDirectory
 // nulo, então a Vercel lê o vercel.json da raiz e ignora o de apps/web — o
@@ -458,10 +458,12 @@ async function handleWebhook(payload: unknown) {
     .update({ last_message_at: new Date().toISOString() })
     .eq('id', conversationId)
 
-  // 5b. Central do Motorista (rotograma da Ativa Rio). Só para as instâncias em
-  // CENTRAL_ROTOGRAMA_INSTANCIAS: a mensagem vai, com a mídia, para o rotograma,
-  // que é quem diz se o robô pode responder (a torre pode ter assumido por lá).
-  const usaCentral = !msg.isGroup && centralAtiva(msg.channelIdentifier)
+  // 5b. Central do Motorista (rotograma da Ativa Rio). Liga pelo agente (Felipe) ou
+  // pela instância (lib/central-rotograma.ts): a mensagem vai, com a mídia, para o
+  // rotograma, que é quem diz se o robô pode responder (a torre pode ter assumido).
+  const { data: agenteCanal } = await supabase
+    .from('agents').select('id, behavior_config').eq('id', channel.agent_id).maybeSingle()
+  const usaCentral = !msg.isGroup && centralAtiva(msg.channelIdentifier, agenteCanal)
   let central: RespostaCentral | null = null
   if (usaCentral) {
     const tipoMidia = msg.contentType === 'image' ? 'imageMessage'
@@ -508,6 +510,61 @@ async function handleWebhook(payload: unknown) {
     // A torre devolveu a conversa ao robô no rotograma: aqui ela volta para a IA também
     if (central && conversationMode === 'human') {
       await supabase.from('conversations').update({ mode: 'ai' }).eq('id', conversationId)
+    }
+
+    // NF e canhoto: a foto (ou a chave digitada) vai direto para o rotograma, que
+    // grava na viagem do motorista e diz o que responder. A IA não entra.
+    const responderCentral = async (texto: string, precisaTorre = false) => {
+      const adp = new EvolutionWhatsAppAdapter(process.env.EVOLUTION_API_URL!, process.env.EVOLUTION_API_KEY!, msg.channelIdentifier)
+      const env = await adp.sendMessage({
+        channelType: 'whatsapp', channelIdentifier: msg.channelIdentifier,
+        recipientExternalId: msg.senderExternalId, contentType: 'text', text: texto,
+      }).catch(() => null)
+      await supabase.from('messages').insert({
+        conversation_id: conversationId, organization_id: channel.organization_id,
+        role: 'assistant', content: texto, content_type: 'text', sender_type: 'agent',
+      })
+      await repassarSaida({ instancia: msg.channelIdentifier, telefone: msg.senderExternalId, texto, externoId: env?.externalId, precisaTorre })
+    }
+    const chaveDigitada = chaveNoTexto(msg.text)
+    if (chaveDigitada || (msg.contentType === 'image' && midia?.base64)) {
+      try {
+        const openaiKeyDoc = process.env.OPENAI_API_KEY
+        let chave = chaveDigitada
+        if (!chave && midia?.base64) {
+          // Mesma escada dos grupos: código de barras → leitura da chave → blocos de 4
+          chave = await lerChaveCodigoBarras(midia.base64)
+          if (!chave && openaiKeyDoc) {
+            const campos = await extractNf(openaiKeyDoc, midia.base64, midia.mimetype ?? null)
+            if (campos?.chaveAcesso && campos.chaveAcesso.length === 44) chave = campos.chaveAcesso
+          }
+          if (!chave && openaiKeyDoc) chave = await lerChaveEmBlocos(openaiKeyDoc, midia.base64, midia.mimetype ?? null)
+        }
+        if (chave) {
+          const out = await enviarNotaCentral({ instancia: msg.channelIdentifier, telefone: msg.senderExternalId, chave })
+          await anotarMensagem({ instancia: msg.channelIdentifier, externoId: msg.externalId, intencao: 'nf' })
+          if (out?.reply) await responderCentral(out.reply, !!out.precisaTorre)
+          console.log('[webhook] central: NF', chave.slice(-6), out?.reply ? 'respondida' : 'sem resposta do rotograma')
+          return
+        }
+        if (midia?.base64 && openaiKeyDoc) {
+          const c = await lerCanhoto(openaiKeyDoc, midia.base64, midia.mimetype ?? null)
+          if (c?.ehCanhoto && (c.nfNumero || c.codigoBarras)) {
+            const out = await enviarCanhotoParaViagem({
+              nfNumero: c.nfNumero, codigoBarras: c.codigoBarras,
+              fotoBase64: midia.base64, mime: midia.mimetype ?? null,
+              telefone: msg.senderExternalId, remetente: msg.senderName ?? null, legenda: msg.text ?? null,
+            })
+            await anotarMensagem({ instancia: msg.channelIdentifier, externoId: msg.externalId, intencao: 'canhoto' })
+            await responderCentral(out.reply || `✅ Canhoto da NF ${c.codigoBarras?.slice(-9).replace(/^0+/, '') || c.nfNumero} recebido. Obrigado!`)
+            console.log('[webhook] central: canhoto', c.codigoBarras?.slice(-9) || c.nfNumero, out.viagem ?? 'sem viagem')
+            return
+          }
+        }
+        // Foto que não é nota nem canhoto segue para o agente, que conversa normalmente
+      } catch (err) {
+        console.error('[webhook] central: NF/canhoto erro:', err instanceof Error ? err.message : err)
+      }
     }
   }
 
