@@ -462,8 +462,8 @@ async function handleWebhook(payload: unknown) {
   // pela instância (lib/central-rotograma.ts): a mensagem vai, com a mídia, para o
   // rotograma, que é quem diz se o robô pode responder (a torre pode ter assumido).
   const { data: agenteCanal } = await supabase
-    .from('agents').select('id, behavior_config').eq('id', channel.agent_id).maybeSingle()
-  const usaCentral = !msg.isGroup && centralAtiva(msg.channelIdentifier, agenteCanal)
+    .from('agents').select('id, name, behavior_config').eq('id', channel.agent_id).maybeSingle()
+  const usaCentral = !msg.isGroup && centralAtiva(msg.channelIdentifier, agenteCanal, org.slug)
   let central: RespostaCentral | null = null
   if (usaCentral) {
     const tipoMidia = msg.contentType === 'image' ? 'imageMessage'

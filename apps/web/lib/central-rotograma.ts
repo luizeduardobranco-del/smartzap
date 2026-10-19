@@ -39,11 +39,20 @@ const lista = (env: string | undefined) => (env ?? '').split(',').map((s) => s.t
  *     CENTRAL_ROTOGRAMA_AGENTES. Qualquer chip ligado a esse agente vira canal da central;
  *   · pela instância do Evolution, em CENTRAL_ROTOGRAMA_INSTANCIAS.
  */
+const normNome = (s: string | null | undefined) =>
+  String(s ?? '').normalize('NFD').replace(/[̀-ͯ]/g, '').trim().toLowerCase()
+
 export function centralAtiva(
   instancia: string | undefined | null,
-  agente?: { id?: string | null; behavior_config?: unknown } | null,
+  agente?: { id?: string | null; name?: string | null; behavior_config?: unknown } | null,
+  orgSlug?: string | null,
 ): boolean {
-  if (agente?.id && lista(process.env.CENTRAL_ROTOGRAMA_AGENTES).includes(agente.id)) return true
+  const agentes = lista(process.env.CENTRAL_ROTOGRAMA_AGENTES)
+  if (agente?.id && agentes.includes(agente.id)) return true
+  // Pelo NOME do agente (ex.: "João"), mas só na conta da Ativa Rio (CENTRAL_ROTOGRAMA_ORG):
+  // outra conta pode ter um agente com o mesmo nome
+  const orgCentral = (process.env.CENTRAL_ROTOGRAMA_ORG ?? '').trim()
+  if (agente?.name && orgCentral && orgSlug === orgCentral && agentes.map(normNome).includes(normNome(agente.name))) return true
   if ((agente?.behavior_config as { centralRotograma?: boolean } | null)?.centralRotograma === true) return true
   return !!instancia && lista(process.env.CENTRAL_ROTOGRAMA_INSTANCIAS).includes(instancia)
 }
