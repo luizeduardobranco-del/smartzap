@@ -35,7 +35,9 @@ export async function POST(request: NextRequest) {
   }
   const agenteNome = normNome(b.agente)
   if (!agenteNome) return NextResponse.json({ error: 'Informe o agente' }, { status: 400 })
-  const telefone = String(b.telefone ?? '').replace(/\D/g, '')
+  // Com o 55 do Brasil: sem o código do país o Evolution recusa com 400
+  const digitos = String(b.telefone ?? '').replace(/\D/g, '')
+  const telefone = digitos.length === 10 || digitos.length === 11 ? `55${digitos}` : digitos
   if (!b.dry && (!telefone || !String(b.texto ?? '').trim())) {
     return NextResponse.json({ error: 'telefone e texto são obrigatórios' }, { status: 400 })
   }
