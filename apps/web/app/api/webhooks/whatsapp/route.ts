@@ -463,13 +463,17 @@ async function handleWebhook(payload: unknown) {
   // rotograma, que é quem diz se o robô pode responder (a torre pode ter assumido).
   const { data: agenteCanal } = await supabase
     .from('agents').select('id, name, behavior_config').eq('id', channel.agent_id).maybeSingle()
-  const usaCentral = !msg.isGroup && centralAtiva(msg.channelIdentifier, agenteCanal, org.slug)
+  const centralNoCanal = !msg.isGroup && centralAtiva(msg.channelIdentifier, agenteCanal, org.slug)
+  // O número do agente pode ser compartilhado (o João também atende o pátio): só vira
+  // conversa da central quando o rotograma diz que é motorista dela (interceptar).
+  let usaCentral = false
   let central: RespostaCentral | null = null
-  if (usaCentral) {
+  let midia: { base64: string; mimetype: string } | null = null
+  if (centralNoCanal) {
     const tipoMidia = msg.contentType === 'image' ? 'imageMessage'
       : msg.contentType === 'audio' ? 'audioMessage'
         : msg.contentType === 'document' ? 'documentMessage' : null
-    const midia = tipoMidia
+    midia = tipoMidia
       ? await fetchEvolutionMedia(msg.externalId, msg.senderExternalId, msg.channelIdentifier, tipoMidia)
       : null
     central = await repassarEntrada({
@@ -484,6 +488,9 @@ async function handleWebhook(payload: unknown) {
       mime: midia?.mimetype ?? msg.mimeType ?? null,
       nomeArquivo: msg.filename ?? null,
     })
+    usaCentral = !!central && central.interceptar !== false
+  }
+  if (usaCentral && central) {
     if (central?.roboPodeResponder === false) {
       console.log('[webhook] central: a torre está com a conversa, robô calado')
       return

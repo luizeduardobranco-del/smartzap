@@ -22,6 +22,8 @@ export type TipoCentral = 'texto' | 'imagem' | 'audio' | 'documento' | 'localiza
 
 export interface RespostaCentral {
   ok: boolean
+  /** false = não é conversa da central (ex.: fora das viagens em teste); segue o fluxo normal */
+  interceptar?: boolean
   conversaId?: string
   conhecido?: boolean
   roboPodeResponder?: boolean
