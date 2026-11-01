@@ -10,8 +10,11 @@
  * gateway fica num lugar só, e a mensagem entra na conversa do contato no WHITE
  * ZAP (o agente enxerga o que o robô perguntou quando o motorista responder).
  *
- * Body: { telefone, texto, agente: "João", organizacao?: slug, dry?: true }
+ * Body: { telefone, texto, agente: "João", organizacao?: slug, dry?: true,
+ *         imagens?: [{ url, legenda? }] }
  *   dry → não envia; devolve o agente e o canal que seriam usados (diagnóstico).
+ *   imagens → mandadas depois do texto, uma por mensagem (até 6). Usado no aviso
+ *   da avaria ao responsável pela manutenção, com as fotos do motorista (01/11/2026).
  * Auth: x-api-key === GARAGEM_INTEGRATION_API_KEY
  * Env:  CENTRAL_ROTOGRAMA_ORG (slug da conta da Ativa Rio, quando o body não traz)
  */
@@ -32,6 +35,7 @@ export async function POST(request: NextRequest) {
   }
   const b = (await request.json().catch(() => ({}))) as {
     telefone?: string; texto?: string; agente?: string; organizacao?: string; dry?: boolean
+    imagens?: { url?: string; legenda?: string }[]
   }
   const agenteNome = normNome(b.agente)
   if (!agenteNome) return NextResponse.json({ error: 'Informe o agente' }, { status: 400 })
@@ -91,6 +95,17 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: `Evolution recusou: ${err instanceof Error ? err.message : err}` }, { status: 502 })
   }
 
+  // Fotos depois do texto. Uma que falhe não desfaz o texto já entregue: só conta no retorno
+  const imagens = (Array.isArray(b.imagens) ? b.imagens : []).filter((i) => /^https:\/\//.test(String(i?.url ?? ''))).slice(0, 6)
+  let imagensEnviadas = 0
+  if (imagens.length) {
+    const adpImg = new EvolutionWhatsAppAdapter(process.env.EVOLUTION_API_URL!, process.env.EVOLUTION_API_KEY!, instancia)
+    for (const img of imagens) {
+      try { await adpImg.sendImage(telefone, String(img.url), img.legenda ? String(img.legenda).slice(0, 900) : undefined); imagensEnviadas++ }
+      catch (err) { console.warn('[central-enviar] imagem não enviada:', err instanceof Error ? err.message : err) }
+    }
+  }
+
   // Entra na conversa do contato, para o agente ter o contexto quando o motorista responder
   try {
     const organizationId = agente.organization_id
@@ -118,5 +133,5 @@ export async function POST(request: NextRequest) {
     console.warn('[central-enviar] mensagem enviada, mas não registrada na conversa:', err instanceof Error ? err.message : err)
   }
 
-  return NextResponse.json({ ok: true, externoId, instancia, agente: agente.name })
+  return NextResponse.json({ ok: true, externoId, instancia, agente: agente.name, imagens: imagens.length, imagensEnviadas })
 }
