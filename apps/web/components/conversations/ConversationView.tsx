@@ -2,8 +2,9 @@
 
 import { useRef, useEffect, useState } from 'react'
 import Link from 'next/link'
-import { ArrowLeft, Bot, UserCheck, CheckCheck, Loader2, Phone, Send, Lock, Tag, X, Plus, Check, Mic, Image as ImageIcon, FileText } from 'lucide-react'
+import { ArrowLeft, Bot, UserCheck, CheckCheck, Loader2, Phone, Send, Lock, Tag, X, Plus, Check } from 'lucide-react'
 import { trpc } from '@/lib/trpc/client'
+import { MensagemConteudo } from './MensagemConteudo'
 
 const PRESET_TAGS = [
   { label: 'Hot Lead',   cls: 'bg-red-100 text-red-700 border-red-200' },
@@ -37,56 +38,6 @@ function timeStr(date: string) {
   })
 }
 
-// Endereço para exibir a mídia. Tudo que é nosso (cópia no Storage e os vídeos/folders que
-// o agente envia) passa pela rota autenticada /api/media/<id>: o endereço do banco nunca
-// chega ao navegador. O link do CDN do WhatsApp (mmg.whatsapp.net) é criptografado e não
-// abre, então é ignorado.
-function srcMidia(msg: { id: string; media_url: string | null }): string | null {
-  const u = msg.media_url
-  if (!u) return null
-  if (u.startsWith('storage:') || /supabase\.co\/storage\//.test(u)) return `/api/media/${msg.id}`
-  if (/^https?:\/\//.test(u) && !/whatsapp\.net/.test(u)) return u
-  return null
-}
-
-// Mídias são guardadas por 30 dias (cron /api/cron/limpar-midias).
-const DIAS_RETENCAO_MIDIA = 30
-function midiaExpirada(msg: { created_at: string; media_url: string | null }): boolean {
-  return !msg.media_url && Date.now() - new Date(msg.created_at).getTime() > DIAS_RETENCAO_MIDIA * 86_400_000
-}
-function avisoSemArquivo(msg: { created_at: string; media_url: string | null }, tipo: string): string {
-  return midiaExpirada(msg) ? `${tipo} expirado(a) — guardamos por ${DIAS_RETENCAO_MIDIA} dias` : `${tipo} (arquivo não disponível)`
-}
-
-// Popup para ver imagem/documento sem sair do painel (não abre aba com endereço nenhum).
-function MidiaPopup({ midia, onClose }: { midia: { src: string; tipo: 'image' | 'document' }; onClose: () => void }) {
-  useEffect(() => {
-    const esc = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose() }
-    window.addEventListener('keydown', esc)
-    return () => window.removeEventListener('keydown', esc)
-  }, [onClose])
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4" onClick={onClose} role="dialog" aria-modal="true">
-      <div className="relative flex max-h-full max-w-full flex-col items-center gap-2" onClick={(e) => e.stopPropagation()}>
-        <div className="flex w-full justify-end gap-2">
-          <a href={`${midia.src}?download=1`} className="rounded-md bg-white/15 px-3 py-1.5 text-xs font-medium text-white hover:bg-white/25">Baixar</a>
-          <button onClick={onClose} className="rounded-md bg-white/15 p-1.5 text-white hover:bg-white/25" aria-label="Fechar"><X className="h-4 w-4" /></button>
-        </div>
-        {midia.tipo === 'image' ? (
-          <img src={midia.src} alt="Imagem" className="max-h-[85vh] max-w-[90vw] rounded-lg object-contain" />
-        ) : (
-          <iframe src={midia.src} title="Documento" className="h-[85vh] w-[90vw] max-w-4xl rounded-lg bg-white" />
-        )}
-      </div>
-    </div>
-  )
-}
-
-// Texto real da mensagem (legenda, transcrição), sem os marcadores "[mídia]", "[imagem: x]"…
-function textoMidia(content: string | null): boolean {
-  return !!content && !/^\[(mídia|figurinha|imagem:[^\]]*|video:[^\]]*)\]$/i.test(content.trim())
-}
-
 function dateDivider(date: string) {
   return new Date(date).toLocaleDateString('pt-BR', {
     day: '2-digit', month: 'long', year: 'numeric',
@@ -102,7 +53,6 @@ export function ConversationView({ contactId, onClose }: { contactId: string; on
   const [customTag, setCustomTag] = useState('')
   const [showCustomInput, setShowCustomInput] = useState(false)
   const [localTags, setLocalTags] = useState<string[] | null>(null)
-  const [popupMidia, setPopupMidia] = useState<{ src: string; tipo: 'image' | 'document' } | null>(null)
   const [localStage, setLocalStage] = useState<string | null>(null)
   const utils = trpc.useUtils()
 
@@ -415,73 +365,7 @@ export function ConversationView({ contactId, onClose }: { contactId: string; on
                         ? 'rounded-tl-sm bg-muted text-foreground'
                         : 'rounded-tr-sm bg-primary text-white'
                     }`}>
-                      {/* Audio message */}
-                      {msg.content_type === 'audio' ? (
-                        <div className="space-y-1.5">
-                          <div className="flex items-center gap-2">
-                            <div className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full ${isUser ? 'bg-primary/10' : 'bg-white/20'}`}>
-                              <Mic className={`h-3.5 w-3.5 ${isUser ? 'text-primary' : 'text-white'}`} />
-                            </div>
-                            <span className={`text-xs font-medium ${isUser ? 'text-muted-foreground' : 'text-white/80'}`}>Áudio</span>
-                          </div>
-                          {srcMidia(msg) ? (
-                            <audio controls preload="none" src={srcMidia(msg)!} className="h-9 w-64 max-w-full" />
-                          ) : midiaExpirada(msg) ? (
-                            <p className={`text-[11px] ${isUser ? 'text-muted-foreground' : 'text-white/60'}`}>Áudio expirado — guardamos por {DIAS_RETENCAO_MIDIA} dias</p>
-                          ) : null}
-                          {textoMidia(msg.content) ? (
-                            <p className="text-sm leading-relaxed whitespace-pre-wrap italic opacity-90">"{msg.content}"</p>
-                          ) : (
-                            <p className={`text-xs italic ${isUser ? 'text-muted-foreground' : 'text-white/60'}`}>Áudio não transcrito</p>
-                          )}
-                        </div>
-                      ) : msg.content_type === 'image' ? (
-                        <div className="space-y-1.5">
-                          {srcMidia(msg) ? (
-                            <button type="button" onClick={() => setPopupMidia({ src: srcMidia(msg)!, tipo: 'image' })} title="Ampliar imagem" className="block">
-                              <img src={srcMidia(msg)!} alt="Imagem" loading="lazy" className="max-w-full rounded-lg max-h-64 object-cover cursor-zoom-in" />
-                            </button>
-                          ) : (
-                            <div className="flex items-center gap-2">
-                              <ImageIcon className="h-4 w-4 opacity-70" />
-                              <span className="text-xs opacity-70">{avisoSemArquivo(msg, 'Imagem')}</span>
-                            </div>
-                          )}
-                          {textoMidia(msg.content) && (
-                            <p className="text-sm leading-relaxed whitespace-pre-wrap">{msg.content}</p>
-                          )}
-                        </div>
-                      ) : msg.content_type === 'video' ? (
-                        <div className="space-y-1.5">
-                          {srcMidia(msg) ? (
-                            <video controls preload="metadata" src={srcMidia(msg)!} className="max-w-full rounded-lg max-h-64" />
-                          ) : (
-                            <span className="text-xs opacity-70">{avisoSemArquivo(msg, 'Vídeo')}</span>
-                          )}
-                          {textoMidia(msg.content) && (
-                            <p className="text-sm leading-relaxed whitespace-pre-wrap">{msg.content}</p>
-                          )}
-                        </div>
-                      ) : msg.content_type === 'document' ? (
-                        srcMidia(msg) ? (
-                          <button type="button" onClick={() => setPopupMidia({ src: srcMidia(msg)!, tipo: 'document' })} className="flex items-center gap-2 text-left underline-offset-2 hover:underline">
-                            <FileText className="h-4 w-4 opacity-70" />
-                            <span className="text-sm">{textoMidia(msg.content) ? msg.content : 'Abrir documento'}</span>
-                          </button>
-                        ) : (
-                          <div className="flex items-center gap-2">
-                            <FileText className="h-4 w-4 opacity-70" />
-                            <span className="text-sm">{textoMidia(msg.content) ? msg.content : avisoSemArquivo(msg, 'Documento')}</span>
-                          </div>
-                        )
-                      ) : /^\[reação: .+\]$/.test(msg.content ?? '') ? (
-                        <p className="text-sm" title="Reagiu a uma mensagem">
-                          <span className="text-xl leading-none">{msg.content!.slice(9, -1)}</span>
-                          <span className="ml-1.5 text-xs opacity-70">reagiu</span>
-                        </p>
-                      ) : (
-                        <p className="text-sm leading-relaxed whitespace-pre-wrap">{msg.content}</p>
-                      )}
+                      <MensagemConteudo msg={msg} isUser={isUser} />
                       <div className={`mt-1 flex items-center gap-1 ${isUser ? 'justify-start' : 'justify-end'}`}>
                         <span className={`text-[10px] ${isUser ? 'text-muted-foreground' : 'text-white/70'}`}>
                           {timeStr(msg.created_at)}
@@ -540,7 +424,6 @@ export function ConversationView({ contactId, onClose }: { contactId: string; on
         </p>
       )}
 
-      {popupMidia && <MidiaPopup midia={popupMidia} onClose={() => setPopupMidia(null)} />}
     </div>
   )
 }
