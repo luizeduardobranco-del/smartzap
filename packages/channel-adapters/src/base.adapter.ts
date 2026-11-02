@@ -23,6 +23,8 @@ export interface NormalizedMessage {
   mimeType?: string
   /** Original filename (for documents) */
   filename?: string
+  /** Reação (emoji) a uma mensagem — o texto vem como "[reação: 👍]" e não aciona a IA */
+  isReaction?: boolean
   /** When the message was sent */
   timestamp: Date
   /** True if the message came from a group chat */

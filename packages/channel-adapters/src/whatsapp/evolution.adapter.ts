@@ -19,15 +19,25 @@ interface EvolutionWebhookPayload {
       senderAlt?: string
     }
     pushName?: string
-    message?: {
-      conversation?: string
-      extendedTextMessage?: { text: string }
-      imageMessage?: { url: string; mimetype: string; caption?: string }
-      documentMessage?: { url: string; mimetype: string; fileName: string }
-      audioMessage?: { url: string; mimetype: string }
-    }
+    message?: EvolutionMessage
     messageTimestamp: number
   }
+}
+
+type EvolutionMessage = {
+  conversation?: string
+  extendedTextMessage?: { text: string }
+  imageMessage?: { url: string; mimetype: string; caption?: string }
+  documentMessage?: { url: string; mimetype: string; fileName: string; caption?: string }
+  audioMessage?: { url: string; mimetype: string }
+  videoMessage?: { url: string; mimetype: string; caption?: string }
+  stickerMessage?: { url: string; mimetype: string }
+  reactionMessage?: { text?: string; key?: { id?: string } }
+  // Embrulhos: o conteúdo real vem dentro de .message
+  documentWithCaptionMessage?: { message?: EvolutionMessage }
+  ephemeralMessage?: { message?: EvolutionMessage }
+  viewOnceMessage?: { message?: EvolutionMessage }
+  viewOnceMessageV2?: { message?: EvolutionMessage }
 }
 
 export class EvolutionWhatsAppAdapter implements ChannelAdapter {
@@ -73,15 +83,29 @@ export class EvolutionWhatsAppAdapter implements ChannelAdapter {
         participante, camposDisponiveis: Object.keys(k),
       })
     }
-    const msg = p.data.message
+    // Desembrulha mensagens temporárias, de visualização única e documento com legenda —
+    // sem isso elas chegavam como "[mídia]" de texto, sem arquivo nem legenda.
+    let msg = p.data.message
+    for (let i = 0; i < 3 && msg; i++) {
+      const dentro = msg.ephemeralMessage?.message || msg.viewOnceMessage?.message
+        || msg.viewOnceMessageV2?.message || msg.documentWithCaptionMessage?.message
+      if (!dentro) break
+      msg = dentro
+    }
 
     if (!msg) return null
+
+    // Reação (👍 numa mensagem): não é mídia nem pergunta. Sem emoji = reação removida.
+    if (msg.reactionMessage && !msg.reactionMessage.text) return null
 
     // Extract text
     const text =
       msg.conversation ||
       msg.extendedTextMessage?.text ||
       msg.imageMessage?.caption ||
+      msg.videoMessage?.caption ||
+      msg.documentMessage?.caption ||
+      (msg.reactionMessage?.text ? `[reação: ${msg.reactionMessage.text}]` : undefined) ||
       undefined
 
     // Determine content type
@@ -103,6 +127,14 @@ export class EvolutionWhatsAppAdapter implements ChannelAdapter {
       contentType = 'audio'
       mediaUrl = msg.audioMessage.url
       mimeType = msg.audioMessage.mimetype
+    } else if (msg.videoMessage) {
+      contentType = 'video'
+      mediaUrl = msg.videoMessage.url
+      mimeType = msg.videoMessage.mimetype
+    } else if (msg.stickerMessage) {
+      contentType = 'sticker'
+      mediaUrl = msg.stickerMessage.url
+      mimeType = msg.stickerMessage.mimetype
     }
 
     return {
@@ -119,6 +151,7 @@ export class EvolutionWhatsAppAdapter implements ChannelAdapter {
       timestamp: new Date(p.data.messageTimestamp * 1000),
       isGroup,
       groupJid: isGroup ? remoteJid : undefined,
+      isReaction: !!msg.reactionMessage,
       raw: payload,
     }
   }

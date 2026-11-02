@@ -12,6 +12,10 @@
     {
       "path": "/api/agenda/process",
       "schedule": "0 12 * * *"
+    },
+    {
+      "path": "/api/cron/limpar-midias",
+      "schedule": "0 6 * * *"
     }
   ]
 }

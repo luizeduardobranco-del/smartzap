@@ -11,6 +11,7 @@ import { findOrCreateOpenConversation } from '@/lib/conversations'
 import { tratarRespostaAgenda } from '@/lib/agenda/confirmacao-inbound'
 import { avisarDesconexao, avisarReconexao } from '@/lib/alerta-desconexao'
 import { midiasPorTexto, precisaResumo, extrairResumo } from '@/lib/agente-garantias'
+import { tipoMidiaEvolution, guardarMidiaRecebida } from '@/lib/midia-recebida'
 import { centralAtiva, repassarEntrada, repassarSaida, anotarMensagem, tipoCentral, enviarNotaCentral, RespostaCentral } from '@/lib/central-rotograma'
 
 // Declarado NO CÓDIGO, não em apps/web/vercel.json: o projeto tem rootDirectory
@@ -444,9 +445,12 @@ async function handleWebhook(payload: unknown) {
       conversation_id: conversationId,
       organization_id: channel.organization_id,
       role: 'user',
-      content: msg.text ?? '[mídia]',
-      content_type: msg.contentType,
-      media_url: msg.mediaUrl ?? null,
+      content: msg.text ?? (msg.contentType === 'sticker' ? '[figurinha]' : '[mídia]'),
+      // Figurinha é gravada como imagem (o painel mostra igual); metadata marca a origem.
+      content_type: msg.contentType === 'sticker' ? 'image' : msg.contentType,
+      // O link do CDN do WhatsApp é criptografado: só serve até a cópia abaixo ficar pronta.
+      media_url: null,
+      metadata: msg.contentType === 'sticker' ? { figurinha: true } : {},
       sender_type: 'contact',
       external_id: msg.externalId,
     })
@@ -457,6 +461,23 @@ async function handleWebhook(payload: unknown) {
     .from('conversations')
     .update({ last_message_at: new Date().toISOString() })
     .eq('id', conversationId)
+
+  // 5a. Cópia da mídia no Storage para o painel exibir (imagem, player de áudio, vídeo,
+  // documento). O mesmo download é reaproveitado na transcrição e na central.
+  let midiaEntrada: { base64: string; mimetype: string } | null = null
+  const tipoEvo = tipoMidiaEvolution(msg.contentType)
+  if (tipoEvo && savedMsg?.id) {
+    midiaEntrada = await fetchEvolutionMedia(msg.externalId, msg.senderExternalId, msg.channelIdentifier, tipoEvo)
+    if (midiaEntrada?.base64) {
+      const ref = await guardarMidiaRecebida(supabase, {
+        organizationId: channel.organization_id, messageId: savedMsg.id,
+        base64: midiaEntrada.base64, mimetype: midiaEntrada.mimetype ?? msg.mimeType, filename: msg.filename,
+      })
+      if (ref) await supabase.from('messages').update({ media_url: ref }).eq('id', savedMsg.id)
+    } else {
+      console.warn('[webhook] mídia não baixada da Evolution:', msg.contentType, msg.externalId)
+    }
+  }
 
   // 5b. Central do Motorista (rotograma da Ativa Rio). Liga pelo agente (Felipe) ou
   // pela instância (lib/central-rotograma.ts): a mensagem vai, com a mídia, para o
@@ -474,7 +495,7 @@ async function handleWebhook(payload: unknown) {
       : msg.contentType === 'audio' ? 'audioMessage'
         : msg.contentType === 'document' ? 'documentMessage' : null
     midia = tipoMidia
-      ? await fetchEvolutionMedia(msg.externalId, msg.senderExternalId, msg.channelIdentifier, tipoMidia)
+      ? (midiaEntrada ?? await fetchEvolutionMedia(msg.externalId, msg.senderExternalId, msg.channelIdentifier, tipoMidia))
       : null
     central = await repassarEntrada({
       instancia: msg.channelIdentifier,
@@ -584,6 +605,9 @@ async function handleWebhook(payload: unknown) {
   if (humanMode && !garagemEnabled(org)) { console.log('[webhook] mode=human, skipping AI'); return }
   if (!savedMsg) { console.log('[webhook] savedMsg null, skipping AI'); return }
   if (msg.contentType === 'document') { console.log('[webhook] document, skipping AI'); return }
+  if (msg.contentType === 'sticker') { console.log('[webhook] figurinha, skipping AI'); return }
+  if (msg.isReaction) { console.log('[webhook] reação, skipping AI'); return }
+  if (msg.contentType === 'video' && !msg.text) { console.log('[webhook] vídeo sem legenda, skipping AI'); return }
 
   // 6e. Debounce: wait 8s, then check if a newer message arrived from the same contact.
   // This ensures consecutive messages are batched into a single AI response.
@@ -628,7 +652,7 @@ async function handleWebhook(payload: unknown) {
   // Declare effectiveText early so the batching block below can override it
   let effectiveText = msg.text
 
-  const validPending = (pendingUserMsgs ?? []).filter((m) => m.content && m.content !== '[mídia]')
+  const validPending = (pendingUserMsgs ?? []).filter((m) => m.content && m.content !== '[mídia]' && !m.content?.startsWith('[reação:') && m.content !== '[figurinha]')
   if (validPending.length > 1) {
     // Multiple messages waiting — combine into single prompt
     effectiveText = validPending.map((m) => m.content).join('\n')
@@ -651,7 +675,7 @@ async function handleWebhook(payload: unknown) {
       return
     }
     try {
-      const media = await fetchEvolutionMedia(msg.externalId, msg.senderExternalId, msg.channelIdentifier, 'audioMessage')
+      const media = midiaEntrada ?? await fetchEvolutionMedia(msg.externalId, msg.senderExternalId, msg.channelIdentifier, 'audioMessage')
       if (media?.base64) {
         const audioBytes = Buffer.from(media.base64, 'base64')
         const fd = new FormData()
@@ -774,7 +798,7 @@ async function handleWebhook(payload: unknown) {
         .limit(10)
       const convHistoryVision = (historyVision ?? [])
         .reverse()
-        .filter((m) => m.content !== '[mídia]')
+        .filter((m) => m.content !== '[mídia]' && !m.content?.startsWith('[reação:') && m.content !== '[figurinha]')
         .slice(0, -1)
         .map((m) => ({ role: m.role as 'user' | 'assistant', content: m.content }))
 
@@ -968,7 +992,7 @@ async function handleWebhook(payload: unknown) {
 
   const conversationHistory = (history ?? [])
     .reverse()
-    .filter((m) => m.content !== '[mídia]')
+    .filter((m) => m.content !== '[mídia]' && !m.content?.startsWith('[reação:') && m.content !== '[figurinha]')
     .slice(0, -1) // exclude the message we just inserted
     .map((m) => ({ role: m.role as 'user' | 'assistant', content: m.content }))
 
@@ -1217,6 +1241,47 @@ async function handleWebhook(payload: unknown) {
       .update({ mode: 'human' })
       .eq('id', conversationId)
     console.log('[webhook] conversation switched to human mode')
+
+    // 14b. Aviso de transferência para a equipe. Em modo humano o robô para de responder;
+    // sem este aviso, ninguém sabia que havia cliente esperando (caso Trans School, 23/10:
+    // duas mães pedindo transporte ficaram dias sem resposta). Usa os telefones de
+    // behavior_config.avisoTransferencia.telefones, ou os do resumo do lead.
+    // Na central do rotograma quem avisa é o próprio rotograma (precisaTorre abaixo).
+    const telefonesAviso: string[] = Array.isArray(behavior.avisoTransferencia?.telefones)
+      ? behavior.avisoTransferencia.telefones
+      : Array.isArray(behavior.resumoLead?.telefones) ? behavior.resumoLead.telefones : []
+    if (!usaCentral && behavior.avisoTransferencia?.ativo !== false && telefonesAviso.length) {
+      const nome = msg.senderName?.trim() || 'Cliente'
+      const pedido = (effectiveText ?? '').trim().slice(0, 600) || '(mensagem sem texto)'
+      const aviso = [
+        '🔔 *Cliente aguardando atendimento*',
+        '',
+        `${agent.name ?? 'O agente'} transferiu a conversa e não vai mais responder até alguém da equipe assumir.`,
+        '',
+        `👤 ${nome}`,
+        `📱 +${msg.senderExternalId}`,
+        `💬 Última mensagem: "${pedido}"`,
+        '',
+        `Responda pelo painel (Conversas) ou direto: https://wa.me/${msg.senderExternalId}`,
+      ].join('\n')
+      for (const tel of telefonesAviso) {
+        const destino = String(tel).replace(/\D/g, '')
+        if (!destino || destino === msg.senderExternalId) continue
+        try {
+          await sendAdapter.sendMessage({
+            channelType: 'whatsapp',
+            channelIdentifier: msg.channelIdentifier,
+            recipientExternalId: destino,
+            contentType: 'text',
+            text: aviso,
+          })
+          console.log('[webhook] aviso de transferência enviado para a equipe')
+        } catch (err) {
+          console.warn('[webhook] falha ao enviar aviso de transferência:', err instanceof Error ? err.message : err)
+        }
+      }
+    }
+
     // Central do rotograma: a conversa sobe como "aguardando torre"
     if (usaCentral) {
       await repassarSaida({
@@ -1385,7 +1450,7 @@ async function handleMetaWebhook(payload: unknown) {
   const aiKeys = orgSettings?.aiKeys ?? {}
   const openaiKey = aiKeys.openaiApiKey || process.env.OPENAI_API_KEY
 
-  const validPending = (pendingUserMsgs ?? []).filter((m) => m.content && m.content !== '[mídia]')
+  const validPending = (pendingUserMsgs ?? []).filter((m) => m.content && m.content !== '[mídia]' && !m.content?.startsWith('[reação:') && m.content !== '[figurinha]')
   let effectiveText = validPending.length > 1
     ? validPending.map((m) => m.content).join('\n')
     : msg.text
@@ -1440,7 +1505,7 @@ async function handleMetaWebhook(payload: unknown) {
 
   const conversationHistory = (history ?? [])
     .reverse()
-    .filter((m) => m.content !== '[mídia]')
+    .filter((m) => m.content !== '[mídia]' && !m.content?.startsWith('[reação:') && m.content !== '[figurinha]')
     .slice(0, -1)
     .map((m) => ({ role: m.role as 'user' | 'assistant', content: m.content }))
 
@@ -1881,7 +1946,7 @@ async function fetchEvolutionMedia(
   messageId: string,
   senderPhone: string,
   instanceName: string,
-  messageType: 'imageMessage' | 'audioMessage' | 'documentMessage',
+  messageType: 'imageMessage' | 'audioMessage' | 'documentMessage' | 'videoMessage' | 'stickerMessage',
   groupJid?: string
 ): Promise<{ base64: string; mimetype: string } | null> {
   try {
