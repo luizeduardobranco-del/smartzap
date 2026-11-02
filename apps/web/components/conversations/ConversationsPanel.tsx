@@ -7,6 +7,7 @@ import {
   RefreshCw, Send, Lock, Tag, X, Plus, Check, GitBranch, ChevronDown, Filter, Bell,
 } from 'lucide-react'
 import { trpc } from '@/lib/trpc/client'
+import { MensagemConteudo } from './MensagemConteudo'
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -486,7 +487,7 @@ function ChatPanel({ contactId, onBack }: { contactId: string; onBack: () => voi
                     <div className={`flex ${isUser ? 'justify-start' : 'justify-end'} mb-1`}>
                       <div className={`max-w-[75%] rounded-2xl px-3.5 py-2.5 shadow-sm ${isUser ? 'rounded-tl-sm bg-white text-foreground' : 'rounded-tr-sm bg-primary text-white'}`}>
                         {senderLabel && <p className="mb-0.5 text-xs font-medium opacity-75">{senderLabel}</p>}
-                        <p className="text-sm leading-relaxed whitespace-pre-wrap">{msg.content}</p>
+                        <MensagemConteudo msg={msg} isUser={isUser} />
                         <div className={`mt-1 flex items-center gap-1 ${isUser ? 'justify-start' : 'justify-end'}`}>
                           <span className={`text-[10px] ${isUser ? 'text-muted-foreground' : 'text-white/70'}`}>
                             {timeStr(msg.created_at)}{!isUser && msg.ai_model && ` · ${msg.ai_model}`}

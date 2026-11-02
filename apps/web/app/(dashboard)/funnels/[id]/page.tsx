@@ -3,6 +3,7 @@
 import { useState, useCallback, useRef, useEffect } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { trpc } from '@/lib/trpc/client'
+import { MensagemConteudo } from '@/components/conversations/MensagemConteudo'
 import {
   ArrowLeft, Plus, Settings, Trash2, Loader2, X, Check,
   GripVertical, UserPlus, Pause, Play, ChevronDown, ChevronUp,
@@ -979,7 +980,7 @@ function InlineConversation({ contactId, contactName, onBack, onClose }: {
                   {!isUser && (
                     <p className="mb-0.5 text-xs font-medium opacity-75">{senderLabel}</p>
                   )}
-                  <p className="whitespace-pre-wrap break-words">{msg.content}</p>
+                  <MensagemConteudo msg={msg} isUser={isUser} />
                   <p className={`mt-1 text-right text-xs ${isUser ? 'text-slate-400' : 'text-white/60'}`}>
                     {formatMsgTime(msg.created_at)}
                   </p>

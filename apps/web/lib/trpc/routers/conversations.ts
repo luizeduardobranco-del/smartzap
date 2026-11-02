@@ -114,7 +114,7 @@ export const conversationsRouter = router({
       // DESC + reverse: com ASC + limit vinham as mensagens mais antigas.
       const { data, error } = await ctx.supabase
         .from('messages')
-        .select('id, role, content, content_type, created_at, sender_type, ai_model, delivery_status')
+        .select('id, role, content, content_type, media_url, created_at, sender_type, ai_model, delivery_status')
         .eq('conversation_id', input.conversationId)
         .order('created_at', { ascending: false })
         .limit(input.limit)

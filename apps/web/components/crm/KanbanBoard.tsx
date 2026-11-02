@@ -3,6 +3,7 @@
 import { useState, useRef, useCallback, useEffect } from 'react'
 import { X, Plus, Phone, MessageSquare, Edit2, Check, Pencil, Save, ChevronDown, ChevronUp, ArrowLeft, Bot, UserCheck, Send, Loader2 } from 'lucide-react'
 import { trpc } from '@/lib/trpc/client'
+import { MensagemConteudo } from '@/components/conversations/MensagemConteudo'
 
 // ─── Stage config ───────────────────────────────────────────────────────────
 
@@ -572,7 +573,7 @@ function InlineConversation({ contactId, contactName, onBack, onClose }: {
                     <div className={`max-w-[80%] rounded-2xl px-3 py-2 text-sm ${
                       isUser ? 'rounded-tl-sm bg-white border text-foreground' : 'rounded-tr-sm bg-primary text-white'
                     }`}>
-                      <p className="leading-relaxed whitespace-pre-wrap">{msg.content}</p>
+                      <MensagemConteudo msg={msg} isUser={isUser} />
                       <p className={`mt-0.5 text-[10px] ${isUser ? 'text-muted-foreground' : 'text-white/70'}`}>
                         {new Date(msg.created_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
                       </p>
