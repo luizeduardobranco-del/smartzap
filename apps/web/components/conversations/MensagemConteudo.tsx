@@ -1,7 +1,7 @@
 'use client'
 
-import { useEffect, useState } from 'react'
-import { Mic, Image as ImageIcon, FileText, X } from 'lucide-react'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { Mic, Image as ImageIcon, FileText, X, ZoomIn, ZoomOut, RotateCw, RotateCcw, Maximize } from 'lucide-react'
 
 // Conteúdo de uma mensagem (texto, imagem, áudio com player, vídeo, documento, reação).
 // Usado na tela de Conversas e no popup de atendimento humano (LeadDetailModal), para as
@@ -43,24 +43,91 @@ function textoMidia(content: string | null): boolean {
   return !!content && !/^\[(mídia|figurinha|imagem:[^\]]*|video:[^\]]*)\]$/i.test(content.trim())
 }
 
+const ZOOM_MIN = 1
+const ZOOM_MAX = 6
+
 // Popup para ver imagem/documento sem sair do painel (não abre aba com endereço nenhum).
+// Imagem: zoom (botões, roda do mouse, duplo clique, teclas + e -), arrastar quando
+// ampliada, girar 90° (teclas R / Shift+R) e voltar ao original (tecla 0).
 function MidiaPopup({ midia, onClose }: { midia: { src: string; tipo: 'image' | 'document' }; onClose: () => void }) {
+  const [zoom, setZoom] = useState(1)
+  const [giro, setGiro] = useState(0)
+  const [pos, setPos] = useState({ x: 0, y: 0 })
+  const arrasto = useRef<{ x: number; y: number; px: number; py: number } | null>(null)
+
+  const aplicarZoom = useCallback((z: number) => {
+    const novo = Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, Math.round(z * 100) / 100))
+    setZoom(novo)
+    if (novo === 1) setPos({ x: 0, y: 0 })
+  }, [])
+  const girar = useCallback((graus: number) => setGiro((g) => g + graus), [])
+  const resetar = useCallback(() => { setZoom(1); setGiro(0); setPos({ x: 0, y: 0 }) }, [])
+
   useEffect(() => {
-    const esc = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose() }
-    window.addEventListener('keydown', esc)
-    return () => window.removeEventListener('keydown', esc)
-  }, [onClose])
+    const tecla = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose()
+      if (midia.tipo !== 'image') return
+      if (e.key === '+' || e.key === '=') aplicarZoom(zoom * 1.25)
+      else if (e.key === '-') aplicarZoom(zoom / 1.25)
+      else if (e.key === 'r') girar(90)
+      else if (e.key === 'R') girar(-90)
+      else if (e.key === '0') resetar()
+    }
+    window.addEventListener('keydown', tecla)
+    return () => window.removeEventListener('keydown', tecla)
+  }, [onClose, midia.tipo, zoom, aplicarZoom, girar, resetar])
+
+  const botao = 'rounded-md bg-white/15 p-1.5 text-white hover:bg-white/25 disabled:opacity-40 disabled:hover:bg-white/15'
+
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 p-4" onClick={onClose} role="dialog" aria-modal="true">
-      <div className="relative flex max-h-full max-w-full flex-col items-center gap-2" onClick={(e) => e.stopPropagation()}>
-        <div className="flex w-full justify-end gap-2">
-          <a href={`${midia.src}?download=1`} className="rounded-md bg-white/15 px-3 py-1.5 text-xs font-medium text-white hover:bg-white/25">Baixar</a>
-          <button onClick={onClose} className="rounded-md bg-white/15 p-1.5 text-white hover:bg-white/25" aria-label="Fechar"><X className="h-4 w-4" /></button>
-        </div>
+    <div className="fixed inset-0 z-[100] flex flex-col bg-black/85" onClick={onClose} role="dialog" aria-modal="true">
+      <div className="flex shrink-0 items-center justify-end gap-2 p-3" onClick={(e) => e.stopPropagation()}>
+        {midia.tipo === 'image' && (
+          <>
+            <button onClick={() => aplicarZoom(zoom / 1.25)} disabled={zoom <= ZOOM_MIN} className={botao} title="Diminuir (−)" aria-label="Diminuir zoom"><ZoomOut className="h-4 w-4" /></button>
+            <span className="w-12 text-center text-xs tabular-nums text-white/80">{Math.round(zoom * 100)}%</span>
+            <button onClick={() => aplicarZoom(zoom * 1.25)} disabled={zoom >= ZOOM_MAX} className={botao} title="Ampliar (+)" aria-label="Ampliar zoom"><ZoomIn className="h-4 w-4" /></button>
+            <span className="mx-1 h-5 w-px bg-white/20" />
+            <button onClick={() => girar(-90)} className={botao} title="Girar para a esquerda (Shift+R)" aria-label="Girar para a esquerda"><RotateCcw className="h-4 w-4" /></button>
+            <button onClick={() => girar(90)} className={botao} title="Girar para a direita (R)" aria-label="Girar para a direita"><RotateCw className="h-4 w-4" /></button>
+            <button onClick={resetar} disabled={zoom === 1 && giro % 360 === 0} className={botao} title="Tamanho original (0)" aria-label="Tamanho original"><Maximize className="h-4 w-4" /></button>
+            <span className="mx-1 h-5 w-px bg-white/20" />
+          </>
+        )}
+        <a href={`${midia.src}?download=1`} className="rounded-md bg-white/15 px-3 py-1.5 text-xs font-medium text-white hover:bg-white/25">Baixar</a>
+        <button onClick={onClose} className={botao} aria-label="Fechar"><X className="h-4 w-4" /></button>
+      </div>
+
+      <div className="flex min-h-0 flex-1 items-center justify-center overflow-hidden p-4">
         {midia.tipo === 'image' ? (
-          <img src={midia.src} alt="Imagem" className="max-h-[85vh] max-w-[90vw] rounded-lg object-contain" />
+          <img
+            src={midia.src}
+            alt="Imagem"
+            draggable={false}
+            onClick={(e) => e.stopPropagation()}
+            onDoubleClick={() => (zoom > 1 ? resetar() : aplicarZoom(2.5))}
+            onWheel={(e) => aplicarZoom(zoom * (e.deltaY < 0 ? 1.15 : 1 / 1.15))}
+            onPointerDown={(e) => {
+              if (zoom <= 1) return
+              e.currentTarget.setPointerCapture(e.pointerId)
+              arrasto.current = { x: e.clientX, y: e.clientY, px: pos.x, py: pos.y }
+            }}
+            onPointerMove={(e) => {
+              const a = arrasto.current
+              if (a) setPos({ x: a.px + (e.clientX - a.x), y: a.py + (e.clientY - a.y) })
+            }}
+            onPointerUp={() => { arrasto.current = null }}
+            onPointerCancel={() => { arrasto.current = null }}
+            style={{
+              transform: `translate(${pos.x}px, ${pos.y}px) scale(${zoom}) rotate(${giro}deg)`,
+              transition: arrasto.current ? 'none' : 'transform 150ms ease-out',
+              cursor: zoom > 1 ? (arrasto.current ? 'grabbing' : 'grab') : 'zoom-in',
+              touchAction: 'none',
+            }}
+            className="max-h-full max-w-full select-none rounded-lg object-contain"
+          />
         ) : (
-          <iframe src={midia.src} title="Documento" className="h-[85vh] w-[90vw] max-w-4xl rounded-lg bg-white" />
+          <iframe src={midia.src} title="Documento" onClick={(e) => e.stopPropagation()} className="h-full w-full max-w-4xl rounded-lg bg-white" />
         )}
       </div>
     </div>
