@@ -4,11 +4,12 @@ import { useState, useEffect } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { Bot, Brain, Zap, Radio, BookOpen, ArrowLeft, Loader2, Save, Play, Pause, MessageSquare } from 'lucide-react'
+import { Bot, Brain, Zap, Radio, BookOpen, ArrowLeft, Loader2, Save, Play, Pause, MessageSquare, Sparkles } from 'lucide-react'
 import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
 import { trpc } from '@/lib/trpc/client'
 import { KnowledgeBase } from './KnowledgeBase'
+import { MelhorarAgente } from './MelhorarAgente'
 import { WhatsAppConnect } from './WhatsAppConnect'
 import { InstagramConnect } from './InstagramConnect'
 import { TestAgentChat } from './TestAgentChat'
@@ -55,6 +56,7 @@ const TABS = [
   { id: 'personality', label: 'Personalidade', icon: Brain },
   { id: 'ai', label: 'Modelo de IA', icon: Zap },
   { id: 'knowledge', label: 'Conhecimento', icon: BookOpen },
+  { id: 'melhorar', label: 'Melhorar', icon: Sparkles },
   { id: 'channels', label: 'Canais', icon: Radio },
 ]
 
@@ -441,6 +443,11 @@ export function AgentEditor({ agentId }: { agentId: string }) {
           {/* Conhecimento */}
           {activeTab === 'knowledge' && (
             <KnowledgeBase agentId={agentId} />
+          )}
+
+          {/* Melhorar (treino com conversas reais) */}
+          {activeTab === 'melhorar' && (
+            <MelhorarAgente agentId={agentId} />
           )}
 
           {/* Canais */}
